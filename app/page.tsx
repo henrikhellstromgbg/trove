@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { eq, desc } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
@@ -22,6 +23,14 @@ export default async function Home() {
         <p className="text-sm text-black/60">
           Drop anything in. Ask it anything later.
         </p>
+        <nav className="flex gap-4 text-sm text-black/60">
+          <Link href="/wiki" className="hover:text-black">
+            wiki
+          </Link>
+          <Link href="/digest" className="hover:text-black">
+            digest
+          </Link>
+        </nav>
       </div>
 
       <CaptureForm />

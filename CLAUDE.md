@@ -123,10 +123,10 @@ Deferred to v0.2: user-defined pipelines, email-in, voice notes, Safari share ex
 | /api/capture + Vercel Blob | Pending | |
 | Inngest + ingest worker | Pending | |
 | /api/ask retrieval | Pending | |
-| Auto-wiki clustering | Pending | |
-| Weekly digest pipeline | Pending | |
+| Auto-wiki clustering | Done | Nightly cron 4am UTC, greedy clustering on item summaries, `/wiki` page renders topics |
+| Weekly digest pipeline | Done | Sunday 9am UTC cron, `/digest` page, idempotent per week |
 | Minimal web UI | Pending | |
-| Tauri 2 shell | Pending | |
+| Tauri 2 shell | Partial | Scaffolded at `desktop/`. Tray, hotkey, window, capture POST written. Rust not installed yet, run `desktop/README.md` setup then `pnpm tauri dev`. |
 | Sign, notarize, DMG | Pending | Apple Developer Program signup needed first |
 
 ## Reference architecture

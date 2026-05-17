@@ -1,4 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, and, isNotNull, gt, lt, sql } from "drizzle-orm";
+import Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod";
 import { inngest } from "./client";
 import { db, schema } from "@/lib/db";
 import { extractFromUrl } from "@/lib/ai/extract";
@@ -99,5 +101,382 @@ export const ingestItem = inngest.createFunction(
     });
 
     return { ok: true, chunks: chunks.length };
+  }
+);
+
+const anthropic = new Anthropic();
+
+const TopicSchema = z.object({
+  name: z.string().min(1).max(120),
+  summary: z.string().min(1).max(500),
+});
+
+const SIMILARITY_THRESHOLD = 0.6;
+const MAX_CLUSTERS = 15;
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  if (denom === 0) return 0;
+  return dot / denom;
+}
+
+type ClusterItem = {
+  id: string;
+  title: string | null;
+  summary: string;
+  embedding: number[];
+};
+
+function clusterItems(items: ClusterItem[]): ClusterItem[][] {
+  const remaining = [...items];
+  const clusters: ClusterItem[][] = [];
+
+  while (remaining.length > 0 && clusters.length < MAX_CLUSTERS) {
+    const seedIndex = Math.floor(Math.random() * remaining.length);
+    const seed = remaining[seedIndex];
+    const cluster: ClusterItem[] = [seed];
+    const leftover: ClusterItem[] = [];
+
+    for (let i = 0; i < remaining.length; i++) {
+      if (i === seedIndex) continue;
+      const candidate = remaining[i];
+      const sim = cosineSimilarity(seed.embedding, candidate.embedding);
+      if (sim > SIMILARITY_THRESHOLD) {
+        cluster.push(candidate);
+      } else {
+        leftover.push(candidate);
+      }
+    }
+
+    clusters.push(cluster);
+    remaining.length = 0;
+    remaining.push(...leftover);
+  }
+
+  return clusters.filter((c) => c.length >= 2);
+}
+
+async function summarizeCluster(cluster: ClusterItem[]): Promise<{
+  name: string;
+  summary: string;
+}> {
+  const bullets = cluster
+    .map((c) => `- ${c.title ?? "(untitled)"}: ${c.summary}`)
+    .join("\n");
+
+  const prompt = `Below is a cluster of related items from a personal knowledge base. Write a JSON object describing the cluster.
+
+Fields:
+- name: a short topic name in sentence case (no title case, max 120 chars). Concrete and specific.
+- summary: one or two sentences describing what ties these items together. Max 500 chars. Sentence case. No dashes.
+
+Respond with only the JSON object, no preamble.
+
+Items:
+${bullets}
+`;
+
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-5",
+    max_tokens: 512,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const block = response.content.find((b) => b.type === "text");
+  if (!block || block.type !== "text") {
+    throw new Error("No text block in cluster summary response");
+  }
+
+  const cleaned = block.text.trim().replace(/^```json\s*|\s*```$/g, "");
+  return TopicSchema.parse(JSON.parse(cleaned));
+}
+
+export const clusterTopics = inngest.createFunction(
+  {
+    id: "cluster-topics",
+    retries: 1,
+    triggers: [{ cron: "0 4 * * *" }],
+  },
+  async ({ step }) => {
+    const readyItems = await step.run("load-ready-items", async () => {
+      return await db
+        .select({
+          id: schema.item.id,
+          userId: schema.item.userId,
+          title: schema.item.title,
+          summary: schema.item.summary,
+        })
+        .from(schema.item)
+        .where(
+          and(eq(schema.item.status, "ready"), isNotNull(schema.item.summary))
+        );
+    });
+
+    const byUser = new Map<string, typeof readyItems>();
+    for (const it of readyItems) {
+      if (!it.summary) continue;
+      const list = byUser.get(it.userId) ?? [];
+      list.push(it);
+      byUser.set(it.userId, list);
+    }
+
+    const results: Array<{ userId: string; topics: number }> = [];
+
+    for (const [userId, items] of byUser.entries()) {
+      if (items.length < 2) {
+        await step.run(`clear-${userId}`, async () => {
+          await db.delete(schema.topic).where(eq(schema.topic.userId, userId));
+        });
+        results.push({ userId, topics: 0 });
+        continue;
+      }
+
+      const summaries = items.map((i) => i.summary as string);
+
+      const embeddings = await step.run(`embed-${userId}`, async () => {
+        return await embedTexts(summaries);
+      });
+
+      const clusterInput: ClusterItem[] = items.map((it, i) => ({
+        id: it.id,
+        title: it.title,
+        summary: it.summary as string,
+        embedding: embeddings[i],
+      }));
+
+      const clusters = clusterItems(clusterInput);
+
+      const topicRows: Array<{
+        userId: string;
+        name: string;
+        summary: string;
+        itemIds: string[];
+      }> = [];
+
+      for (let i = 0; i < clusters.length; i++) {
+        const cluster = clusters[i];
+        const meta = await step.run(`summarize-${userId}-${i}`, async () => {
+          return await summarizeCluster(cluster);
+        });
+        topicRows.push({
+          userId,
+          name: meta.name,
+          summary: meta.summary,
+          itemIds: cluster.map((c) => c.id),
+        });
+      }
+
+      await step.run(`replace-topics-${userId}`, async () => {
+        await db.delete(schema.topic).where(eq(schema.topic.userId, userId));
+        if (topicRows.length > 0) {
+          await db.insert(schema.topic).values(topicRows);
+        }
+      });
+
+      results.push({ userId, topics: topicRows.length });
+    }
+
+    return { ok: true, users: results };
+  }
+);
+
+const DigestSchema = z.object({
+  summary: z.string().min(1).max(1200),
+  highlights: z.array(z.string().min(1)).min(3).max(5),
+});
+
+async function summarizeDigest(
+  context: string
+): Promise<{ summary: string; highlights: string[] }> {
+  const prompt = `Below is a list of items a person saved this past week, with their titles and short summaries. Write a JSON object reflecting on what they saved.
+
+Fields:
+- summary: one paragraph in sentence case. No title case. No dashes (neither em-dash nor en-dash). Use commas or rewrite. Warm and direct. Max 1200 chars.
+- highlights: an array of 3 to 5 short bullet strings. Each in sentence case. No leading dashes or bullets in the strings themselves.
+
+Respond with only the JSON object, no preamble.
+
+Items:
+${context}
+`;
+
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-5",
+    max_tokens: 1024,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const block = response.content.find((b) => b.type === "text");
+  if (!block || block.type !== "text") {
+    throw new Error("No text block in digest response");
+  }
+
+  const cleaned = block.text.trim().replace(/^```json\s*|\s*```$/g, "");
+  return DigestSchema.parse(JSON.parse(cleaned));
+}
+
+export const weeklyDigest = inngest.createFunction(
+  {
+    id: "weekly-digest",
+    retries: 1,
+    triggers: [{ cron: "0 9 * * 0" }],
+  },
+  async ({ step }) => {
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sixDaysAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+
+    const recent = await step.run("load-recent-items", async () => {
+      return await db
+        .select({
+          id: schema.item.id,
+          userId: schema.item.userId,
+          title: schema.item.title,
+          summary: schema.item.summary,
+        })
+        .from(schema.item)
+        .where(
+          and(
+            eq(schema.item.status, "ready"),
+            gt(schema.item.capturedAt, weekAgo)
+          )
+        );
+    });
+
+    const byUser = new Map<string, typeof recent>();
+    for (const it of recent) {
+      const list = byUser.get(it.userId) ?? [];
+      list.push(it);
+      byUser.set(it.userId, list);
+    }
+
+    const results: Array<{
+      userId: string;
+      status: "created" | "skipped-no-items" | "skipped-duplicate";
+    }> = [];
+
+    for (const [userId, items] of byUser.entries()) {
+      if (items.length === 0) {
+        results.push({ userId, status: "skipped-no-items" });
+        continue;
+      }
+
+      const pipelineRow = await step.run(
+        `ensure-pipeline-${userId}`,
+        async () => {
+          const existing = await db
+            .select()
+            .from(schema.pipeline)
+            .where(
+              and(
+                eq(schema.pipeline.userId, userId),
+                eq(schema.pipeline.name, "weekly-digest")
+              )
+            )
+            .limit(1);
+          if (existing[0]) return existing[0];
+
+          const inserted = await db
+            .insert(schema.pipeline)
+            .values({
+              userId,
+              name: "weekly-digest",
+              description:
+                "weekly summary of what you saved + one forgotten item",
+              spec: {},
+              cron: "0 9 * * 0",
+              enabled: true,
+            })
+            .returning();
+          return inserted[0];
+        }
+      );
+
+      const duplicate = await step.run(
+        `check-duplicate-${userId}`,
+        async () => {
+          const rows = await db
+            .select({ id: schema.pipelineRun.id })
+            .from(schema.pipelineRun)
+            .where(
+              and(
+                eq(schema.pipelineRun.userId, userId),
+                eq(schema.pipelineRun.pipelineId, pipelineRow.id),
+                gt(schema.pipelineRun.startedAt, sixDaysAgo)
+              )
+            )
+            .limit(1);
+          return rows[0] ?? null;
+        }
+      );
+
+      if (duplicate) {
+        results.push({ userId, status: "skipped-duplicate" });
+        continue;
+      }
+
+      const context = items
+        .map(
+          (it) =>
+            `- ${it.title ?? "(untitled)"}: ${it.summary ?? "(no summary)"}`
+        )
+        .join("\n");
+
+      const digest = await step.run(`summarize-${userId}`, async () => {
+        return await summarizeDigest(context);
+      });
+
+      const forgotten = await step.run(`pick-forgotten-${userId}`, async () => {
+        const rows = await db
+          .select({
+            id: schema.item.id,
+            title: schema.item.title,
+            summary: schema.item.summary,
+          })
+          .from(schema.item)
+          .where(
+            and(
+              eq(schema.item.userId, userId),
+              eq(schema.item.status, "ready"),
+              lt(schema.item.capturedAt, monthAgo)
+            )
+          )
+          .orderBy(sql`random()`)
+          .limit(1);
+        if (!rows[0]) return null;
+        return {
+          itemId: rows[0].id,
+          title: rows[0].title,
+          summary: rows[0].summary,
+        };
+      });
+
+      await step.run(`insert-run-${userId}`, async () => {
+        await db.insert(schema.pipelineRun).values({
+          pipelineId: pipelineRow.id,
+          userId,
+          status: "completed",
+          output: {
+            summary: digest.summary,
+            highlights: digest.highlights,
+            forgotten,
+          },
+          completedAt: new Date(),
+        });
+      });
+
+      results.push({ userId, status: "created" });
+    }
+
+    return { ok: true, users: results };
   }
 );
