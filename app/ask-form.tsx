@@ -54,9 +54,10 @@ export function AskForm() {
           const msg = JSON.parse(line);
           if (msg.type === "text") setAnswer((a) => a + msg.text);
           else if (msg.type === "citations") setCitations(msg.items);
-          else if (msg.type === "error") setAnswer((a) => a + `\n\n[error: ${msg.error}]`);
+          else if (msg.type === "error")
+            setAnswer((a) => a + `\n\n[error: ${msg.error}]`);
         } catch {
-          // skip malformed line
+          // skip
         }
       }
     }
@@ -93,13 +94,15 @@ export function AskForm() {
 
       {hasResult ? (
         <div className="flex flex-col gap-2 rounded-md border border-black/5 px-3 py-2 text-sm">
-          <p className="whitespace-pre-wrap">{answer || (loading ? "thinking..." : "")}</p>
+          <p className="whitespace-pre-wrap">
+            {answer || (loading ? "thinking..." : "")}
+          </p>
           {citations.length > 0 ? (
             <ul className="flex flex-col gap-0.5 text-xs text-black/50">
               {citations.map((c) => (
                 <li key={c.n} className="truncate">
                   [{c.n}] {c.title}
-                  {c.source ? ` , ${c.source}` : ""}
+                  {c.source ? `, ${c.source}` : ""}
                 </li>
               ))}
             </ul>

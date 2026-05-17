@@ -18,13 +18,16 @@
     "@google/genai": "^2.3.0",
     "@mozilla/readability": "^0.6.0",
     "@neondatabase/serverless": "^1.1.0",
+    "@vercel/blob": "^2.3.3",
     "drizzle-orm": "^0.45.2",
     "inngest": "^4.4.0",
     "jsdom": "^29.1.1",
+    "mammoth": "^1.12.0",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "ws": "^8.20.1",
+    "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },
   "devDependencies": {

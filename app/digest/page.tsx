@@ -97,9 +97,7 @@ function DigestBody({ output }: { output: DigestOutput | null }) {
         <section className="flex flex-col gap-3">
           <h2 className="text-xl">Forgotten</h2>
           <div className="flex flex-col gap-1 rounded-md border border-black/5 px-3 py-2">
-            <div className="text-sm">
-              {forgotten.title ?? "(untitled)"}
-            </div>
+            <div className="text-sm">{forgotten.title ?? "(untitled)"}</div>
             {forgotten.summary ? (
               <div className="text-sm text-black/60">{forgotten.summary}</div>
             ) : null}

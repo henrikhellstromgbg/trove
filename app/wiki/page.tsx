@@ -47,7 +47,10 @@ export default async function WikiPage() {
           topics.map((topic) => {
             const items = (topic.itemIds ?? [])
               .map((id) => itemById.get(id))
-              .filter((i): i is { id: string; title: string | null; source: string | null } => Boolean(i));
+              .filter(
+                (i): i is { id: string; title: string | null; source: string | null } =>
+                  Boolean(i)
+              );
 
             return (
               <section key={topic.id} className="flex flex-col gap-3">

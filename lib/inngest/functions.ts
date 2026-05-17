@@ -4,6 +4,11 @@ import { z } from "zod";
 import { inngest } from "./client";
 import { db, schema } from "@/lib/db";
 import { extractFromUrl } from "@/lib/ai/extract";
+import { extractFromPdf } from "@/lib/ai/extract-pdf";
+import { extractFromImage } from "@/lib/ai/extract-image";
+import { extractFromDocx } from "@/lib/ai/extract-docx";
+import { extractFromXlsx } from "@/lib/ai/extract-xlsx";
+import { extractFromTextFile } from "@/lib/ai/extract-textfile";
 import { chunkText } from "@/lib/ai/chunk";
 import { embedTexts } from "@/lib/ai/embed";
 import { enrich } from "@/lib/ai/enrich";
@@ -47,7 +52,47 @@ export const ingestItem = inngest.createFunction(
       rawText = extracted.text;
       extractedTitle = extracted.title;
 
-      await step.run("save-raw-text", async () => {
+      await step.run("save-raw-text-url", async () => {
+        await db
+          .update(schema.item)
+          .set({ rawText, title: extractedTitle })
+          .where(eq(schema.item.id, itemId));
+      });
+    }
+
+    if (
+      (item.type === "pdf" ||
+        item.type === "image" ||
+        item.type === "docx" ||
+        item.type === "xlsx" ||
+        item.type === "textfile") &&
+      item.blobUrl
+    ) {
+      const blobUrl = item.blobUrl;
+      const filename = item.source ?? "file";
+      const itemType = item.type;
+      const extracted = await step.run(`extract-${itemType}`, async () => {
+        if (itemType === "pdf") return await extractFromPdf(blobUrl);
+        if (itemType === "image") {
+          const guessedMime =
+            filename.toLowerCase().endsWith(".jpg") ||
+            filename.toLowerCase().endsWith(".jpeg")
+              ? "image/jpeg"
+              : filename.toLowerCase().endsWith(".gif")
+                ? "image/gif"
+                : filename.toLowerCase().endsWith(".webp")
+                  ? "image/webp"
+                  : "image/png";
+          return await extractFromImage(blobUrl, filename, guessedMime);
+        }
+        if (itemType === "docx") return await extractFromDocx(blobUrl, filename);
+        if (itemType === "xlsx") return await extractFromXlsx(blobUrl, filename);
+        return await extractFromTextFile(blobUrl, filename);
+      });
+      rawText = extracted.text;
+      extractedTitle = extracted.title;
+
+      await step.run(`save-raw-text-${itemType}`, async () => {
         await db
           .update(schema.item)
           .set({ rawText, title: extractedTitle })
