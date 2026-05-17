@@ -42,6 +42,9 @@ export default function RootLayout({
               <Link href="/digest" className="hover:text-black">
                 digest
               </Link>
+              <Link href="/pipelines" className="hover:text-black">
+                pipelines
+              </Link>
               <Show when="signed-out">
                 <SignInButton />
               </Show>

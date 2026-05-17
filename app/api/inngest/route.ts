@@ -4,9 +4,10 @@ import {
   ingestItem,
   clusterTopics,
   weeklyDigest,
+  runDuePipelines,
 } from "@/lib/inngest/functions";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [ingestItem, clusterTopics, weeklyDigest],
+  functions: [ingestItem, clusterTopics, weeklyDigest, runDuePipelines],
 });

@@ -1,4 +1,4 @@
-import { eq, and, isNotNull, gt, lt, sql } from "drizzle-orm";
+import { eq, and, isNotNull, isNull, gt, lt, lte, or, sql } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { inngest } from "./client";
@@ -12,6 +12,9 @@ import { extractFromTextFile } from "@/lib/ai/extract-textfile";
 import { chunkText } from "@/lib/ai/chunk";
 import { embedTexts } from "@/lib/ai/embed";
 import { enrich } from "@/lib/ai/enrich";
+import { runPipelineSpec } from "@/lib/pipelines/run";
+import { nextRunFromCron } from "@/lib/pipelines/cron";
+import { PipelineSpecSchema } from "@/lib/pipelines/types";
 
 export const ingestItem = inngest.createFunction(
   {
@@ -523,5 +526,93 @@ export const weeklyDigest = inngest.createFunction(
     }
 
     return { ok: true, users: results };
+  }
+);
+
+export const runDuePipelines = inngest.createFunction(
+  {
+    id: "run-due-pipelines",
+    retries: 1,
+    triggers: [{ cron: "*/10 * * * *" }],
+  },
+  async ({ step }) => {
+    const now = new Date();
+
+    const due = await step.run("load-due-pipelines", async () => {
+      return await db
+        .select()
+        .from(schema.pipeline)
+        .where(
+          and(
+            eq(schema.pipeline.enabled, true),
+            or(
+              isNull(schema.pipeline.nextRunAt),
+              lte(schema.pipeline.nextRunAt, now)
+            )!
+          )
+        );
+    });
+
+    const results: Array<{ pipelineId: string; ok: boolean; reason?: string }> = [];
+
+    for (const p of due) {
+      const parsed = PipelineSpecSchema.safeParse(p.spec);
+      if (!parsed.success) {
+        results.push({ pipelineId: p.id, ok: false, reason: "invalid spec" });
+        continue;
+      }
+      const spec = parsed.data;
+
+      try {
+        const output = await step.run(`run-${p.id}`, async () => {
+          return await runPipelineSpec(p.userId, spec);
+        });
+
+        await step.run(`record-${p.id}`, async () => {
+          await db.insert(schema.pipelineRun).values({
+            pipelineId: p.id,
+            userId: p.userId,
+            status: "completed",
+            output,
+            completedAt: new Date(),
+          });
+
+          await db
+            .update(schema.pipeline)
+            .set({
+              lastRunAt: new Date(),
+              nextRunAt: nextRunFromCron(spec.cron, new Date()),
+            })
+            .where(eq(schema.pipeline.id, p.id));
+        });
+
+        results.push({ pipelineId: p.id, ok: true });
+      } catch (err) {
+        await step.run(`fail-${p.id}`, async () => {
+          await db.insert(schema.pipelineRun).values({
+            pipelineId: p.id,
+            userId: p.userId,
+            status: "failed",
+            output: { error: err instanceof Error ? err.message : "Unknown" },
+            completedAt: new Date(),
+          });
+
+          await db
+            .update(schema.pipeline)
+            .set({
+              lastRunAt: new Date(),
+              nextRunAt: nextRunFromCron(spec.cron, new Date()),
+            })
+            .where(eq(schema.pipeline.id, p.id));
+        });
+        results.push({
+          pipelineId: p.id,
+          ok: false,
+          reason: err instanceof Error ? err.message : "unknown",
+        });
+      }
+    }
+
+    return { ok: true, ran: results.length, results };
   }
 );
