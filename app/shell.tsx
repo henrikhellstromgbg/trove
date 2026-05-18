@@ -24,11 +24,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative z-10 flex min-h-screen flex-col">
       <header className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-6 py-4 md:px-10">
-        <Link
-          href="/"
-          className="font-display text-2xl font-light tracking-tight text-ink"
-        >
-          Trove
+        <Link href="/" className="flex items-center">
+          <img src="/logo.svg" alt="Trove" className="h-6 w-auto" />
         </Link>
 
         <nav className="hidden items-center gap-7 md:flex">
@@ -57,7 +54,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </SignInButton>
           </Show>
           <Show when="signed-in">
-            <UserButton />
+            <div className="grayscale opacity-80 transition-opacity hover:opacity-100">
+              <UserButton />
+            </div>
           </Show>
         </div>
       </header>
