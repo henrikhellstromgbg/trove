@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { Show, SignInButton, UserButton } from "@clerk/nextjs";
+import { Show, SignInButton } from "@clerk/nextjs";
 import { AskOverlay } from "./ask-overlay";
+import { UserMenu } from "./user-menu";
 
 const MODULES = [
   { href: "/", label: "capture" },
@@ -54,9 +55,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </SignInButton>
           </Show>
           <Show when="signed-in">
-            <div className="grayscale opacity-80 transition-opacity hover:opacity-100">
-              <UserButton />
-            </div>
+            <UserMenu />
           </Show>
         </div>
       </header>
