@@ -2,7 +2,16 @@ import { Resend } from "resend";
 import { clerkClient } from "@clerk/nextjs/server";
 import type { PipelineSpec, PipelineRunOutput } from "./types";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient: Resend | null = null;
+function getResend(): Resend {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY is not set");
+  }
+  if (!resendClient) {
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendClient;
+}
 
 const FROM = process.env.RESEND_FROM ?? "Trove <onboarding@resend.dev>";
 
@@ -11,9 +20,7 @@ export async function sendPipelineEmail(
   spec: PipelineSpec,
   output: PipelineRunOutput
 ): Promise<void> {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY is not set");
-  }
+  const resend = getResend();
 
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
