@@ -34,6 +34,7 @@ Produce a JSON object with exactly these fields:
   - "text" if the user wants a paragraph
   - "summary_with_highlights" if they want {summary, highlights[]}
   - "list" if they want a list of items, names, links
+- deliverByEmail: true if the user asked to receive the result by email ("email me", "send to my inbox", "mail me", "to my email"). False otherwise.
 
 Rules:
 - Be conservative. Do not invent filters the user did not request.

@@ -31,6 +31,7 @@ export const PipelineSpecSchema = z.object({
   filter: PipelineFilterSchema,
   prompt: z.string().min(10).max(2000),
   outputShape: PipelineOutputShapeSchema,
+  deliverByEmail: z.boolean().default(false),
 });
 export type PipelineSpec = z.infer<typeof PipelineSpecSchema>;
 

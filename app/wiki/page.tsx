@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { eq, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { WikiBoard } from "./wiki-board";
 
 export default async function WikiPage() {
   const { userId } = await auth();
@@ -29,47 +30,39 @@ export default async function WikiPage() {
 
   const itemById = new Map(itemRows.map((i) => [i.id, i]));
 
+  const enriched = topics.map((t) => ({
+    id: t.id,
+    name: t.name,
+    summary: t.summary,
+    items: (t.itemIds ?? [])
+      .map((id) => itemById.get(id))
+      .filter(
+        (i): i is { id: string; title: string | null; source: string | null } =>
+          Boolean(i)
+      ),
+  }));
+
   return (
-    <main className="flex flex-1 flex-col items-center gap-10 px-6 py-10">
-      <div className="flex w-full max-w-2xl flex-col gap-2">
-        <h1 className="text-2xl">Wiki</h1>
-        <p className="text-sm text-black/60">
-          auto-generated from your saved items, refreshed nightly
+    <section className="relative flex flex-col gap-14 px-6 pb-12 pt-16 md:px-12 md:pt-24 lg:px-20">
+      <header className="flex flex-col gap-4">
+        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-faint">
+          wiki, auto stitched nightly
         </p>
-      </div>
+        <h1 className="font-display text-5xl leading-[1.02] tracking-tight md:text-7xl">
+          what you keep returning to.
+        </h1>
+        <p className="max-w-xl text-base text-ink-dim">
+          topics drift up from your archive on their own. no folders, no filing.
+        </p>
+      </header>
 
-      <div className="flex w-full max-w-2xl flex-col gap-10">
-        {topics.length === 0 ? (
-          <p className="text-sm text-black/40">
-            no topics yet. capture more items and check back tomorrow.
-          </p>
-        ) : (
-          topics.map((topic) => {
-            const items = (topic.itemIds ?? [])
-              .map((id) => itemById.get(id))
-              .filter(
-                (i): i is { id: string; title: string | null; source: string | null } =>
-                  Boolean(i)
-              );
-
-            return (
-              <section key={topic.id} className="flex flex-col gap-3">
-                <h2 className="text-xl">{topic.name}</h2>
-                {topic.summary ? (
-                  <p className="text-sm text-black/70">{topic.summary}</p>
-                ) : null}
-                <ul className="flex flex-col gap-1">
-                  {items.map((it) => (
-                    <li key={it.id} className="text-sm text-black/60">
-                      {it.title ?? it.source ?? "(untitled)"}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            );
-          })
-        )}
-      </div>
-    </main>
+      {enriched.length === 0 ? (
+        <p className="font-display text-2xl italic text-ink-faint">
+          no topics yet. capture more and check back tomorrow.
+        </p>
+      ) : (
+        <WikiBoard topics={enriched} />
+      )}
+    </section>
   );
 }

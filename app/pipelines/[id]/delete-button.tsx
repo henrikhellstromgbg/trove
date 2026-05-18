@@ -25,7 +25,7 @@ export function DeletePipelineButton({ id }: { id: string }) {
     return (
       <button
         onClick={() => setConfirming(true)}
-        className="text-xs text-black/40 hover:text-red-600 transition-colors"
+        className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint hover:text-ember"
       >
         delete pipeline
       </button>
@@ -33,18 +33,18 @@ export function DeletePipelineButton({ id }: { id: string }) {
   }
 
   return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="text-black/60">delete this pipeline?</span>
+    <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em]">
+      <span className="text-ink-dim">remove this pipeline?</span>
       <button
         onClick={remove}
         disabled={busy}
-        className="rounded border border-red-600/30 px-2 py-0.5 text-red-700 hover:bg-red-50 disabled:opacity-30"
+        className="rounded-full border border-ember/40 px-3 py-1 text-ember hover:bg-ember/10 disabled:opacity-30"
       >
-        {busy ? "..." : "yes, delete"}
+        {busy ? "removing" : "yes"}
       </button>
       <button
         onClick={() => setConfirming(false)}
-        className="text-black/40 hover:text-black"
+        className="text-ink-faint hover:text-ink"
       >
         cancel
       </button>

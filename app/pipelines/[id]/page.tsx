@@ -4,6 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { PipelineSpec, PipelineRunOutput } from "@/lib/pipelines/types";
 import { DeletePipelineButton } from "./delete-button";
+import { RunNowButton } from "./run-now-button";
 
 export default async function PipelineDetailPage({
   params,
@@ -25,12 +26,17 @@ export default async function PipelineDetailPage({
 
   if (!pipeline) {
     return (
-      <main className="flex flex-1 flex-col items-center gap-4 px-6 py-10">
-        <p className="text-sm text-black/40">Pipeline not found.</p>
-        <Link href="/pipelines" className="text-sm underline">
+      <section className="flex flex-col gap-6 px-6 pt-24 md:px-12 lg:px-20">
+        <p className="font-display text-3xl italic text-ink-faint">
+          pipeline not found.
+        </p>
+        <Link
+          href="/pipelines"
+          className="self-start font-mono text-[10px] uppercase tracking-[0.22em] text-silver"
+        >
           back to pipelines
         </Link>
-      </main>
+      </section>
     );
   }
 
@@ -44,91 +50,139 @@ export default async function PipelineDetailPage({
   const spec = pipeline.spec as PipelineSpec;
 
   return (
-    <main className="flex flex-1 flex-col items-center gap-10 px-6 py-10">
-      <div className="flex w-full max-w-2xl flex-col gap-2">
-        <div className="flex items-baseline justify-between gap-4">
-          <h1 className="text-2xl">{pipeline.name}</h1>
-          <Link href="/pipelines" className="text-sm text-black/50 hover:text-black">
+    <section className="relative flex flex-col gap-14 px-6 pb-12 pt-16 md:px-12 md:pt-24 lg:px-20">
+      <header className="flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-6">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-faint">
+            pipeline · {spec.cron}
+          </p>
+          <Link
+            href="/pipelines"
+            className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint hover:text-ink"
+          >
             all pipelines
           </Link>
         </div>
-        <p className="text-sm text-black/60">{pipeline.description}</p>
-      </div>
+        <h1 className="font-display text-5xl leading-[1.02] tracking-tight md:text-7xl">
+          {pipeline.name}
+        </h1>
+        <p className="max-w-2xl font-display text-2xl italic leading-snug text-ink-dim">
+          {pipeline.description}
+        </p>
+      </header>
 
-      <section className="flex w-full max-w-2xl flex-col gap-3 rounded-md border border-black/5 px-4 py-3 text-sm">
-        <h2 className="text-xs uppercase tracking-wider text-black/40">Spec</h2>
-        <div className="flex flex-col gap-1 font-mono text-xs text-black/60">
-          <div>name: {spec.name}</div>
-          <div>cron: {spec.cron}</div>
-          <div>output: {spec.outputShape}</div>
-          {spec.filter && Object.keys(spec.filter).length > 0 ? (
-            <div>filter: {JSON.stringify(spec.filter)}</div>
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[2fr,1fr]">
+        <section className="flex flex-col gap-6">
+          <h2 className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-faint">
+            recent runs
+          </h2>
+          {runs.length === 0 ? (
+            <p className="font-display text-xl italic text-ink-faint">
+              no runs yet. the pipeline will fire at the next scheduled time.
+            </p>
           ) : (
-            <div>filter: none</div>
+            <ul className="flex flex-col">
+              {runs.map((run) => (
+                <li
+                  key={run.id}
+                  className="flex flex-col gap-3 border-b border-line py-6 last:border-b-0"
+                >
+                  <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
+                    <span>
+                      {(run.completedAt ?? run.startedAt).toLocaleString("en-GB")}
+                    </span>
+                    <span
+                      className={
+                        run.status === "completed"
+                          ? "text-silver"
+                          : run.status === "running"
+                          ? "text-ember"
+                          : "text-ink-ghost"
+                      }
+                    >
+                      {run.status}
+                    </span>
+                  </div>
+                  <RunOutput output={run.output as PipelineRunOutput | null} />
+                </li>
+              ))}
+            </ul>
           )}
-          {pipeline.nextRunAt ? (
-            <div>next: {pipeline.nextRunAt.toISOString()}</div>
-          ) : null}
-          {pipeline.lastRunAt ? (
-            <div>last: {pipeline.lastRunAt.toISOString()}</div>
-          ) : null}
-        </div>
-        <details className="text-xs text-black/60">
-          <summary className="cursor-pointer text-black/40">prompt</summary>
-          <pre className="mt-2 whitespace-pre-wrap font-mono">{spec.prompt}</pre>
-        </details>
-      </section>
 
-      <section className="flex w-full max-w-2xl flex-col gap-3">
-        <h2 className="text-xs uppercase tracking-wider text-black/40">
-          Recent runs
-        </h2>
-        {runs.length === 0 ? (
-          <p className="text-sm text-black/40">
-            No runs yet. The pipeline will fire at the next scheduled time.
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-4">
-            {runs.map((run) => (
-              <li
-                key={run.id}
-                className="flex flex-col gap-2 rounded-md border border-black/5 px-3 py-2"
-              >
-                <div className="flex items-center justify-between text-xs text-black/40">
-                  <span>
-                    {(run.completedAt ?? run.startedAt).toLocaleString("en-GB")}
-                  </span>
-                  <span>{run.status}</span>
-                </div>
-                <RunOutput output={run.output as PipelineRunOutput | null} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+          <div className="mt-4 flex items-center justify-between">
+            <RunNowButton id={pipeline.id} />
+            <DeletePipelineButton id={pipeline.id} />
+          </div>
+        </section>
 
-      <div className="flex w-full max-w-2xl">
-        <DeletePipelineButton id={pipeline.id} />
+        <aside className="glass-soft flex flex-col gap-4 self-start rounded-3xl p-6">
+          <h2 className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-faint">
+            spec
+          </h2>
+          <dl className="flex flex-col gap-2 font-mono text-[11px] text-ink-dim">
+            <div className="flex justify-between gap-4">
+              <dt className="text-ink-ghost">name</dt>
+              <dd>{spec.name}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-ink-ghost">cron</dt>
+              <dd>{spec.cron}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-ink-ghost">output</dt>
+              <dd>{spec.outputShape}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-ink-ghost">filter</dt>
+              <dd className="truncate text-right">
+                {spec.filter && Object.keys(spec.filter).length > 0
+                  ? JSON.stringify(spec.filter)
+                  : "none"}
+              </dd>
+            </div>
+            {pipeline.nextRunAt ? (
+              <div className="flex justify-between gap-4">
+                <dt className="text-ink-ghost">next</dt>
+                <dd>{pipeline.nextRunAt.toISOString().slice(0, 16)}z</dd>
+              </div>
+            ) : null}
+            {pipeline.lastRunAt ? (
+              <div className="flex justify-between gap-4">
+                <dt className="text-ink-ghost">last</dt>
+                <dd>{pipeline.lastRunAt.toISOString().slice(0, 16)}z</dd>
+              </div>
+            ) : null}
+          </dl>
+          <details className="border-t border-line pt-3 font-mono text-[11px] text-ink-dim">
+            <summary className="cursor-pointer text-ink-ghost">prompt</summary>
+            <pre className="mt-2 whitespace-pre-wrap text-ink-dim">{spec.prompt}</pre>
+          </details>
+        </aside>
       </div>
-    </main>
+    </section>
   );
 }
 
 function RunOutput({ output }: { output: PipelineRunOutput | null }) {
-  if (!output) return <p className="text-sm text-black/40">(no output)</p>;
+  if (!output)
+    return <p className="font-display text-lg italic text-ink-faint">(no output)</p>;
 
   if (output.shape === "text") {
     return (
-      <p className="whitespace-pre-wrap text-sm text-black/70">{output.text}</p>
+      <p className="whitespace-pre-wrap font-display text-xl leading-snug text-ink">
+        {output.text}
+      </p>
     );
   }
 
   if (output.shape === "summary_with_highlights") {
     return (
-      <div className="flex flex-col gap-2 text-sm text-black/70">
-        <p className="whitespace-pre-wrap">{output.summary}</p>
+      <div className="flex flex-col gap-3">
+        <p className="whitespace-pre-wrap font-display text-xl leading-snug text-ink">
+          {output.summary}
+        </p>
         {output.highlights.length > 0 ? (
-          <ul className="flex flex-col gap-1 pl-3 text-black/60">
+          <ul className="flex flex-col gap-1 pl-3 text-sm text-ink-dim">
             {output.highlights.map((h, i) => (
               <li key={i}>{h}</li>
             ))}
@@ -139,7 +193,7 @@ function RunOutput({ output }: { output: PipelineRunOutput | null }) {
   }
 
   return (
-    <ul className="flex flex-col gap-1 text-sm text-black/70">
+    <ul className="flex flex-col gap-1 text-sm text-ink-dim">
       {output.items.map((it, i) => (
         <li key={i}>{it}</li>
       ))}

@@ -40,30 +40,36 @@ export default async function DigestPage() {
     .limit(1);
 
   const run = rows[0];
+  const output = run?.output as DigestOutput | null;
+
+  const dateLabel = run
+    ? (run.completedAt ?? run.startedAt).toLocaleDateString("en-GB", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : null;
 
   return (
-    <main className="flex flex-1 flex-col items-center gap-10 px-6 py-10">
-      <div className="flex w-full max-w-2xl flex-col gap-2">
-        <h1 className="text-2xl">Weekly digest</h1>
-        {run ? (
-          <p className="text-sm text-black/60">
-            {(run.completedAt ?? run.startedAt).toLocaleDateString("en-GB", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </p>
-        ) : null}
-      </div>
+    <section className="relative flex flex-col gap-14 px-6 pb-12 pt-16 md:px-12 md:pt-24 lg:px-20">
+      <header className="flex flex-col gap-4">
+        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-faint">
+          weekly digest {dateLabel ? `· ${dateLabel}` : ""}
+        </p>
+        <h1 className="font-display text-5xl leading-[1.02] tracking-tight md:text-7xl">
+          the week, in slow focus.
+        </h1>
+      </header>
 
       {!run ? (
-        <p className="w-full max-w-2xl text-sm text-black/40">
-          no digest yet. one runs every sunday at 9am once you have items in trove.
+        <p className="max-w-xl font-display text-2xl italic text-ink-faint">
+          no digest yet. one runs every sunday at 9am, once trove has things to
+          chew on.
         </p>
       ) : (
-        <DigestBody output={run.output as DigestOutput | null} />
+        <DigestBody output={output} />
       )}
-    </main>
+    </section>
   );
 }
 
@@ -73,36 +79,54 @@ function DigestBody({ output }: { output: DigestOutput | null }) {
   const forgotten = output?.forgotten ?? null;
 
   return (
-    <div className="flex w-full max-w-2xl flex-col gap-10">
-      {summary ? (
-        <section className="flex flex-col gap-3">
-          <p className="text-sm text-black/70">{summary}</p>
-        </section>
-      ) : null}
+    <div className="grid grid-cols-1 gap-10 lg:grid-cols-[2fr,1fr]">
+      <div className="flex flex-col gap-12">
+        {summary ? (
+          <section className="glass rounded-3xl p-8 md:p-10">
+            <p className="font-display text-2xl leading-snug text-ink md:text-3xl">
+              {summary}
+            </p>
+          </section>
+        ) : null}
 
-      {highlights.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-xl">Highlights</h2>
-          <ul className="flex flex-col gap-2">
-            {highlights.map((h, i) => (
-              <li key={i} className="text-sm text-black/70">
-                {h}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+        {highlights.length > 0 ? (
+          <section className="flex flex-col gap-4">
+            <h2 className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-faint">
+              highlights
+            </h2>
+            <ol className="flex flex-col">
+              {highlights.map((h, i) => (
+                <li
+                  key={i}
+                  className="flex items-start gap-6 border-b border-line py-5 last:border-b-0"
+                >
+                  <span className="font-mono text-[11px] text-ink-ghost">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <p className="flex-1 font-display text-xl leading-snug text-ink">
+                    {h}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ) : null}
+      </div>
 
       {forgotten ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-xl">Forgotten</h2>
-          <div className="flex flex-col gap-1 rounded-md border border-black/5 px-3 py-2">
-            <div className="text-sm">{forgotten.title ?? "(untitled)"}</div>
-            {forgotten.summary ? (
-              <div className="text-sm text-black/60">{forgotten.summary}</div>
-            ) : null}
-          </div>
-        </section>
+        <aside className="glass-soft flex flex-col gap-3 self-start rounded-3xl p-6">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">
+            forgotten
+          </p>
+          <p className="font-display text-2xl italic leading-snug text-ink">
+            {forgotten.title ?? "(untitled)"}
+          </p>
+          {forgotten.summary ? (
+            <p className="text-sm leading-relaxed text-ink-dim">
+              {forgotten.summary}
+            </p>
+          ) : null}
+        </aside>
       ) : null}
     </div>
   );

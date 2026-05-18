@@ -2,20 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
 
 const EXAMPLES = [
   "every sunday at 9am, summarize my newsletters from the past week with three highlights",
   "every morning, list new articles I tagged 'design' yesterday",
   "monthly on the first, write a paragraph summary of everything I saved that month",
 ];
-
-type CompiledSpec = {
-  name: string;
-  cron: string;
-  filter: Record<string, unknown>;
-  prompt: string;
-  outputShape: string;
-};
 
 export function NewPipelineForm() {
   const router = useRouter();
@@ -48,41 +41,47 @@ export function NewPipelineForm() {
   }
 
   return (
-    <div className="flex w-full max-w-2xl flex-col gap-4">
-      <textarea
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        onKeyDown={(e) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
-        }}
-        placeholder="Describe your pipeline. ⌘↩ to save."
-        className="min-h-[120px] resize-y rounded-md border border-black/10 p-3 text-sm outline-none focus:border-black/30"
-      />
+    <div className="grid grid-cols-1 gap-10 lg:grid-cols-[2fr,1fr]">
+      <div className="glass flex flex-col gap-4 rounded-3xl p-6 md:p-8">
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
+          }}
+          placeholder="describe your pipeline. cmd return to save."
+          className="min-h-[200px] resize-none bg-transparent font-display text-2xl leading-snug text-ink placeholder:text-ink-faint md:text-3xl"
+        />
+        <div className="flex items-center justify-between gap-4 border-t border-line pt-4">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
+            {busy ? "compiling" : error || "ready when you are"}
+          </span>
+          <motion.button
+            onClick={submit}
+            whileTap={{ scale: 0.97 }}
+            className="rounded-full border border-line-strong bg-neutral-50 px-4 py-2 text-xs font-medium uppercase tracking-wider text-ink transition-colors hover:bg-neutral-100 hover:border-ink"
+          >
+            compile and save
+          </motion.button>
+        </div>
+      </div>
 
-      <div className="flex flex-col gap-2 text-xs text-black/50">
-        <span>Examples</span>
+      <aside className="flex flex-col gap-3">
+        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-faint">
+          patterns
+        </p>
         {EXAMPLES.map((ex) => (
           <button
             key={ex}
             onClick={() => setDescription(ex)}
-            className="text-left text-black/60 hover:text-black"
-            disabled={busy}
+            className="group rounded-2xl border border-line bg-ink/[0.02] p-4 text-left transition-colors hover:border-line-strong"
           >
-            {ex}
+            <p className="font-display text-lg italic leading-snug text-ink-dim group-hover:text-ink">
+              {ex}
+            </p>
           </button>
         ))}
-      </div>
-
-      <div className="flex items-center justify-between text-xs text-black/50">
-        <span>{busy ? "compiling..." : error}</span>
-        <button
-          onClick={submit}
-          disabled={description.trim().length < 10 || busy}
-          className="rounded-md border border-black/10 px-3 py-1.5 text-xs hover:border-black/30 disabled:opacity-30"
-        >
-          compile and save
-        </button>
-      </div>
+      </aside>
     </div>
   );
 }

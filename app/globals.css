@@ -1,26 +1,129 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --canvas: #EDECEB;
+  --canvas-deep: #E5E3DF;
+  --paper: #FFFFFF;
+  --ink: #1A1A1A;
+  --ink-dim: #5C5A56;
+  --ink-faint: #9A9692;
+  --ink-ghost: #C7C3BD;
+  --silver: #2A2A2A;
+  --ember: #C99A82;
+  --line: rgba(0, 0, 0, 0.06);
+  --line-strong: rgba(0, 0, 0, 0.12);
+  --pastel-sage: #DBE6D9;
+  --pastel-peach: #F0DCC8;
+  --pastel-lilac: #E5D7E8;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--canvas);
+  --color-foreground: var(--ink);
+  --color-paper: var(--paper);
+  --color-canvas: var(--canvas);
+  --color-canvas-deep: var(--canvas-deep);
+  --color-ink: var(--ink);
+  --color-ink-dim: var(--ink-dim);
+  --color-ink-faint: var(--ink-faint);
+  --color-ink-ghost: var(--ink-ghost);
+  --color-silver: var(--silver);
+  --color-ember: var(--ember);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-pastel-sage: var(--pastel-sage);
+  --color-pastel-peach: var(--pastel-peach);
+  --color-pastel-lilac: var(--pastel-lilac);
+  --font-display: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "ss02";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.005em;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70vw 55vh at 18% 0%, rgba(248, 218, 218, 0.65), transparent 62%),
+    radial-gradient(ellipse 75vw 55vh at 92% 12%, rgba(249, 212, 188, 0.6), transparent 60%),
+    radial-gradient(ellipse 90vw 60vh at 60% 90%, rgba(250, 232, 198, 0.5), transparent 60%);
+}
+
+::selection {
+  background: rgba(26, 26, 26, 0.16);
+  color: var(--ink);
+}
+
+::placeholder {
+  color: var(--ink-faint);
+  opacity: 1;
+}
+
+input,
+textarea,
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 200;
+  letter-spacing: -0.025em;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.aurora {
+  display: none;
+}
+
+.grain {
+  display: none;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+}
+
+.glass-soft {
+  background: rgba(255, 255, 255, 0.32);
+  backdrop-filter: blur(18px) saturate(120%);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.hairline {
+  border-color: var(--line);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea {
+  caret-color: var(--ink);
 }

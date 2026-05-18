@@ -99,8 +99,22 @@ export const topic = pgTable("topic", {
   generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const space = pgTable(
+  "space",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    name: text("name").notNull(),
+    tags: text("tags").array(),
+    color: text("color"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("space_user_idx").on(t.userId)]
+);
+
 export type Item = typeof item.$inferSelect;
 export type NewItem = typeof item.$inferInsert;
 export type Chunk = typeof chunk.$inferSelect;
 export type Topic = typeof topic.$inferSelect;
 export type Pipeline = typeof pipeline.$inferSelect;
+export type Space = typeof space.$inferSelect;

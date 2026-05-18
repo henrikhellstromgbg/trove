@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Geist, Geist_Mono } from "next/font/google";
-import { ClerkProvider, Show, SignInButton, UserButton } from "@clerk/nextjs";
+import { Public_Sans, IBM_Plex_Mono } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
+import { Shell } from "./shell";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const sans = Public_Sans({
+  variable: "--font-public-sans",
   subsets: ["latin"],
+  weight: ["200", "300", "400", "500", "600"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const mono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
   subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -28,45 +30,12 @@ export default function RootLayout({
     <ClerkProvider>
       <html
         lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+        className={`${sans.variable} ${mono.variable} h-full antialiased`}
+        style={{ fontFamily: "var(--font-public-sans)" }}
       >
-        <body className="min-h-full flex flex-col">
-          <header className="flex items-center justify-between px-6 py-3 border-b border-black/5">
-            <Link href="/" className="text-sm font-medium">
-              Trove
-            </Link>
-            <nav className="flex items-center gap-4 text-sm text-black/60">
-              <Link href="/wiki" className="hover:text-black">
-                wiki
-              </Link>
-              <Link href="/digest" className="hover:text-black">
-                digest
-              </Link>
-              <Link href="/pipelines" className="hover:text-black">
-                pipelines
-              </Link>
-              <Show when="signed-out">
-                <SignInButton />
-              </Show>
-              <Show when="signed-in">
-                <UserButton />
-              </Show>
-            </nav>
-          </header>
-
-          {children}
-
-          <footer className="mt-auto border-t border-black/5 px-6 py-4 text-xs text-black/50">
-            <p className="mb-2">Accepted formats</p>
-            <ul className="flex flex-wrap gap-x-4 gap-y-1">
-              <li>text and links</li>
-              <li>PDF</li>
-              <li>images (png, jpg, gif, webp)</li>
-              <li>Word .docx</li>
-              <li>Excel .xlsx</li>
-              <li>plain text (txt, md, csv, tsv, json, html, xml, log, yaml)</li>
-            </ul>
-          </footer>
+        <body className="min-h-full overflow-x-hidden bg-canvas text-ink">
+          <div className="grain" />
+          <Shell>{children}</Shell>
         </body>
       </html>
     </ClerkProvider>

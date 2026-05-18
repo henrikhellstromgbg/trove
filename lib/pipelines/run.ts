@@ -2,6 +2,7 @@ import { and, eq, inArray, gte, ilike, or, desc, sql } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "@/lib/db";
 import { PipelineSpec, PipelineRunOutput } from "./types";
+import { sendPipelineEmail } from "./email";
 
 const anthropic = new Anthropic();
 
@@ -49,7 +50,17 @@ export async function runPipelineSpec(
   }
   const raw = block.text.trim();
 
-  return parseOutput(spec.outputShape, raw);
+  const output = parseOutput(spec.outputShape, raw);
+
+  if (spec.deliverByEmail) {
+    try {
+      await sendPipelineEmail(userId, spec, output);
+    } catch (err) {
+      console.error("pipeline email delivery failed:", err);
+    }
+  }
+
+  return output;
 }
 
 async function loadItems(userId: string, spec: PipelineSpec) {
