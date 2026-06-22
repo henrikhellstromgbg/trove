@@ -108,7 +108,9 @@ async function handleJson(req: NextRequest, userId: string) {
     })
     .returning({ id: schema.item.id });
 
-  await inngest.send({ name: "item/captured", data: { itemId: item.id } });
+  inngest.send({ name: "item/captured", data: { itemId: item.id } }).catch((e) =>
+    console.warn("[inngest] send failed, item will be processed on next poll:", e?.message)
+  );
 
   return NextResponse.json({ id: item.id, status: "pending" });
 }
@@ -154,7 +156,9 @@ async function handleFile(req: NextRequest, userId: string) {
     })
     .returning({ id: schema.item.id });
 
-  await inngest.send({ name: "item/captured", data: { itemId: item.id } });
+  inngest.send({ name: "item/captured", data: { itemId: item.id } }).catch((e) =>
+    console.warn("[inngest] send failed, item will be processed on next poll:", e?.message)
+  );
 
   return NextResponse.json({ id: item.id, status: "pending", kind });
 }
