@@ -31,6 +31,48 @@ export const project = pgTable(
   ]
 );
 
+export const source = pgTable(
+  "source",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    projectId: uuid("project_id").references(() => project.id, {
+      onDelete: "cascade",
+    }),
+    kind: text("kind").notNull(), // drop | mail_folder | folder_watch | youtube_channel | rss | web_scrape | slack_channel
+    name: text("name").notNull(),
+    config: jsonb("config").notNull().default({}),
+    runtime: text("runtime").notNull(), // cloud | local
+    enabled: boolean("enabled").notNull().default(true),
+    cron: text("cron"),
+    cursor: jsonb("cursor"),
+    lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+    lastStatus: text("last_status"), // ok | error | running
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("source_user_idx").on(t.userId, t.projectId)]
+);
+
+export const ingestToken = pgTable(
+  "ingest_token",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    projectId: uuid("project_id").references(() => project.id, {
+      onDelete: "set null",
+    }),
+    label: text("label"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("ingest_token_user_idx").on(t.userId),
+    uniqueIndex("ingest_token_hash_idx").on(t.tokenHash),
+  ]
+);
+
 export const item = pgTable(
   "item",
   {
@@ -39,6 +81,10 @@ export const item = pgTable(
     projectId: uuid("project_id")
       .notNull()
       .references(() => project.id, { onDelete: "cascade" }),
+    sourceId: uuid("source_id").references(() => source.id, {
+      onDelete: "set null",
+    }),
+    externalId: text("external_id"),
     type: text("type").notNull(),
     source: text("source"),
     blobUrl: text("blob_url"),
@@ -53,6 +99,7 @@ export const item = pgTable(
   (t) => [
     index("item_user_idx").on(t.userId, t.capturedAt),
     index("item_project_idx").on(t.userId, t.projectId, t.capturedAt),
+    uniqueIndex("item_source_external_idx").on(t.sourceId, t.externalId),
   ]
 );
 
@@ -141,6 +188,9 @@ export const topic = pgTable("topic", {
 
 export type Project = typeof project.$inferSelect;
 export type NewProject = typeof project.$inferInsert;
+export type Source = typeof source.$inferSelect;
+export type NewSource = typeof source.$inferInsert;
+export type IngestToken = typeof ingestToken.$inferSelect;
 export type Item = typeof item.$inferSelect;
 export type NewItem = typeof item.$inferInsert;
 export type Chunk = typeof chunk.$inferSelect;
