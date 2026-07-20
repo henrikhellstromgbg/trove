@@ -8,13 +8,38 @@ import {
   boolean,
   vector,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+// Hard container. Everything below scopes to a project.
+// See docs/architecture-v2.md.
+export const project = pgTable(
+  "project",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    kind: text("kind").notNull().default("personal"), // personal | client
+    color: text("color"),
+    archived: boolean("archived").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("project_user_idx").on(t.userId),
+    uniqueIndex("project_user_slug_idx").on(t.userId, t.slug),
+  ]
+);
 
 export const item = pgTable(
   "item",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id").notNull(),
+    // Nullable during the Phase 1 backfill, made not-null once populated.
+    projectId: uuid("project_id").references(() => project.id, {
+      onDelete: "cascade",
+    }),
     type: text("type").notNull(),
     source: text("source"),
     blobUrl: text("blob_url"),
@@ -26,7 +51,10 @@ export const item = pgTable(
     capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
     processedAt: timestamp("processed_at", { withTimezone: true }),
   },
-  (t) => [index("item_user_idx").on(t.userId, t.capturedAt)]
+  (t) => [
+    index("item_user_idx").on(t.userId, t.capturedAt),
+    index("item_project_idx").on(t.userId, t.projectId, t.capturedAt),
+  ]
 );
 
 export const chunk = pgTable(
@@ -37,6 +65,9 @@ export const chunk = pgTable(
       .notNull()
       .references(() => item.id, { onDelete: "cascade" }),
     userId: text("user_id").notNull(),
+    projectId: uuid("project_id").references(() => project.id, {
+      onDelete: "cascade",
+    }),
     position: integer("position").notNull(),
     text: text("text").notNull(),
     embedding: vector("embedding", { dimensions: 768 }),
@@ -44,12 +75,16 @@ export const chunk = pgTable(
   (t) => [
     index("chunk_embedding_idx").using("hnsw", t.embedding.op("vector_cosine_ops")),
     index("chunk_user_idx").on(t.userId),
+    index("chunk_project_idx").on(t.userId, t.projectId),
   ]
 );
 
 export const conversation = pgTable("conversation", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").notNull(),
+  projectId: uuid("project_id").references(() => project.id, {
+    onDelete: "cascade",
+  }),
   title: text("title"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -68,6 +103,9 @@ export const message = pgTable("message", {
 export const pipeline = pgTable("pipeline", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").notNull(),
+  projectId: uuid("project_id").references(() => project.id, {
+    onDelete: "cascade",
+  }),
   name: text("name").notNull(),
   description: text("description").notNull(),
   spec: jsonb("spec").notNull(),
@@ -93,12 +131,17 @@ export const pipelineRun = pgTable("pipeline_run", {
 export const topic = pgTable("topic", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").notNull(),
+  projectId: uuid("project_id").references(() => project.id, {
+    onDelete: "cascade",
+  }),
   name: text("name").notNull(),
   summary: text("summary"),
   itemIds: uuid("item_ids").array(),
   generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Retired by Phase 1 once projects land. Kept until the backfill migrates
+// any existing groupings into projects. See docs/architecture-v2.md.
 export const space = pgTable(
   "space",
   {
@@ -112,6 +155,8 @@ export const space = pgTable(
   (t) => [index("space_user_idx").on(t.userId)]
 );
 
+export type Project = typeof project.$inferSelect;
+export type NewProject = typeof project.$inferInsert;
 export type Item = typeof item.$inferSelect;
 export type NewItem = typeof item.$inferInsert;
 export type Chunk = typeof chunk.$inferSelect;
