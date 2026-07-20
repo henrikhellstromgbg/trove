@@ -1,5 +1,3 @@
-import { fetchBlobText } from "@/lib/blob";
-
 export type TextFileExtracted = {
   title: string;
   text: string;
@@ -9,7 +7,11 @@ export async function extractFromTextFile(
   blobUrl: string,
   filename: string
 ): Promise<TextFileExtracted> {
-  const text = (await fetchBlobText(blobUrl)).replace(/\r/g, "").trim();
+  const res = await fetch(blobUrl);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch text blob: HTTP ${res.status}`);
+  }
+  const text = (await res.text()).replace(/\r/g, "").trim();
 
   const firstLine = text.split("\n").map((l) => l.trim()).find(Boolean) ?? "";
   const fallback = filename.replace(/\.[^.]+$/, "");

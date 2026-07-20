@@ -1,5 +1,4 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { fetchBlobBuffer } from "@/lib/blob";
 
 const anthropic = new Anthropic();
 
@@ -40,8 +39,11 @@ export async function extractFromImage(
 ): Promise<ImageExtracted> {
   const mediaType = normalizeMedia(mime, filename);
 
-  const buffer = await fetchBlobBuffer(blobUrl);
-  const base64 = buffer.toString("base64");
+  const res = await fetch(blobUrl);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch image blob: HTTP ${res.status}`);
+  }
+  const base64 = Buffer.from(await res.arrayBuffer()).toString("base64");
 
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5",

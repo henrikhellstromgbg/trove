@@ -150,7 +150,7 @@ async function handleFile(req: NextRequest, userId: string) {
   const blobKey = `${kind}/${userId}/${Date.now()}-${safeName}`;
 
   const blob = await put(blobKey, file, {
-    access: "private",
+    access: "public",
     contentType: contentTypeFor(kind, file),
   });
 
