@@ -13,7 +13,7 @@ Audience is designers, freelancers, indie operators, researchers. Not "normal pe
 - Inngest for background jobs and crons (planned)
 - Vercel Blob for file storage (planned)
 - Anthropic Claude: Sonnet 4.6 for answers, Haiku 4.5 for extract/enrich
-- OpenAI text-embedding-3-small for embeddings (1536 dims)
+- Gemini gemini-embedding-001 for embeddings (768 dims)
 - Tauri 2 for the macOS menu bar shell (planned, week 2)
 - Hosting on Vercel
 
