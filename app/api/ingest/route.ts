@@ -157,8 +157,9 @@ async function handleFile(req: NextRequest, ingestAuth: IngestAuth) {
   const blobKey = `${kind}/${ingestAuth.userId}/${Date.now()}-${safeName}`;
 
   const blob = await put(blobKey, file, {
-    access: "public",
+    access: "private",
     contentType: contentTypeFor(kind, file),
+    token: process.env.PRIVATE_BLOB_READ_WRITE_TOKEN,
   });
 
   const projectIdField = form.get("projectId");
