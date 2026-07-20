@@ -27,7 +27,6 @@ async function main() {
   const [msgs] = await db.select({ n: count() }).from(schema.message);
   const [runs] = await db.select({ n: count() }).from(schema.pipelineRun);
   const [pipes] = await db.select({ n: count() }).from(schema.pipeline);
-  const [spaces] = await db.select({ n: count() }).from(schema.space);
 
   console.log(`  items:          ${items.n}  → delete`);
   console.log(`  chunks:         ${chunks.n}  → delete`);
@@ -36,12 +35,11 @@ async function main() {
   console.log(`  messages:       ${msgs.n}  → delete`);
   console.log(`  pipeline_runs:  ${runs.n}  → delete`);
   console.log(`  pipelines:      ${pipes.n}  → ${wipeConfigs ? "delete" : "KEEP"}`);
-  console.log(`  spaces:         ${spaces.n}  → ${wipeConfigs ? "delete" : "KEEP"}`);
   console.log("");
 
   if (!confirm) {
     console.log("(preview only — re-run with --confirm to actually delete)");
-    console.log("(add --wipe-configs to also delete pipelines and spaces)");
+    console.log("(add --wipe-configs to also delete pipelines)");
     await pool.end();
     return;
   }
@@ -56,7 +54,6 @@ async function main() {
 
   if (wipeConfigs) {
     await db.delete(schema.pipeline);
-    await db.delete(schema.space);
   }
 
   await pool.end();

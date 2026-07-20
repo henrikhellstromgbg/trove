@@ -38,7 +38,7 @@ export async function POST(
   const spec = parsed.data;
 
   try {
-    const output = await runPipelineSpec(userId, spec);
+    const output = await runPipelineSpec(userId, pipeline.projectId, spec);
 
     await db.insert(schema.pipelineRun).values({
       pipelineId: pipeline.id,

@@ -10,9 +10,10 @@ const MAX_ITEMS = 60;
 
 export async function runPipelineSpec(
   userId: string,
+  projectId: string,
   spec: PipelineSpec
 ): Promise<PipelineRunOutput> {
-  const items = await loadItems(userId, spec);
+  const items = await loadItems(userId, projectId, spec);
 
   if (items.length === 0) {
     return emptyOutput(spec);
@@ -63,9 +64,10 @@ export async function runPipelineSpec(
   return output;
 }
 
-async function loadItems(userId: string, spec: PipelineSpec) {
+async function loadItems(userId: string, projectId: string, spec: PipelineSpec) {
   const conditions = [
     eq(schema.item.userId, userId),
+    eq(schema.item.projectId, projectId),
     eq(schema.item.status, "ready"),
   ];
 

@@ -589,7 +589,7 @@ export const runDuePipelines = inngest.createFunction(
 
       try {
         const output = await step.run(`run-${p.id}`, async () => {
-          return await runPipelineSpec(p.userId, spec);
+          return await runPipelineSpec(p.userId, p.projectId, spec);
         });
 
         await step.run(`record-${p.id}`, async () => {

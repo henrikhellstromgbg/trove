@@ -36,10 +36,9 @@ export const item = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id").notNull(),
-    // Nullable during the Phase 1 backfill, made not-null once populated.
-    projectId: uuid("project_id").references(() => project.id, {
-      onDelete: "cascade",
-    }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
     type: text("type").notNull(),
     source: text("source"),
     blobUrl: text("blob_url"),
@@ -65,9 +64,9 @@ export const chunk = pgTable(
       .notNull()
       .references(() => item.id, { onDelete: "cascade" }),
     userId: text("user_id").notNull(),
-    projectId: uuid("project_id").references(() => project.id, {
-      onDelete: "cascade",
-    }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
     text: text("text").notNull(),
     embedding: vector("embedding", { dimensions: 768 }),
@@ -82,9 +81,9 @@ export const chunk = pgTable(
 export const conversation = pgTable("conversation", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").notNull(),
-  projectId: uuid("project_id").references(() => project.id, {
-    onDelete: "cascade",
-  }),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
   title: text("title"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -103,9 +102,9 @@ export const message = pgTable("message", {
 export const pipeline = pgTable("pipeline", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").notNull(),
-  projectId: uuid("project_id").references(() => project.id, {
-    onDelete: "cascade",
-  }),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description").notNull(),
   spec: jsonb("spec").notNull(),
@@ -131,29 +130,14 @@ export const pipelineRun = pgTable("pipeline_run", {
 export const topic = pgTable("topic", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").notNull(),
-  projectId: uuid("project_id").references(() => project.id, {
-    onDelete: "cascade",
-  }),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => project.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   summary: text("summary"),
   itemIds: uuid("item_ids").array(),
   generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
 });
-
-// Retired by Phase 1 once projects land. Kept until the backfill migrates
-// any existing groupings into projects. See docs/architecture-v2.md.
-export const space = pgTable(
-  "space",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: text("user_id").notNull(),
-    name: text("name").notNull(),
-    tags: text("tags").array(),
-    color: text("color"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [index("space_user_idx").on(t.userId)]
-);
 
 export type Project = typeof project.$inferSelect;
 export type NewProject = typeof project.$inferInsert;
@@ -162,4 +146,3 @@ export type NewItem = typeof item.$inferInsert;
 export type Chunk = typeof chunk.$inferSelect;
 export type Topic = typeof topic.$inferSelect;
 export type Pipeline = typeof pipeline.$inferSelect;
-export type Space = typeof space.$inferSelect;
