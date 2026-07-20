@@ -260,6 +260,7 @@ export const clusterTopics = inngest.createFunction(
         .select({
           id: schema.item.id,
           userId: schema.item.userId,
+          projectId: schema.item.projectId,
           title: schema.item.title,
           summary: schema.item.summary,
         })
@@ -269,28 +270,37 @@ export const clusterTopics = inngest.createFunction(
         );
     });
 
-    const byUser = new Map<string, typeof readyItems>();
+    // Cluster per (user, project), so topics never mix across the project wall.
+    const byGroup = new Map<string, typeof readyItems>();
     for (const it of readyItems) {
-      if (!it.summary) continue;
-      const list = byUser.get(it.userId) ?? [];
+      if (!it.summary || !it.projectId) continue;
+      const key = `${it.userId}::${it.projectId}`;
+      const list = byGroup.get(key) ?? [];
       list.push(it);
-      byUser.set(it.userId, list);
+      byGroup.set(key, list);
     }
 
-    const results: Array<{ userId: string; topics: number }> = [];
+    const results: Array<{ userId: string; projectId: string; topics: number }> = [];
 
-    for (const [userId, items] of byUser.entries()) {
+    for (const items of byGroup.values()) {
+      const userId = items[0].userId;
+      const projectId = items[0].projectId as string;
+      const scope = and(
+        eq(schema.topic.userId, userId),
+        eq(schema.topic.projectId, projectId)
+      );
+
       if (items.length < 2) {
-        await step.run(`clear-${userId}`, async () => {
-          await db.delete(schema.topic).where(eq(schema.topic.userId, userId));
+        await step.run(`clear-${userId}-${projectId}`, async () => {
+          await db.delete(schema.topic).where(scope);
         });
-        results.push({ userId, topics: 0 });
+        results.push({ userId, projectId, topics: 0 });
         continue;
       }
 
       const summaries = items.map((i) => i.summary as string);
 
-      const embeddings = await step.run(`embed-${userId}`, async () => {
+      const embeddings = await step.run(`embed-${userId}-${projectId}`, async () => {
         return await embedTexts(summaries);
       });
 
@@ -305,6 +315,7 @@ export const clusterTopics = inngest.createFunction(
 
       const topicRows: Array<{
         userId: string;
+        projectId: string;
         name: string;
         summary: string;
         itemIds: string[];
@@ -312,28 +323,32 @@ export const clusterTopics = inngest.createFunction(
 
       for (let i = 0; i < clusters.length; i++) {
         const cluster = clusters[i];
-        const meta = await step.run(`summarize-${userId}-${i}`, async () => {
-          return await summarizeCluster(cluster);
-        });
+        const meta = await step.run(
+          `summarize-${userId}-${projectId}-${i}`,
+          async () => {
+            return await summarizeCluster(cluster);
+          }
+        );
         topicRows.push({
           userId,
+          projectId,
           name: meta.name,
           summary: meta.summary,
           itemIds: cluster.map((c) => c.id),
         });
       }
 
-      await step.run(`replace-topics-${userId}`, async () => {
-        await db.delete(schema.topic).where(eq(schema.topic.userId, userId));
+      await step.run(`replace-topics-${userId}-${projectId}`, async () => {
+        await db.delete(schema.topic).where(scope);
         if (topicRows.length > 0) {
           await db.insert(schema.topic).values(topicRows);
         }
       });
 
-      results.push({ userId, topics: topicRows.length });
+      results.push({ userId, projectId, topics: topicRows.length });
     }
 
-    return { ok: true, users: results };
+    return { ok: true, groups: results };
   }
 );
 
@@ -389,6 +404,7 @@ export const weeklyDigest = inngest.createFunction(
         .select({
           id: schema.item.id,
           userId: schema.item.userId,
+          projectId: schema.item.projectId,
           title: schema.item.title,
           summary: schema.item.summary,
         })
@@ -401,26 +417,28 @@ export const weeklyDigest = inngest.createFunction(
         );
     });
 
-    const byUser = new Map<string, typeof recent>();
+    // One digest per (user, project), so a project's week never bleeds into another.
+    const byGroup = new Map<string, typeof recent>();
     for (const it of recent) {
-      const list = byUser.get(it.userId) ?? [];
+      if (!it.projectId) continue;
+      const key = `${it.userId}::${it.projectId}`;
+      const list = byGroup.get(key) ?? [];
       list.push(it);
-      byUser.set(it.userId, list);
+      byGroup.set(key, list);
     }
 
     const results: Array<{
       userId: string;
+      projectId: string;
       status: "created" | "skipped-no-items" | "skipped-duplicate";
     }> = [];
 
-    for (const [userId, items] of byUser.entries()) {
-      if (items.length === 0) {
-        results.push({ userId, status: "skipped-no-items" });
-        continue;
-      }
+    for (const items of byGroup.values()) {
+      const userId = items[0].userId;
+      const projectId = items[0].projectId as string;
 
       const pipelineRow = await step.run(
-        `ensure-pipeline-${userId}`,
+        `ensure-pipeline-${userId}-${projectId}`,
         async () => {
           const existing = await db
             .select()
@@ -428,6 +446,7 @@ export const weeklyDigest = inngest.createFunction(
             .where(
               and(
                 eq(schema.pipeline.userId, userId),
+                eq(schema.pipeline.projectId, projectId),
                 eq(schema.pipeline.name, "weekly-digest")
               )
             )
@@ -438,6 +457,7 @@ export const weeklyDigest = inngest.createFunction(
             .insert(schema.pipeline)
             .values({
               userId,
+              projectId,
               name: "weekly-digest",
               description:
                 "weekly summary of what you saved + one forgotten item",
@@ -451,7 +471,7 @@ export const weeklyDigest = inngest.createFunction(
       );
 
       const duplicate = await step.run(
-        `check-duplicate-${userId}`,
+        `check-duplicate-${userId}-${projectId}`,
         async () => {
           const rows = await db
             .select({ id: schema.pipelineRun.id })
@@ -469,7 +489,7 @@ export const weeklyDigest = inngest.createFunction(
       );
 
       if (duplicate) {
-        results.push({ userId, status: "skipped-duplicate" });
+        results.push({ userId, projectId, status: "skipped-duplicate" });
         continue;
       }
 
@@ -480,11 +500,13 @@ export const weeklyDigest = inngest.createFunction(
         )
         .join("\n");
 
-      const digest = await step.run(`summarize-${userId}`, async () => {
+      const digest = await step.run(`summarize-${userId}-${projectId}`, async () => {
         return await summarizeDigest(context);
       });
 
-      const forgotten = await step.run(`pick-forgotten-${userId}`, async () => {
+      const forgotten = await step.run(
+        `pick-forgotten-${userId}-${projectId}`,
+        async () => {
         const rows = await db
           .select({
             id: schema.item.id,
@@ -495,6 +517,7 @@ export const weeklyDigest = inngest.createFunction(
           .where(
             and(
               eq(schema.item.userId, userId),
+              eq(schema.item.projectId, projectId),
               eq(schema.item.status, "ready"),
               lt(schema.item.capturedAt, monthAgo)
             )
@@ -509,7 +532,7 @@ export const weeklyDigest = inngest.createFunction(
         };
       });
 
-      await step.run(`insert-run-${userId}`, async () => {
+      await step.run(`insert-run-${userId}-${projectId}`, async () => {
         await db.insert(schema.pipelineRun).values({
           pipelineId: pipelineRow.id,
           userId,
@@ -523,10 +546,10 @@ export const weeklyDigest = inngest.createFunction(
         });
       });
 
-      results.push({ userId, status: "created" });
+      results.push({ userId, projectId, status: "created" });
     }
 
-    return { ok: true, users: results };
+    return { ok: true, groups: results };
   }
 );
 
