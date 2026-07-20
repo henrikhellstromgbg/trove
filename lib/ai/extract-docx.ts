@@ -1,4 +1,5 @@
 import mammoth from "mammoth";
+import { fetchBlobBuffer } from "@/lib/blob";
 
 export type DocxExtracted = {
   title: string;
@@ -9,11 +10,7 @@ export async function extractFromDocx(
   blobUrl: string,
   filename: string
 ): Promise<DocxExtracted> {
-  const res = await fetch(blobUrl);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch docx blob: HTTP ${res.status}`);
-  }
-  const buffer = Buffer.from(await res.arrayBuffer());
+  const buffer = await fetchBlobBuffer(blobUrl);
 
   const result = await mammoth.extractRawText({ buffer });
   const text = result.value.replace(/\r/g, "").trim();

@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { fetchBlobBuffer } from "@/lib/blob";
 
 const anthropic = new Anthropic();
 
@@ -17,11 +18,7 @@ Return exactly:
 No preamble, no markdown, no commentary, no horizontal rules.`;
 
 export async function extractFromPdf(blobUrl: string): Promise<PdfExtracted> {
-  const res = await fetch(blobUrl);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch PDF blob: HTTP ${res.status}`);
-  }
-  const buffer = Buffer.from(await res.arrayBuffer());
+  const buffer = await fetchBlobBuffer(blobUrl);
   const base64 = buffer.toString("base64");
 
   const response = await anthropic.messages.create({
