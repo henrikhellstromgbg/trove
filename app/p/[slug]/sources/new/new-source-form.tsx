@@ -11,33 +11,59 @@ const CRON_PRESETS = [
   { label: "daily at 8am", value: "0 8 * * *" },
 ];
 
+const KINDS = [
+  { value: "rss", label: "rss feed" },
+  { value: "web_scrape", label: "web page" },
+  { value: "slack_channel", label: "slack channel" },
+] as const;
+
+type Kind = (typeof KINDS)[number]["value"];
+
 export function NewSourceForm() {
   const router = useRouter();
   const { project } = useProject();
+  const [kind, setKind] = useState<Kind>("rss");
   const [name, setName] = useState("");
   const [feedUrl, setFeedUrl] = useState("");
+  const [url, setUrl] = useState("");
+  const [selector, setSelector] = useState("");
+  const [followLinks, setFollowLinks] = useState(false);
+  const [channelId, setChannelId] = useState("");
   const [cron, setCron] = useState(CRON_PRESETS[0].value);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>("");
 
+  function primaryFieldFilled() {
+    if (kind === "rss") return feedUrl.trim().length > 0;
+    if (kind === "web_scrape") return url.trim().length > 0;
+    return channelId.trim().length > 0;
+  }
+
   async function submit() {
     const n = name.trim();
-    const url = feedUrl.trim();
-    if (n.length === 0 || url.length === 0 || busy) return;
+    if (n.length === 0 || !primaryFieldFilled() || busy) return;
 
     setBusy(true);
     setError("");
 
+    const body: Record<string, unknown> = {
+      kind,
+      name: n,
+      cron,
+      projectId: project.id,
+    };
+    if (kind === "rss") body.feedUrl = feedUrl.trim();
+    if (kind === "web_scrape") {
+      body.url = url.trim();
+      if (selector.trim()) body.selector = selector.trim();
+      body.followLinks = followLinks;
+    }
+    if (kind === "slack_channel") body.channelId = channelId.trim();
+
     const res = await fetch("/api/sources", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        kind: "rss",
-        name: n,
-        feedUrl: url,
-        cron,
-        projectId: project.id,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) {
@@ -53,6 +79,27 @@ export function NewSourceForm() {
 
   return (
     <div className="glass flex max-w-xl flex-col gap-5 rounded-3xl p-6 md:p-8">
+      <div className="flex flex-col gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
+          kind
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {KINDS.map((k) => (
+            <button
+              key={k.value}
+              onClick={() => setKind(k.value)}
+              className={`rounded-full border px-3 py-1.5 text-xs uppercase tracking-wider transition-colors ${
+                kind === k.value
+                  ? "border-ink bg-ink text-canvas"
+                  : "border-line text-ink-dim hover:border-line-strong"
+              }`}
+            >
+              {k.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <label className="flex flex-col gap-2">
         <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
           name
@@ -65,17 +112,73 @@ export function NewSourceForm() {
         />
       </label>
 
-      <label className="flex flex-col gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-          feed url
-        </span>
-        <input
-          value={feedUrl}
-          onChange={(e) => setFeedUrl(e.target.value)}
-          placeholder="https://example.com/feed.xml"
-          className="bg-transparent font-display text-xl text-ink placeholder:text-ink-faint"
-        />
-      </label>
+      {kind === "rss" ? (
+        <label className="flex flex-col gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
+            feed url
+          </span>
+          <input
+            value={feedUrl}
+            onChange={(e) => setFeedUrl(e.target.value)}
+            placeholder="https://example.com/feed.xml"
+            className="bg-transparent font-display text-xl text-ink placeholder:text-ink-faint"
+          />
+        </label>
+      ) : null}
+
+      {kind === "web_scrape" ? (
+        <>
+          <label className="flex flex-col gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
+              page url
+            </span>
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com/blog"
+              className="bg-transparent font-display text-xl text-ink placeholder:text-ink-faint"
+            />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
+              link selector, optional
+            </span>
+            <input
+              value={selector}
+              onChange={(e) => setSelector(e.target.value)}
+              placeholder="e.g. article a, .post-list a"
+              className="bg-transparent font-mono text-sm text-ink placeholder:text-ink-faint"
+            />
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={followLinks}
+              onChange={(e) => setFollowLinks(e.target.checked)}
+            />
+            <span className="text-sm text-ink-dim">
+              follow links found on the page, capture new ones each sync
+            </span>
+          </label>
+        </>
+      ) : null}
+
+      {kind === "slack_channel" ? (
+        <label className="flex flex-col gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
+            channel id
+          </span>
+          <input
+            value={channelId}
+            onChange={(e) => setChannelId(e.target.value)}
+            placeholder="C0123456789"
+            className="bg-transparent font-mono text-lg text-ink placeholder:text-ink-faint"
+          />
+          <span className="text-xs text-ink-faint">
+            the bot must already be invited to this channel.
+          </span>
+        </label>
+      ) : null}
 
       <div className="flex flex-col gap-2">
         <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">

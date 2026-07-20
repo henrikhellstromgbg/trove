@@ -56,7 +56,12 @@ export default async function SourceDetailPage({
     .orderBy(desc(schema.item.capturedAt))
     .limit(20);
 
-  const config = source.config as { feedUrl?: string };
+  const config = source.config as {
+    feedUrl?: string;
+    url?: string;
+    channelId?: string;
+  };
+  const configSummary = config.feedUrl ?? config.url ?? (config.channelId ? `channel ${config.channelId}` : null);
 
   return (
     <section className="relative flex flex-col gap-14 px-6 pb-12 pt-16 md:px-12 md:pt-24 lg:px-20">
@@ -75,9 +80,9 @@ export default async function SourceDetailPage({
         <h1 className="font-display text-5xl leading-[1.02] tracking-tight md:text-7xl">
           {source.name}
         </h1>
-        {config.feedUrl ? (
+        {configSummary ? (
           <p className="max-w-2xl truncate font-mono text-sm text-ink-dim">
-            {config.feedUrl}
+            {configSummary}
           </p>
         ) : null}
       </header>

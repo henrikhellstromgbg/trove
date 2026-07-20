@@ -4,19 +4,45 @@ import { db, schema } from "@/lib/db";
 import { nextRunFromCron, isCronValid } from "@/lib/pipelines/cron";
 import { resolveProjectId } from "@/lib/projects";
 
+const SUPPORTED_KINDS = ["rss", "web_scrape", "slack_channel"] as const;
+type SupportedKind = (typeof SUPPORTED_KINDS)[number];
+
+function buildConfig(
+  kind: SupportedKind,
+  body: Record<string, unknown>
+): { config: Record<string, unknown> } | { error: string } {
+  if (kind === "rss") {
+    const feedUrl = typeof body.feedUrl === "string" ? body.feedUrl.trim() : "";
+    if (!feedUrl) return { error: "feedUrl is required" };
+    return { config: { feedUrl } };
+  }
+
+  if (kind === "web_scrape") {
+    const url = typeof body.url === "string" ? body.url.trim() : "";
+    if (!url) return { error: "url is required" };
+    const selector = typeof body.selector === "string" ? body.selector.trim() : "";
+    const followLinks = body.followLinks === true;
+    return {
+      config: {
+        url,
+        followLinks,
+        ...(selector ? { selector } : {}),
+      },
+    };
+  }
+
+  const channelId = typeof body.channelId === "string" ? body.channelId.trim() : "";
+  if (!channelId) return { error: "channelId is required" };
+  return { config: { channelId } };
+}
+
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: {
-    kind?: unknown;
-    name?: unknown;
-    feedUrl?: unknown;
-    cron?: unknown;
-    projectId?: unknown;
-  };
+  let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
@@ -24,7 +50,7 @@ export async function POST(req: NextRequest) {
   }
 
   const kind = typeof body.kind === "string" ? body.kind : "";
-  if (kind !== "rss") {
+  if (!SUPPORTED_KINDS.includes(kind as SupportedKind)) {
     return NextResponse.json(
       { error: `unsupported source kind "${kind}"` },
       { status: 400 }
@@ -36,9 +62,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
 
-  const feedUrl = typeof body.feedUrl === "string" ? body.feedUrl.trim() : "";
-  if (feedUrl.length === 0) {
-    return NextResponse.json({ error: "feedUrl is required" }, { status: 400 });
+  const configResult = buildConfig(kind as SupportedKind, body);
+  if ("error" in configResult) {
+    return NextResponse.json({ error: configResult.error }, { status: 400 });
   }
 
   const cron = typeof body.cron === "string" ? body.cron.trim() : "0 * * * *";
@@ -58,7 +84,7 @@ export async function POST(req: NextRequest) {
       projectId,
       kind,
       name,
-      config: { feedUrl },
+      config: configResult.config,
       runtime: "cloud",
       cron,
       enabled: true,
