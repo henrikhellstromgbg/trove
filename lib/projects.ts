@@ -1,6 +1,38 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { Project } from "@/lib/db/schema";
+import { nextRunFromCron } from "@/lib/pipelines/cron";
+import type { PipelineSpec } from "@/lib/pipelines/types";
+
+const WEEKLY_DIGEST_CRON = "0 9 * * 0";
+
+// Seed a per-project weekly digest pipeline, run through the standard
+// pipeline engine (lib/pipelines/run.ts) via the run-due-pipelines cron.
+// Name "weekly-digest" is relied on by app/p/[slug]/digest/page.tsx.
+async function seedWeeklyDigestPipeline(userId: string, projectId: string) {
+  const spec: PipelineSpec = {
+    name: "weekly-digest",
+    cron: WEEKLY_DIGEST_CRON,
+    filter: { capturedWithinDays: 7 },
+    prompt:
+      "Below is a list of items you saved this past week, with titles and short summaries. Write a JSON object reflecting on what you saved.\n\n{items}",
+    outputShape: "summary_with_highlights",
+    deliverByEmail: true,
+    retrieval: false,
+    includeForgotten: true,
+  };
+
+  await db.insert(schema.pipeline).values({
+    userId,
+    projectId,
+    name: spec.name,
+    description: "weekly summary of what you saved, plus one forgotten item",
+    spec,
+    cron: spec.cron,
+    enabled: true,
+    nextRunAt: nextRunFromCron(spec.cron),
+  });
+}
 
 // Resolve the user's default "inbox" project, creating it if missing.
 // Idempotent under the unique (user_id, slug) index.
@@ -17,7 +49,10 @@ export async function getDefaultProjectId(userId: string): Promise<string> {
     .values({ userId, name: "inbox", slug: "inbox", kind: "personal" })
     .onConflictDoNothing()
     .returning({ id: schema.project.id });
-  if (created) return created.id;
+  if (created) {
+    await seedWeeklyDigestPipeline(userId, created.id);
+    return created.id;
+  }
 
   const again = await db
     .select({ id: schema.project.id })
@@ -102,5 +137,6 @@ export async function createProject(
     .insert(schema.project)
     .values({ userId, name, slug, kind, color: color ?? null })
     .returning();
+  await seedWeeklyDigestPipeline(userId, row.id);
   return row;
 }

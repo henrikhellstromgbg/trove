@@ -32,10 +32,28 @@ export const PipelineSpecSchema = z.object({
   prompt: z.string().min(10).max(2000),
   outputShape: PipelineOutputShapeSchema,
   deliverByEmail: z.boolean().default(false),
+  // When true, reason over full chunk text via vector retrieval instead of
+  // just title/summary/tags. retrievalQuery defaults to `prompt` when unset.
+  retrieval: z.boolean().default(false),
+  retrievalQuery: z.string().min(1).max(300).optional(),
+  // Attach one random item older than 30 days, for serendipity. Used by the
+  // seeded weekly-digest pipeline; any pipeline can opt in.
+  includeForgotten: z.boolean().default(false),
 });
 export type PipelineSpec = z.infer<typeof PipelineSpecSchema>;
 
+export type PipelineForgotten = {
+  itemId: string;
+  title: string | null;
+  summary: string | null;
+} | null;
+
 export type PipelineRunOutput =
-  | { shape: "text"; text: string }
-  | { shape: "summary_with_highlights"; summary: string; highlights: string[] }
-  | { shape: "list"; items: string[] };
+  | { shape: "text"; text: string; forgotten?: PipelineForgotten }
+  | {
+      shape: "summary_with_highlights";
+      summary: string;
+      highlights: string[];
+      forgotten?: PipelineForgotten;
+    }
+  | { shape: "list"; items: string[]; forgotten?: PipelineForgotten };

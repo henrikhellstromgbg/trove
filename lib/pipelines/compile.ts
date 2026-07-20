@@ -35,6 +35,7 @@ Produce a JSON object with exactly these fields:
   - "summary_with_highlights" if they want {summary, highlights[]}
   - "list" if they want a list of items, names, links
 - deliverByEmail: true if the user asked to receive the result by email ("email me", "send to my inbox", "mail me", "to my email"). False otherwise.
+- retrieval: true only if the user explicitly wants deep reasoning over full saved text, not just titles and summaries (phrases like "read the full text", "dig into the details", "quote from the source"). False otherwise. Omit retrievalQuery unless retrieval is true; when true, retrievalQuery is a short phrase describing what to search for (defaults to the prompt if omitted).
 
 Rules:
 - Be conservative. Do not invent filters the user did not request.

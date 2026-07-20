@@ -1,12 +1,15 @@
-import { and, eq, inArray, gte, ilike, or, desc, sql } from "drizzle-orm";
+import { and, eq, inArray, gte, ilike, or, desc, sql, lt, cosineDistance } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "@/lib/db";
-import { PipelineSpec, PipelineRunOutput } from "./types";
+import { embedQuery } from "@/lib/ai/embed";
+import { PipelineSpec, PipelineRunOutput, PipelineForgotten } from "./types";
 import { sendPipelineEmail } from "./email";
 
 const anthropic = new Anthropic();
 
 const MAX_ITEMS = 60;
+const MAX_RETRIEVAL_CHUNKS = 40;
+const FORGOTTEN_AFTER_DAYS = 30;
 
 export async function runPipelineSpec(
   userId: string,
@@ -14,19 +17,22 @@ export async function runPipelineSpec(
   spec: PipelineSpec
 ): Promise<PipelineRunOutput> {
   const items = await loadItems(userId, projectId, spec);
+  const forgotten = spec.includeForgotten
+    ? await pickForgottenItem(userId, projectId)
+    : null;
 
   if (items.length === 0) {
-    return emptyOutput(spec);
+    return { ...emptyOutput(spec), forgotten };
   }
 
-  const itemsContext = items
-    .map((it, i) => {
-      const title = it.title ?? "(untitled)";
-      const summary = it.summary ?? "";
-      const tags = (it.tags ?? []).join(", ");
-      return `${i + 1}. ${title}\n   ${summary}${tags ? `\n   tags: ${tags}` : ""}`;
-    })
-    .join("\n\n");
+  const itemsContext = spec.retrieval
+    ? (await loadRetrievalContext(
+        userId,
+        projectId,
+        items.map((it) => it.id),
+        spec.retrievalQuery?.trim() || spec.prompt
+      )) || buildSummaryContext(items)
+    : buildSummaryContext(items);
 
   const promptWithItems = spec.prompt.includes("{items}")
     ? spec.prompt.replace(/\{items\}/g, itemsContext)
@@ -51,7 +57,7 @@ export async function runPipelineSpec(
   }
   const raw = block.text.trim();
 
-  const output = parseOutput(spec.outputShape, raw);
+  const output: PipelineRunOutput = { ...parseOutput(spec.outputShape, raw), forgotten };
 
   if (spec.deliverByEmail) {
     try {
@@ -62,6 +68,88 @@ export async function runPipelineSpec(
   }
 
   return output;
+}
+
+function buildSummaryContext(items: { title: string | null; summary: string | null; tags: string[] | null }[]): string {
+  return items
+    .map((it, i) => {
+      const title = it.title ?? "(untitled)";
+      const summary = it.summary ?? "";
+      const tags = (it.tags ?? []).join(", ");
+      return `${i + 1}. ${title}\n   ${summary}${tags ? `\n   tags: ${tags}` : ""}`;
+    })
+    .join("\n\n");
+}
+
+// Full chunk text for the filtered items, ranked by relevance to `query`, so a
+// pipeline can reason over full content instead of just title/summary/tags.
+async function loadRetrievalContext(
+  userId: string,
+  projectId: string,
+  itemIds: string[],
+  query: string
+): Promise<string> {
+  if (itemIds.length === 0) return "";
+
+  const queryVec = await embedQuery(query);
+  const distance = cosineDistance(schema.chunk.embedding, queryVec);
+
+  const matches = await db
+    .select({
+      chunkText: schema.chunk.text,
+      itemId: schema.chunk.itemId,
+      title: schema.item.title,
+    })
+    .from(schema.chunk)
+    .innerJoin(schema.item, eq(schema.chunk.itemId, schema.item.id))
+    .where(
+      and(
+        eq(schema.chunk.userId, userId),
+        eq(schema.chunk.projectId, projectId),
+        inArray(schema.chunk.itemId, itemIds)
+      )
+    )
+    .orderBy(distance)
+    .limit(MAX_RETRIEVAL_CHUNKS);
+
+  const grouped = new Map<string, { title: string | null; chunks: string[] }>();
+  for (const m of matches) {
+    const existing = grouped.get(m.itemId);
+    if (existing) existing.chunks.push(m.chunkText);
+    else grouped.set(m.itemId, { title: m.title, chunks: [m.chunkText] });
+  }
+
+  return Array.from(grouped.values())
+    .map((g, i) => `${i + 1}. ${g.title ?? "(untitled)"}\n${g.chunks.join("\n\n")}`)
+    .join("\n\n");
+}
+
+async function pickForgottenItem(
+  userId: string,
+  projectId: string
+): Promise<PipelineForgotten> {
+  const cutoff = new Date(Date.now() - FORGOTTEN_AFTER_DAYS * 24 * 60 * 60 * 1000);
+
+  const rows = await db
+    .select({
+      id: schema.item.id,
+      title: schema.item.title,
+      summary: schema.item.summary,
+    })
+    .from(schema.item)
+    .where(
+      and(
+        eq(schema.item.userId, userId),
+        eq(schema.item.projectId, projectId),
+        eq(schema.item.status, "ready"),
+        lt(schema.item.capturedAt, cutoff)
+      )
+    )
+    .orderBy(sql`random()`)
+    .limit(1);
+
+  if (!rows[0]) return null;
+  return { itemId: rows[0].id, title: rows[0].title, summary: rows[0].summary };
 }
 
 async function loadItems(userId: string, projectId: string, spec: PipelineSpec) {

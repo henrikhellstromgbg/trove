@@ -177,6 +177,24 @@ function RunOutput({ output }: { output: PipelineRunOutput | null }) {
   if (!output)
     return <p className="font-display text-lg italic text-ink-faint">(no output)</p>;
 
+  return (
+    <div className="flex flex-col gap-3">
+      <RunOutputBody output={output} />
+      {output.forgotten ? (
+        <div className="mt-1 border-l-2 border-ember/40 pl-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ember">
+            forgotten
+          </p>
+          <p className="font-display italic text-ink-dim">
+            {output.forgotten.title ?? "(untitled)"}
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function RunOutputBody({ output }: { output: PipelineRunOutput }) {
   if (output.shape === "text") {
     return (
       <p className="whitespace-pre-wrap font-display text-xl leading-snug text-ink">

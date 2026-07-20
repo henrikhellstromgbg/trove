@@ -62,33 +62,47 @@ function renderHtml(spec: PipelineSpec, output: PipelineRunOutput): string {
 }
 
 function renderBodyHtml(output: PipelineRunOutput): string {
+  const forgotten = output.forgotten
+    ? `<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e5e5e5;">
+  <div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#b45309;margin-bottom:6px;">Forgotten</div>
+  <p style="font-size:15px;font-style:italic;color:#1a1a1a;margin:0 0 4px 0;">${escapeHtml(output.forgotten.title ?? "(untitled)")}</p>
+  ${output.forgotten.summary ? `<p style="font-size:13px;color:#666;margin:0;">${escapeHtml(output.forgotten.summary)}</p>` : ""}
+</div>`
+    : "";
+
   if (output.shape === "text") {
-    return `<p style="font-size:15px;line-height:1.6;color:#333;">${escapeHtml(output.text)}</p>`;
+    return `<p style="font-size:15px;line-height:1.6;color:#333;">${escapeHtml(output.text)}</p>${forgotten}`;
   }
   if (output.shape === "summary_with_highlights") {
     const highlights = output.highlights
       .map((h) => `<li style="margin-bottom:8px;line-height:1.5;color:#333;">${escapeHtml(h)}</li>`)
       .join("");
     return `<p style="font-size:15px;line-height:1.6;color:#333;">${escapeHtml(output.summary)}</p>
-<ul style="padding-left:20px;margin-top:16px;">${highlights}</ul>`;
+<ul style="padding-left:20px;margin-top:16px;">${highlights}</ul>${forgotten}`;
   }
   const items = output.items
     .map((i) => `<li style="margin-bottom:6px;line-height:1.5;color:#333;">${escapeHtml(i)}</li>`)
     .join("");
-  return `<ul style="padding-left:20px;">${items}</ul>`;
+  return `<ul style="padding-left:20px;">${items}</ul>${forgotten}`;
 }
 
 function renderText(spec: PipelineSpec, output: PipelineRunOutput): string {
   const header = `${spec.name}\n${"=".repeat(spec.name.length)}\n\n`;
+  const forgotten = output.forgotten
+    ? `\n\nForgotten\n${output.forgotten.title ?? "(untitled)"}${
+        output.forgotten.summary ? `\n${output.forgotten.summary}` : ""
+      }`
+    : "";
+
   if (output.shape === "text") {
-    return header + output.text + "\n\n— Trove";
+    return header + output.text + forgotten + "\n\n— Trove";
   }
   if (output.shape === "summary_with_highlights") {
     const bullets = output.highlights.map((h) => `- ${h}`).join("\n");
-    return header + output.summary + "\n\n" + bullets + "\n\n— Trove";
+    return header + output.summary + "\n\n" + bullets + forgotten + "\n\n— Trove";
   }
   const bullets = output.items.map((i) => `- ${i}`).join("\n");
-  return header + bullets + "\n\n— Trove";
+  return header + bullets + forgotten + "\n\n— Trove";
 }
 
 function escapeHtml(s: string): string {
