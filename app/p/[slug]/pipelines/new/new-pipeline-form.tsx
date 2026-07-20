@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
+import { useProject } from "@/app/project-context";
 
 const EXAMPLES = [
   "every sunday at 9am, summarize my newsletters from the past week with three highlights",
@@ -12,6 +13,7 @@ const EXAMPLES = [
 
 export function NewPipelineForm() {
   const router = useRouter();
+  const { project } = useProject();
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>("");
@@ -26,7 +28,7 @@ export function NewPipelineForm() {
     const res = await fetch("/api/pipelines", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description: value }),
+      body: JSON.stringify({ description: value, projectId: project.id }),
     });
 
     if (!res.ok) {
@@ -37,7 +39,7 @@ export function NewPipelineForm() {
     }
 
     const { id } = await res.json();
-    router.push(`/pipelines/${id}`);
+    router.push(`/p/${project.slug}/pipelines/${id}`);
   }
 
   return (

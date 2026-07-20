@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useProject } from "@/app/project-context";
 
 export function DeletePipelineButton({ id }: { id: string }) {
   const router = useRouter();
+  const { project } = useProject();
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
@@ -14,7 +16,7 @@ export function DeletePipelineButton({ id }: { id: string }) {
 
     const res = await fetch(`/api/pipelines/${id}`, { method: "DELETE" });
     if (res.ok) {
-      router.push("/pipelines");
+      router.push(`/p/${project.slug}/pipelines`);
       router.refresh();
     } else {
       setBusy(false);

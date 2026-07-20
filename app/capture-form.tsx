@@ -3,8 +3,10 @@
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
+import { useProject } from "./project-context";
 
 export function CaptureForm() {
+  const { project } = useProject();
   const [value, setValue] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string>("");
@@ -41,6 +43,7 @@ export function CaptureForm() {
       setStatus("uploading");
       const form = new FormData();
       form.append("file", file);
+      form.append("projectId", project.id);
 
       const res = await fetch("/api/capture", { method: "POST", body: form });
       if (res.ok) {
@@ -66,6 +69,7 @@ export function CaptureForm() {
       body: JSON.stringify({
         type: looksLikeUrl ? "url" : "text",
         content: trimmed,
+        projectId: project.id,
       }),
     });
 

@@ -10,7 +10,7 @@ type Citation = {
   source: string | null;
 };
 
-export function AskOverlay() {
+export function AskOverlay({ projectId }: { projectId: string }) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [citations, setCitations] = useState<Citation[]>([]);
@@ -45,7 +45,7 @@ export function AskOverlay() {
     const res = await fetch("/api/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: q }),
+      body: JSON.stringify({ question: q, projectId }),
     });
 
     if (!res.ok || !res.body) {

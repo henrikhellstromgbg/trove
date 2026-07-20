@@ -1,16 +1,31 @@
 import { auth } from "@clerk/nextjs/server";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
+import { getProjectBySlug } from "@/lib/projects";
 import { WikiBoard } from "./wiki-board";
 
-export default async function WikiPage() {
+export default async function WikiPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { userId } = await auth();
   if (!userId) return null;
+
+  const { slug } = await params;
+  const project = await getProjectBySlug(userId, slug);
+  if (!project) notFound();
 
   const topics = await db
     .select()
     .from(schema.topic)
-    .where(eq(schema.topic.userId, userId))
+    .where(
+      and(
+        eq(schema.topic.userId, userId),
+        eq(schema.topic.projectId, project.id)
+      )
+    )
     .orderBy(sql`coalesce(array_length(${schema.topic.itemIds}, 1), 0) desc`);
 
   const allItemIds = Array.from(
@@ -25,7 +40,12 @@ export default async function WikiPage() {
           source: schema.item.source,
         })
         .from(schema.item)
-        .where(eq(schema.item.userId, userId))
+        .where(
+          and(
+            eq(schema.item.userId, userId),
+            eq(schema.item.projectId, project.id)
+          )
+        )
     : [];
 
   const itemById = new Map(itemRows.map((i) => [i.id, i]));

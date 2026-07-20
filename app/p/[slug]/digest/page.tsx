@@ -1,6 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { and, desc, eq } from "drizzle-orm";
+import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
+import { getProjectBySlug } from "@/lib/projects";
 
 type DigestOutput = {
   summary?: string;
@@ -12,9 +14,17 @@ type DigestOutput = {
   } | null;
 };
 
-export default async function DigestPage() {
+export default async function DigestPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { userId } = await auth();
   if (!userId) return null;
+
+  const { slug } = await params;
+  const project = await getProjectBySlug(userId, slug);
+  if (!project) notFound();
 
   const rows = await db
     .select({
@@ -32,6 +42,7 @@ export default async function DigestPage() {
       and(
         eq(schema.pipelineRun.userId, userId),
         eq(schema.pipeline.userId, userId),
+        eq(schema.pipeline.projectId, project.id),
         eq(schema.pipeline.name, "weekly-digest"),
         eq(schema.pipelineRun.status, "completed")
       )

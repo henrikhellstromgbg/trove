@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db, schema } from "@/lib/db";
 import { compilePipelineDescription } from "@/lib/pipelines/compile";
 import { nextRunFromCron, isCronValid } from "@/lib/pipelines/cron";
+import { resolveProjectId } from "@/lib/projects";
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
@@ -10,9 +11,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { description?: unknown };
+  let body: { description?: unknown; projectId?: unknown };
   try {
-    body = (await req.json()) as { description?: unknown };
+    body = (await req.json()) as { description?: unknown; projectId?: unknown };
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -46,10 +47,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const projectId = await resolveProjectId(
+    userId,
+    typeof body.projectId === "string" ? body.projectId : null
+  );
+
   const [row] = await db
     .insert(schema.pipeline)
     .values({
       userId,
+      projectId,
       name: spec.name,
       description,
       spec,

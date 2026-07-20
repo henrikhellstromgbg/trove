@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { eq, cosineDistance } from "drizzle-orm";
+import { and, eq, cosineDistance } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "@/lib/db";
 import { embedQuery } from "@/lib/ai/embed";
@@ -14,7 +14,7 @@ Rules:
 - Be concise. One or two sentences is usually enough.
 - Never speculate or use outside knowledge. The user's own notes are the only ground truth.`;
 
-type AskBody = { question?: string };
+type AskBody = { question?: string; projectId?: string };
 
 export async function POST(req: Request) {
   const { userId } = await auth();
@@ -33,6 +33,7 @@ export async function POST(req: Request) {
   if (!question) {
     return Response.json({ error: "question required" }, { status: 400 });
   }
+  const projectId = body.projectId;
 
   const encoder = new TextEncoder();
 
@@ -55,7 +56,12 @@ export async function POST(req: Request) {
           })
           .from(schema.chunk)
           .innerJoin(schema.item, eq(schema.chunk.itemId, schema.item.id))
-          .where(eq(schema.chunk.userId, userId))
+          .where(
+            and(
+              eq(schema.chunk.userId, userId),
+              projectId ? eq(schema.chunk.projectId, projectId) : undefined
+            )
+          )
           .orderBy(distance)
           .limit(12);
 

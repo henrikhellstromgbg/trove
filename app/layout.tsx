@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
-import { Shell } from "./shell";
 
 const sans = Public_Sans({
   variable: "--font-public-sans",
@@ -35,7 +34,7 @@ export default function RootLayout({
       >
         <body className="min-h-full overflow-x-hidden bg-canvas text-ink">
           <div className="grain" />
-          <Shell>{children}</Shell>
+          {children}
         </body>
       </html>
     </ClerkProvider>

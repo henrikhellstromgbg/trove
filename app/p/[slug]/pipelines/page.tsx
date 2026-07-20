@@ -1,17 +1,34 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
+import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
+import { getProjectBySlug } from "@/lib/projects";
 
-export default async function PipelinesPage() {
+export default async function PipelinesPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { userId } = await auth();
   if (!userId) return null;
+
+  const { slug } = await params;
+  const project = await getProjectBySlug(userId, slug);
+  if (!project) notFound();
 
   const pipelines = await db
     .select()
     .from(schema.pipeline)
-    .where(eq(schema.pipeline.userId, userId))
+    .where(
+      and(
+        eq(schema.pipeline.userId, userId),
+        eq(schema.pipeline.projectId, project.id)
+      )
+    )
     .orderBy(desc(schema.pipeline.createdAt));
+
+  const base = `/p/${project.slug}`;
 
   return (
     <section className="relative flex flex-col gap-14 px-6 pb-12 pt-16 md:px-12 md:pt-24 lg:px-20">
@@ -24,8 +41,8 @@ export default async function PipelinesPage() {
             standing instructions.
           </h1>
           <Link
-            href="/pipelines/new"
-            className="shrink-0 rounded-full rounded-full border border-line-strong bg-neutral-50 px-4 py-2 text-xs font-medium uppercase tracking-wider text-ink transition-colors hover:bg-neutral-100 hover:border-ink"
+            href={`${base}/pipelines/new`}
+            className="shrink-0 rounded-full border border-line-strong bg-neutral-50 px-4 py-2 text-xs font-medium uppercase tracking-wider text-ink transition-colors hover:bg-neutral-100 hover:border-ink"
           >
             new pipeline
           </Link>
@@ -44,7 +61,7 @@ export default async function PipelinesPage() {
           pipelines.map((p) => (
             <li key={p.id} className="border-b border-line last:border-b-0">
               <Link
-                href={`/pipelines/${p.id}`}
+                href={`${base}/pipelines/${p.id}`}
                 className="group grid grid-cols-[8rem,1fr,auto] items-baseline gap-6 py-6 transition-colors hover:bg-ink/[0.015]"
               >
                 <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">

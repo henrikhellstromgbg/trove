@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { and, desc, eq } from "drizzle-orm";
+import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
+import { getProjectBySlug } from "@/lib/projects";
 import type { PipelineSpec, PipelineRunOutput } from "@/lib/pipelines/types";
 import { DeletePipelineButton } from "./delete-button";
 import { RunNowButton } from "./run-now-button";
@@ -9,18 +11,26 @@ import { RunNowButton } from "./run-now-button";
 export default async function PipelineDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string; id: string }>;
 }) {
   const { userId } = await auth();
   if (!userId) return null;
 
-  const { id } = await params;
+  const { slug, id } = await params;
+  const project = await getProjectBySlug(userId, slug);
+  if (!project) notFound();
+
+  const base = `/p/${project.slug}`;
 
   const [pipeline] = await db
     .select()
     .from(schema.pipeline)
     .where(
-      and(eq(schema.pipeline.id, id), eq(schema.pipeline.userId, userId))
+      and(
+        eq(schema.pipeline.id, id),
+        eq(schema.pipeline.userId, userId),
+        eq(schema.pipeline.projectId, project.id)
+      )
     )
     .limit(1);
 
@@ -31,7 +41,7 @@ export default async function PipelineDetailPage({
           pipeline not found.
         </p>
         <Link
-          href="/pipelines"
+          href={`${base}/pipelines`}
           className="self-start font-mono text-[10px] uppercase tracking-[0.22em] text-silver"
         >
           back to pipelines
@@ -57,7 +67,7 @@ export default async function PipelineDetailPage({
             pipeline · {spec.cron}
           </p>
           <Link
-            href="/pipelines"
+            href={`${base}/pipelines`}
             className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint hover:text-ink"
           >
             all pipelines
