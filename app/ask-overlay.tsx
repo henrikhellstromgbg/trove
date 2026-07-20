@@ -142,7 +142,7 @@ export function AskOverlay() {
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
               exit={{ opacity: 0, y: -8, filter: "blur(6px)" }}
               transition={{ duration: 0.4 }}
-              className="glass rounded-3xl p-6"
+              className="rounded-3xl border border-line bg-white p-6 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.12)]"
             >
               <p className="whitespace-pre-wrap text-base leading-relaxed text-ink">
                 {answer}

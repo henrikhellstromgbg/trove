@@ -57,17 +57,41 @@ export async function POST(req: Request) {
           .innerJoin(schema.item, eq(schema.chunk.itemId, schema.item.id))
           .where(eq(schema.chunk.userId, userId))
           .orderBy(distance)
-          .limit(8);
+          .limit(12);
 
-        const citations = matches.map((m, i) => ({
-          n: i + 1,
-          itemId: m.itemId,
-          title: m.title ?? "Untitled",
-          source: m.source,
+        type GroupedItem = {
+          n: number;
+          itemId: string;
+          title: string;
+          source: string | null;
+          chunks: string[];
+        };
+        const grouped = new Map<string, GroupedItem>();
+        for (const m of matches) {
+          const existing = grouped.get(m.itemId);
+          if (existing) {
+            existing.chunks.push(m.chunkText);
+          } else {
+            grouped.set(m.itemId, {
+              n: grouped.size + 1,
+              itemId: m.itemId,
+              title: m.title ?? "Untitled",
+              source: m.source,
+              chunks: [m.chunkText],
+            });
+          }
+        }
+        const items = Array.from(grouped.values());
+
+        const citations = items.map(({ n, itemId, title, source }) => ({
+          n,
+          itemId,
+          title,
+          source,
         }));
         send({ type: "citations", items: citations });
 
-        if (matches.length === 0) {
+        if (items.length === 0) {
           send({
             type: "text",
             text: "I don't have anything saved on that yet.",
@@ -77,8 +101,8 @@ export async function POST(req: Request) {
           return;
         }
 
-        const context = matches
-          .map((m, i) => `[${i + 1}] ${m.title ?? "Untitled"}\n${m.chunkText}`)
+        const context = items
+          .map((it) => `[${it.n}] ${it.title}\n${it.chunks.join("\n\n")}`)
           .join("\n\n---\n\n");
 
         const claudeStream = anthropic.messages.stream({
