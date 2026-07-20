@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { put } from "@vercel/blob";
 import { db, schema } from "@/lib/db";
 import { inngest } from "@/lib/inngest/client";
+import { getDefaultProjectId } from "@/lib/projects";
 
 const MAX_FILE_BYTES = 32 * 1024 * 1024;
 
@@ -97,10 +98,13 @@ async function handleJson(req: NextRequest, userId: string) {
     );
   }
 
+  const projectId = await getDefaultProjectId(userId);
+
   const [item] = await db
     .insert(schema.item)
     .values({
       userId,
+      projectId,
       type: body.type,
       rawText: body.type === "text" ? body.content : null,
       source: body.type === "url" ? body.content : body.source ?? null,
@@ -145,10 +149,13 @@ async function handleFile(req: NextRequest, userId: string) {
     contentType: contentTypeFor(kind, file),
   });
 
+  const projectId = await getDefaultProjectId(userId);
+
   const [item] = await db
     .insert(schema.item)
     .values({
       userId,
+      projectId,
       type: kind,
       blobUrl: blob.url,
       source: file.name,

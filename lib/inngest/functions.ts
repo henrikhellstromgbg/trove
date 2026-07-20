@@ -124,6 +124,7 @@ export const ingestItem = inngest.createFunction(
         chunks.map((text, i) => ({
           itemId,
           userId: item.userId,
+          projectId: item.projectId,
           position: i,
           text,
           embedding: embeddings[i],
