@@ -10,6 +10,7 @@ import { UserMenu } from "./user-menu";
 const NAV = [
   { seg: "", label: "capture" },
   { seg: "wiki", label: "wiki" },
+  { seg: "sources", label: "sources" },
   { seg: "pipelines", label: "pipelines" },
   { seg: "digest", label: "digest" },
 ];

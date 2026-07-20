@@ -15,6 +15,7 @@ import { enrich } from "@/lib/ai/enrich";
 import { runPipelineSpec } from "@/lib/pipelines/run";
 import { nextRunFromCron } from "@/lib/pipelines/cron";
 import { PipelineSpecSchema } from "@/lib/pipelines/types";
+import { syncSource, recordSyncResult } from "@/lib/sources/sync";
 
 export const ingestItem = inngest.createFunction(
   {
@@ -635,6 +636,55 @@ export const runDuePipelines = inngest.createFunction(
           reason: err instanceof Error ? err.message : "unknown",
         });
       }
+    }
+
+    return { ok: true, ran: results.length, results };
+  }
+);
+
+export const syncDueSources = inngest.createFunction(
+  {
+    id: "sync-due-sources",
+    retries: 1,
+    triggers: [{ cron: "*/10 * * * *" }],
+  },
+  async ({ step }) => {
+    const now = new Date();
+
+    const due = await step.run("load-due-sources", async () => {
+      return await db
+        .select()
+        .from(schema.source)
+        .where(
+          and(
+            eq(schema.source.enabled, true),
+            eq(schema.source.runtime, "cloud"),
+            isNotNull(schema.source.cron),
+            or(
+              isNull(schema.source.nextRunAt),
+              lte(schema.source.nextRunAt, now)
+            )!
+          )
+        );
+    });
+
+    const results: Array<{ sourceId: string; ok: boolean; newItems: number; reason?: string }> = [];
+
+    for (const s of due) {
+      const result = await step.run(`sync-${s.id}`, async () => {
+        return await syncSource(s);
+      });
+
+      await step.run(`record-${s.id}`, async () => {
+        await recordSyncResult(s.id, result, s.cron);
+      });
+
+      results.push({
+        sourceId: s.id,
+        ok: result.ok,
+        newItems: result.newItems,
+        reason: result.error,
+      });
     }
 
     return { ok: true, ran: results.length, results };

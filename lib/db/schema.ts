@@ -45,6 +45,7 @@ export const source = pgTable(
     runtime: text("runtime").notNull(), // cloud | local
     enabled: boolean("enabled").notNull().default(true),
     cron: text("cron"),
+    nextRunAt: timestamp("next_run_at", { withTimezone: true }),
     cursor: jsonb("cursor"),
     lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
     lastStatus: text("last_status"), // ok | error | running
