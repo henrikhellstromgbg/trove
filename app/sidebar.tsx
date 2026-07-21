@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import {
+  Chat,
   Catalog,
   Wikis,
   DataShare,
@@ -202,6 +203,16 @@ export function Sidebar() {
 
       {/* destinations */}
       <nav className="flex flex-col gap-0.5">
+        {/* Ask is the home / dashboard, kept here as the way back to it */}
+        <Link
+          href={base}
+          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
+            pathname === base ? "bg-ink/[0.05] text-ink" : "text-ink hover:bg-ink/[0.03]"
+          }`}
+        >
+          <Chat size={18} className="shrink-0 text-ink-dim" />
+          <span>Ask</span>
+        </Link>
         {DESTINATIONS.map(({ seg, label, Icon }) => (
           <Link
             key={seg}
