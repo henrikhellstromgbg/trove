@@ -41,6 +41,17 @@ type DigestOutput = {
   forgotten?: { title?: string | null } | null;
 };
 
+// Short glyphs so the type never collides with the name in the tight panel.
+const TYPE_GLYPH: Record<string, string> = {
+  text: "txt",
+  url: "url",
+  pdf: "pdf",
+  image: "img",
+  docx: "doc",
+  xlsx: "xls",
+  textfile: "txt",
+};
+
 export default async function ProjectDashboard({
   params,
 }: {
@@ -144,9 +155,9 @@ export default async function ProjectDashboard({
           ) : (
             <ul className="flex flex-col gap-1">
               {recent.slice(0, 5).map((it) => (
-                <li key={it.id} className="flex items-center gap-2 text-sm text-ink">
-                  <span className="font-mono text-[10px] uppercase text-ink-faint w-8 shrink-0">
-                    {it.type}
+                <li key={it.id} className="flex items-center gap-3 text-sm text-ink">
+                  <span className="w-7 shrink-0 font-mono text-[10px] uppercase text-ink-faint">
+                    {TYPE_GLYPH[it.type] ?? it.type}
                   </span>
                   <span className="truncate">{label(it)}</span>
                 </li>

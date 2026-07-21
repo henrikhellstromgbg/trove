@@ -59,16 +59,21 @@ body {
   opacity: 1;
 }
 
-input,
-textarea,
-button {
-  font-family: inherit;
-  color: inherit;
-}
+/* In @layer base so Tailwind color utilities (text-canvas, text-ink, …) win.
+   Unlayered, this "color: inherit" beat the utilities and made icon buttons
+   render their glyph in the inherited ink colour. */
+@layer base {
+  input,
+  textarea,
+  button {
+    font-family: inherit;
+    color: inherit;
+  }
 
-input:focus,
-textarea:focus {
-  outline: none;
+  input:focus,
+  textarea:focus {
+    outline: none;
+  }
 }
 
 .font-display {
