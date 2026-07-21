@@ -1,6 +1,6 @@
 # Backend phase, 2026-07-21
 
-Status line (who writes now): **Claude — implementing.**
+Status line (who writes now): **Claude — all three parts implemented, verified and committed.**
 
 One work round, three separate and independently verified commits. No production database use, ever. No push.
 

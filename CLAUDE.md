@@ -136,7 +136,7 @@ Already done in `drizzle.config.ts` and `lib/db/migrate.ts`.
 | Sources | Partial | RSS, web and Slack poll exist. Mail, watched folders, connected accounts and source runs remain. |
 | User-defined pipelines | Done | Plain-language compile, scheduling, run-now, pause, history, email and Digest exist. |
 | Web UI | Partial | Ask, Library, Sources and Pipelines exist. Item detail, review, trash and Trove settings are planned. |
-| Tauri 2 shell | Partial | Tray, hotkey and capture POST exist, but it still targets `/api/capture` and does not send project-scoped file uploads. |
+| Tauri 2 shell | Partial | Tray, hotkey and drag-drop capture POST through `/api/ingest` with a project id. Local `mail_folder` (mbox) and `folder_watch` runtimes read only registry-approved paths, checkpoint locally for idempotence, and post with the ingest token and per-source project id. A scheduler, setup UI, server-driven config and signing remain. |
 | Sign, notarize, DMG | Pending | Apple Developer Program signup needed first |
 
 ## Reference architecture

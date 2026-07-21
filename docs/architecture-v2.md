@@ -27,7 +27,7 @@ Decisions taken for this version:
 |------|--------|-------|
 | Projects and sidebar | Exists | Core content APIs validate an owned project explicitly. Project sharing is not built. |
 | Capture, Library and Ask | Exists | Browser capture uses `/api/ingest`. Ask is project-scoped and now persists conversations, messages and citations. |
-| Sources | Partial | RSS, web scrape and Slack poll exist. Phase-6 local source foundation now includes `mail_folder` and `folder_watch` contract validation plus shared mail-cleaning and folder checkpoint helpers, but no local daemon, UI flow or cloud fetcher is built yet. |
+| Sources | Partial | RSS, web scrape and Slack poll exist. The Tauri app now runs `mail_folder` (local mbox) and `folder_watch` locally: it reads only registry-approved paths, posts through `/api/ingest` with the ingest token and an explicit per-source projectId, and stays idempotent via local checkpoints + externalId. Product UI, a scheduler and cloud/Gmail fetchers remain. |
 | Pipelines | Exists | List, plain-language creation, detail, pause, run-now, history, starter template API for Morning brief and Friday weekly summary, and seeded Friday weekly digest exist. |
 | One ingest API | Exists | Browser capture and Tauri use `/api/ingest`; `/api/capture` remains temporarily as a compatibility route for older clients. |
 | Private blobs | Exists | New uploads are private and served through an authenticated route. |
@@ -155,7 +155,7 @@ An immutable `original_record` stores the exact fetched payload and source metad
 
 - **Cloud sources** (`rss`, `web_scrape`, `slack_channel`, and later `youtube_channel`) are polled by the existing Inngest `sync-due-sources` function. It loads enabled cloud sources whose `next_run` is due, calls a per-kind fetcher, and emits `item/captured` for new external items.
 - **Local sources** (`mail_folder` and `folder_watch`) are driven by the local daemon on the Mac. The daemon reads the source config from Trove (or from a local mirror), reads the local files, and POSTs new items to the ingest API. The cloud never tries to touch local paths.
-- **Current phase-6 foundation status:** Trove now recognizes `mail_folder` and `folder_watch` as local source kinds, stores only approved path and filter metadata in `source.config`, and has reusable contracts for newsletter mail cleaning plus watched-folder file selection and checkpointing. Runtime polling, filesystem access and posting are still local-app work.
+- **Current local-runtime status:** the Tauri app implements the `mail_folder` (local mbox) and `folder_watch` runtimes. It reads a local source registry (`TROVE_LOCAL_SOURCES`, default `~/.config/trove/local-sources.json`) and reads only the paths listed there, mirrors the TS folder-selection and newsletter-cleaning contracts in Rust, keeps per-source local checkpoints (`~/.config/trove/checkpoints/`) for idempotence, and POSTs new items through `/api/ingest` with the ingest token in the `Authorization` header and an explicit per-source projectId. Local filesystem paths and the token never appear in the request body. A tray action triggers a run; a scheduler, server-driven config and Gmail OAuth remain.
 
 Slack `events` mode is the exception to polling: a Slack app posts to a webhook route which creates items directly. `poll` mode uses `conversations.history` on the cron, simpler to stand up first.
 
@@ -298,7 +298,7 @@ Phased by dependency rather than by source type:
 3. **Stabilise existing product.** Verify Capture, Library, Ask, RSS, web, Slack, Pipelines and Digest end to end. Add Morning brief and Friday weekly summary as starter templates on the existing pipeline engine. Keep private blob access and add focused ingestion and pipeline tests.
 4. **Source foundation.** Backend complete: connected accounts, versioned source rules, source runs and immutable originals. Setup preview, health and retry UI remain.
 5. **Review and deletion.** Backend complete: review decisions, project trash, restore, retryable permanent blob/artifact deletion, deletion markers, and review rules applied during import (source sync and `/api/ingest`) that hold matching items for approval. Product UI remains.
-6. **Mail and watched folders.** Build Gmail and local mailbox/folder flows on the shared source foundation, including its review-queue branch.
+6. **Mail and watched folders.** Local mailbox (mbox) and watched-folder runtimes now run in the Tauri app and post through `/api/ingest`, so review rules apply on arrival. Gmail OAuth, a scheduler and the setup/health UI remain.
 7. **Persist Ask conversations.** Complete: Ask writes project-scoped threads and messages, including citations and follow-up intent.
 8. **Later expansion.** Generic YouTube transcription, source templates, shared projects and vertical packs.
 

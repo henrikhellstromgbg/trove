@@ -15,6 +15,8 @@ use tauri::{
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use url::Url;
 
+mod local_sources;
+
 const DEFAULT_BACKEND_URL: &str = "http://localhost:3000";
 const BACKEND_URL_ENV: &str = "TROVE_BACKEND_URL";
 const INGEST_TOKEN_ENV: &str = "TROVE_INGEST_TOKEN";
@@ -28,6 +30,14 @@ struct JsonIngestPayload {
     text: String,
     #[serde(rename = "projectId")]
     project_id: String,
+    #[serde(rename = "sourceId", skip_serializing_if = "Option::is_none")]
+    source_id: Option<String>,
+    #[serde(rename = "externalId", skip_serializing_if = "Option::is_none")]
+    external_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source: Option<String>,
+    #[serde(rename = "capturedAt", skip_serializing_if = "Option::is_none")]
+    captured_at: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,6 +46,9 @@ struct FileIngestPayload {
     file_name: String,
     mime_type: &'static str,
     project_id: String,
+    source_id: Option<String>,
+    external_id: Option<String>,
+    captured_at: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,6 +93,33 @@ impl IngestConfig {
         )?;
         let ingest_token = required_env(&mut read, INGEST_TOKEN_ENV)?;
         let project_id = required_env(&mut read, PROJECT_ID_ENV)?;
+
+        Ok(Self {
+            backend_url,
+            ingest_token,
+            project_id,
+        })
+    }
+
+    // Local-source sync uses the backend URL and ingest token, but each source
+    // carries its own projectId in the request body, so the global project id
+    // env is optional here (unlike drag-drop capture).
+    fn from_env_local() -> Result<Self, ConfigError> {
+        Self::local_from_reader(|key| env::var(key).ok())
+    }
+
+    fn local_from_reader<F>(mut read: F) -> Result<Self, ConfigError>
+    where
+        F: FnMut(&str) -> Option<String>,
+    {
+        let backend_url = normalize_backend_url(
+            read(BACKEND_URL_ENV)
+                .filter(|value| !value.trim().is_empty())
+                .as_deref()
+                .unwrap_or(DEFAULT_BACKEND_URL),
+        )?;
+        let ingest_token = required_env(&mut read, INGEST_TOKEN_ENV)?;
+        let project_id = read(PROJECT_ID_ENV).unwrap_or_default().trim().to_string();
 
         Ok(Self {
             backend_url,
@@ -159,6 +199,10 @@ fn prepare_drop(input: &str, project_id: &str) -> Result<PreparedIngest, Prepare
             kind: "url",
             text: input.to_string(),
             project_id: project_id.to_string(),
+            source_id: None,
+            external_id: None,
+            source: None,
+            captured_at: None,
         }));
     }
 
@@ -178,6 +222,9 @@ fn prepare_drop(input: &str, project_id: &str) -> Result<PreparedIngest, Prepare
             path,
             file_name,
             project_id: project_id.to_string(),
+            source_id: None,
+            external_id: None,
+            captured_at: None,
         }));
     }
 
@@ -185,6 +232,10 @@ fn prepare_drop(input: &str, project_id: &str) -> Result<PreparedIngest, Prepare
         kind: "text",
         text: input.to_string(),
         project_id: project_id.to_string(),
+        source_id: None,
+        external_id: None,
+        source: None,
+        captured_at: None,
     }))
 }
 
@@ -236,9 +287,17 @@ async fn send_ingest(
             let part = Part::bytes(bytes)
                 .file_name(file.file_name)
                 .mime_str(file.mime_type)?;
-            let form = Form::new()
-                .text("projectId", file.project_id)
-                .part("file", part);
+            let mut form = Form::new().text("projectId", file.project_id);
+            if let Some(source_id) = file.source_id {
+                form = form.text("sourceId", source_id);
+            }
+            if let Some(external_id) = file.external_id {
+                form = form.text("externalId", external_id);
+            }
+            if let Some(captured_at) = file.captured_at {
+                form = form.text("capturedAt", captured_at);
+            }
+            let form = form.part("file", part);
 
             let response = client
                 .post(config.ingest_url())
@@ -337,8 +396,9 @@ pub fn run() {
 
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "Open Trove", true, None::<&str>)?;
+    let sync = MenuItem::with_id(app, "sync-local", "Sync local sources", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &quit])?;
+    let menu = Menu::with_items(app, &[&open, &sync, &quit])?;
 
     let icon = tray_icon_image();
 
@@ -347,6 +407,11 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event: MenuEvent| match event.id.as_ref() {
             "open" => toggle_main_window(app),
+            "sync-local" => {
+                tauri::async_runtime::spawn(async {
+                    sync_local_sources().await;
+                });
+            }
             "quit" => app.exit(0),
             _ => {}
         })
@@ -407,6 +472,36 @@ async fn handle_drop_path(path: String) {
     let client = reqwest::Client::new();
     if let Err(err) = send_ingest(&client, &config, payload).await {
         eprintln!("trove ingest failed for {path}: {err}");
+    }
+}
+
+async fn sync_local_sources() {
+    let config = match IngestConfig::from_env_local() {
+        Ok(config) => config,
+        Err(err) => {
+            eprintln!("trove local sync skipped: {err}");
+            return;
+        }
+    };
+
+    let client = reqwest::Client::new();
+    let results = local_sources::run_local_sources_once(&client, &config).await;
+    for result in results {
+        if result.errors.is_empty() {
+            eprintln!(
+                "trove local sync [{}] {}: sent {}, skipped {}",
+                result.kind, result.source_id, result.sent, result.skipped
+            );
+        } else {
+            eprintln!(
+                "trove local sync [{}] {}: sent {}, skipped {}, errors: {}",
+                result.kind,
+                result.source_id,
+                result.sent,
+                result.skipped,
+                result.errors.join("; ")
+            );
+        }
     }
 }
 
@@ -558,6 +653,10 @@ mod tests {
             kind: "text",
             text: "hello".to_string(),
             project_id: config.project_id.clone(),
+            source_id: None,
+            external_id: None,
+            source: None,
+            captured_at: None,
         });
 
         let err = send_ingest(&reqwest::Client::new(), &config, payload)
@@ -569,6 +668,178 @@ mod tests {
             err.to_string(),
             "ingest returned HTTP 422 Unprocessable Entity: bad upload"
         );
+    }
+
+    fn request_body(request: &str) -> &str {
+        request
+            .split_once("\r\n\r\n")
+            .map(|(_, body)| body)
+            .unwrap_or("")
+    }
+
+    #[tokio::test]
+    async fn mail_source_posts_content_without_leaking_path_or_token() {
+        use crate::local_sources::{run_mail_folder, MailFolderSource};
+
+        let mbox_path = write_temp_file(
+            "newsletter.mbox",
+            b"From feed@example.com Mon Jan  1 00:00:00 2023\r\n\
+Message-ID: <news-1@example.com>\r\n\
+From: \"Daily News\" <news@example.com>\r\n\
+Subject: Morning brief\r\n\
+Date: Wed, 12 Jul 2023 10:30:00 +0000\r\n\
+\r\n\
+Top story of the day.\r\n\
+Unsubscribe to stop these.\r\n",
+        );
+        let checkpoint_dir = unique_temp_path("mail-checkpoints");
+
+        let (backend_url, request) = spawn_http_server("200 OK", "{}").await;
+        let config = test_config(backend_url);
+        let source = MailFolderSource {
+            id: "source-abc".to_string(),
+            project_id: "project-123".to_string(),
+            mbox_path: mbox_path.to_string_lossy().into_owned(),
+            sender_allow: vec![],
+            sender_block: vec![],
+            promo_blocklist: vec![],
+        };
+
+        let result =
+            run_mail_folder(&reqwest::Client::new(), &config, &source, &checkpoint_dir).await;
+        let request = request.await.expect("server task should finish");
+        assert_eq!(result.sent, 1);
+        assert!(result.errors.is_empty());
+
+        // Token lives only in the Authorization header, never the body.
+        assert!(request
+            .to_ascii_lowercase()
+            .contains("authorization: bearer secret-token\r\n"));
+
+        let body = request_body(&request);
+        let value: Value = serde_json::from_str(body).expect("json body");
+        assert_eq!(
+            value.get("projectId").and_then(Value::as_str),
+            Some("project-123")
+        );
+        assert_eq!(
+            value.get("sourceId").and_then(Value::as_str),
+            Some("source-abc")
+        );
+        assert_eq!(
+            value.get("externalId").and_then(Value::as_str),
+            Some("news-1@example.com")
+        );
+        assert_eq!(value.get("type").and_then(Value::as_str), Some("text"));
+        assert!(value
+            .get("text")
+            .and_then(Value::as_str)
+            .unwrap()
+            .contains("Top story of the day."));
+
+        // The local mbox path and the token must never appear in the body.
+        assert!(!body.contains(&source.mbox_path));
+        assert!(!body.contains("secret-token"));
+
+        let _ = fs::remove_file(mbox_path);
+        let _ = fs::remove_dir_all(checkpoint_dir);
+    }
+
+    #[tokio::test]
+    async fn folder_source_posts_multipart_without_leaking_path_or_token() {
+        use crate::local_sources::{run_folder_watch, FolderWatchSource};
+
+        let root = unique_temp_path("folder-src");
+        fs::create_dir_all(&root).expect("temp dir should be created");
+        let file_path = root.join("report.txt");
+        fs::write(&file_path, b"local file body").expect("file written");
+        let checkpoint_dir = unique_temp_path("folder-checkpoints");
+
+        let (backend_url, request) = spawn_http_server("200 OK", "{}").await;
+        let config = test_config(backend_url);
+        let source = FolderWatchSource {
+            id: "folder-source".to_string(),
+            project_id: "project-123".to_string(),
+            folder_path: root.to_string_lossy().into_owned(),
+            globs: vec![],
+        };
+
+        let result =
+            run_folder_watch(&reqwest::Client::new(), &config, &source, &checkpoint_dir).await;
+        let request = request.await.expect("server task should finish");
+        assert_eq!(result.sent, 1);
+        assert!(result.errors.is_empty());
+
+        assert!(request.starts_with("POST /api/ingest HTTP/1.1\r\n"));
+        assert!(request
+            .to_ascii_lowercase()
+            .contains("authorization: bearer secret-token\r\n"));
+
+        let body = request_body(&request);
+        assert!(body.contains("name=\"projectId\""));
+        assert!(body.contains("project-123"));
+        assert!(body.contains("name=\"sourceId\""));
+        assert!(body.contains("folder-source"));
+        assert!(body.contains("name=\"externalId\""));
+        assert!(body.contains("report.txt:15:"));
+        assert!(body.contains("name=\"file\"; filename=\""));
+        assert!(body.contains("local file body"));
+
+        // The absolute folder path and the token must never appear in the body.
+        assert!(!body.contains(&source.folder_path));
+        assert!(!body.contains("secret-token"));
+
+        // Idempotent re-run: checkpoint advanced, nothing new to post.
+        let rerun =
+            run_folder_watch(&reqwest::Client::new(), &config, &source, &checkpoint_dir).await;
+        assert_eq!(rerun.sent, 0);
+        assert!(rerun.errors.is_empty());
+
+        let _ = fs::remove_dir_all(root);
+        let _ = fs::remove_dir_all(checkpoint_dir);
+    }
+
+    #[tokio::test]
+    async fn mail_source_skips_already_checkpointed_ids() {
+        use crate::local_sources::{run_mail_folder, MailFolderSource};
+
+        let mbox_path = write_temp_file(
+            "seen.mbox",
+            b"From feed@example.com Mon Jan  1 00:00:00 2023\r\n\
+Message-ID: <seen-1@example.com>\r\n\
+From: news@example.com\r\n\
+Subject: Already sent\r\n\
+\r\n\
+Body content here.\r\n",
+        );
+        let checkpoint_dir = unique_temp_path("mail-seen-checkpoints");
+        fs::create_dir_all(&checkpoint_dir).expect("checkpoint dir");
+        fs::write(
+            checkpoint_dir.join("source-seen.json"),
+            r#"{"version":1,"sent":["seen-1@example.com"]}"#,
+        )
+        .expect("seed checkpoint");
+
+        // Backend points at an unused port; if the runtime tried to POST it
+        // would error, so sent==0 with no errors proves nothing was sent.
+        let config = test_config("http://127.0.0.1:0".to_string());
+        let source = MailFolderSource {
+            id: "source-seen".to_string(),
+            project_id: "project-123".to_string(),
+            mbox_path: mbox_path.to_string_lossy().into_owned(),
+            sender_allow: vec![],
+            sender_block: vec![],
+            promo_blocklist: vec![],
+        };
+
+        let result =
+            run_mail_folder(&reqwest::Client::new(), &config, &source, &checkpoint_dir).await;
+        assert_eq!(result.sent, 0);
+        assert_eq!(result.skipped, 1);
+        assert!(result.errors.is_empty());
+
+        let _ = fs::remove_file(mbox_path);
+        let _ = fs::remove_dir_all(checkpoint_dir);
     }
 
     fn assert_json_payload(value: &Value, kind: &str, text: &str, project_id: &str) {
