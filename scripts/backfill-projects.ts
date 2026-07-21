@@ -6,6 +6,14 @@ import ws from "ws";
 
 neonConfig.webSocketConstructor = ws;
 
+// WARNING: PARTIAL. This script is NOT the complete db:push reconciliation
+// path and is unsafe to run alone against the existing database. It backfills
+// item/chunk/conversation/pipeline/topic only; it omits `source` backfill,
+// the ingest_token FK change to cascade, and vector(1536) embedding
+// reconciliation. The complete, ordered procedure is documented in
+// docs/review-fix-plan-2026-07-21.md under "Reconciliation for the existing
+// db:push database". Do not run this against prod outside that procedure.
+//
 // Phase 1 backfill. Idempotent. Safe to run more than once.
 //
 // For every user that owns rows, ensure a default "inbox" project exists,

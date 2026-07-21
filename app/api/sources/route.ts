@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db, schema } from "@/lib/db";
 import { nextRunFromCron, isCronValid } from "@/lib/pipelines/cron";
-import { resolveProjectId } from "@/lib/projects";
+import { InvalidProjectError, requireProjectId } from "@/lib/projects";
 
 const SUPPORTED_KINDS = ["rss", "web_scrape", "slack_channel"] as const;
 type SupportedKind = (typeof SUPPORTED_KINDS)[number];
@@ -72,10 +72,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "cron is invalid" }, { status: 400 });
   }
 
-  const projectId = await resolveProjectId(
-    userId,
-    typeof body.projectId === "string" ? body.projectId : null
-  );
+  let projectId: string;
+  try {
+    projectId = await requireProjectId(userId, body.projectId);
+  } catch (error) {
+    if (error instanceof InvalidProjectError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  }
 
   const [row] = await db
     .insert(schema.source)

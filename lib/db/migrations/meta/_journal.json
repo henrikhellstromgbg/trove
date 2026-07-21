@@ -8,6 +8,13 @@
       "when": 1779014797067,
       "tag": "0000_parallel_praxagora",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784644215965,
+      "tag": "0001_secret_violations",
+      "breakpoints": true
     }
   ]
 }

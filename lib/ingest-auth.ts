@@ -9,7 +9,7 @@ export function hashIngestToken(token: string): string {
 
 export type IngestAuth = {
   userId: string;
-  defaultProjectId: string | null;
+  lockedProjectId: string | null;
 };
 
 // Browser callers use a Clerk session. The local daemon and other
@@ -18,7 +18,7 @@ export type IngestAuth = {
 export async function resolveIngestAuth(req: Request): Promise<IngestAuth | null> {
   const { userId } = await auth();
   if (userId) {
-    return { userId, defaultProjectId: null };
+    return { userId, lockedProjectId: null };
   }
 
   const header = req.headers.get("authorization") ?? "";
@@ -41,5 +41,6 @@ export async function resolveIngestAuth(req: Request): Promise<IngestAuth | null
     .limit(1);
 
   if (!rows[0]) return null;
-  return { userId: rows[0].userId, defaultProjectId: rows[0].projectId };
+  // A non-null projectId is a hard lock, not merely a default.
+  return { userId: rows[0].userId, lockedProjectId: rows[0].projectId };
 }

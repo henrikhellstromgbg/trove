@@ -1,10 +1,10 @@
 # Trove architecture v2
 
-Status: proposal, 2026-07-20. Supersedes the single-bucket model in the root CLAUDE.md. Nothing here is built yet. This doc is the plan we build against.
+Status: living architecture, updated 2026-07-21. This document describes both the current implementation and the agreed target. Each section states what exists and what remains.
 
 ## Why this rewrite
 
-v0.1 is one shared bucket. Every item, chunk, topic and pipeline hangs off a Clerk `user_id` and nothing else. That was right for a personal notes app. It is wrong for where Trove is going.
+The original v0.1 was one shared bucket. Trove now has projects in code, but the project boundary, migration history and import paths are not fully consistent yet.
 
 Three things changed the requirements:
 
@@ -15,9 +15,25 @@ Three things changed the requirements:
 Decisions taken for this version:
 
 - Projects are **hard containers**, not soft tag groupings.
-- Local sources reuse the **existing Python** as a local daemon that posts into Trove, before anything moves into the Tauri app.
-- Source families to build: **mail, YouTube, folder watch plus drop, then Slack and web scrapers.**
-- The left sidebar replaces the top nav. Structure now, visual design later.
+- **Project** is the canonical product and data boundary. The longer-term product plan's `Case` maps to a Trove project for now; there is no separate workspace/case hierarchy in v2.
+- **Sources import material. Pipelines read imported material and create recurring results.** A source rule is not a pipeline.
+- The existing Tauri app is the preferred local runtime. Intel's Python scripts are reference implementations and may be used temporarily while equivalent local source support is completed.
+- Stabilise the existing RSS, web and Slack sources. Build mail and watched folders next. Generic YouTube transcription comes later; Tactical Athlete's podcast mining remains outside Trove Core.
+- The left sidebar and project-scoped routes exist and remain the navigation model.
+
+### Current implementation status
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Projects and sidebar | Partial | Routes and tables exist; every API and relation is not yet strictly project-scoped. |
+| Capture, Library and Ask | Exists | Browser capture still uses `/api/capture`. Ask requires an owned `projectId` and rejects anything else with 400; no user-wide retrieval remains. |
+| Sources | Partial | RSS, web scrape and Slack poll exist. Mail, watched folder and connected accounts do not. |
+| Pipelines | Exists | List, plain-language creation, detail, pause, run-now, history and seeded weekly digest exist. |
+| One ingest API | Partial | `/api/ingest` exists, but browser capture and Tauri still use `/api/capture`. |
+| Private blobs | Exists | New uploads are private and served through an authenticated route. |
+| Source runs and immutable originals | Planned | Current source rows only keep the latest status and cursor. |
+| Review, trash and deletion markers | Planned | Wireframes describe the target; schema and routes do not exist. |
+| Account connections and settings | Planned | Clerk handles identity; Trove-specific Gmail/Slack connections are not modelled. |
 
 ## The one constraint that shapes everything
 
@@ -26,15 +42,15 @@ Trove runs on Vercel. Inngest runs in the cloud. That environment can reach anyt
 - Cloud **can** do: web scraping, RSS, YouTube transcripts, Slack API, URL capture, all extraction, embedding, enrichment, clustering, chat, pipelines, email.
 - Cloud **cannot** do: read `~/Library/Mail/.../Newsletters.mbox`, watch a local folder, see a file dropped on a desktop icon.
 
-The Intel pipeline works only because it runs locally under launchd, reading local paths. So Trove needs two ingestion surfaces that meet at a single seam:
+The Intel ingestion project works only because it runs locally under launchd and reads local paths. Trove therefore needs two ingestion surfaces that meet at one API:
 
 ```
    INTERNET SOURCES                         LOCAL SOURCES
    (run in the cloud)                       (run on your Mac)
 
-   web scrape, RSS                          Apple Mail mbox
-   YouTube transcripts                      watched folder
-   Slack API                                drag and drop desktop
+   web scrape, RSS                          Apple Mail or local mailbox
+   Slack API                                watched folder
+                                            drag and drop desktop
         │                                        │
         │  emit item/captured                    │  POST with ingest token
         ▼                                        ▼
@@ -47,16 +63,18 @@ The Intel pipeline works only because it runs locally under launchd, reading loc
    item (pending) → extract → chunk → embed → enrich → ready
         │
         ▼
-   retrieval · wiki · pipelines · chat, all scoped to a project
+   retrieval · topics · pipelines · chat, all scoped to a project
 ```
 
-Everything upstream speaks one API. A browser drop, a Tauri watcher, the Python daemon, a Slack webhook, a scraper worker: all of them create a `pending` item and let the same downstream pipeline take over. This seam is the most important thing in the rewrite. Build it first and build it well.
+Target state: everything upstream speaks one API. A browser drop, a Tauri watcher, a temporary Python process, a Slack webhook or a scraper worker creates a `pending` item and lets the same downstream ingestion worker take over. The word pipeline is reserved for recurring output jobs.
 
 ## Core model change: projects as hard containers
 
 Today's `space` table is a soft grouping. Its own UI copy says "items can live in many spaces at once." We repurpose it into a hard container and rename the concept to **project**.
 
-A `project` owns everything: sources, items, chunks, conversations, messages, pipelines, topics. Every row that today carries only `user_id` gains a `project_id`. Every query scopes by `(user_id, project_id)`. No cross-project reads, the same rule the root CLAUDE.md already states for `user_id`, now one level finer.
+A `project` owns everything: sources, source rules, source runs, originals, items, chunks, conversations, messages, pipelines, pipeline runs, topics, review decisions and deletion markers. Every query scopes by `(user_id, project_id)` directly or through a verified owning relation. No API may silently fall back to a different project when an explicit project id is invalid.
+
+Compatibility rule for current create routes: an omitted `projectId` uses the user's inbox project, while an explicitly supplied id must be a valid project owned by that user. Project-aware UI and new integrations always send the active project id; the omission fallback exists for older callers only and never overrides an explicit value.
 
 Soft tag grouping does not disappear, it moves down a level. Within a project you can still tag and filter. If we want collections later, they are a within-project feature, never a wall between clients.
 
@@ -97,9 +115,9 @@ Right now ingestion is implicit: something calls `/api/capture`, an item appears
 source
   id            uuid pk
   user_id       text
-  project_id    uuid references project(id)
-  kind          text     drop | mail_folder | folder_watch |
-                         youtube_channel | rss | web_scrape | slack_channel
+  project_id    uuid not null references project(id)
+  kind          text     mail_folder | folder_watch | rss |
+                         web_scrape | slack_channel | youtube_channel
   name          text     human label
   config        jsonb    kind specific, see below
   runtime       text     "cloud" | "local"    where sync executes
@@ -116,7 +134,6 @@ source
 
 | kind             | runtime | config keys |
 |------------------|---------|-------------|
-| `drop`           | either  | none, items pushed ad hoc |
 | `mail_folder`    | local   | `mboxPath`, `senderAllow[]`, `senderBlock[]`, `promoBlocklist[]` |
 | `folder_watch`   | local   | `folderPath`, `globs[]` |
 | `youtube_channel`| cloud   | `channelId`, `sinceDays` |
@@ -124,12 +141,20 @@ source
 | `web_scrape`     | cloud   | `url`, `selector`, `followLinks` |
 | `slack_channel`  | cloud   | `teamId`, `channelId`, `mode` (events | poll) |
 
-`item` gains `source_id uuid references source(id)` (nullable, since some items are hand captured with no source), plus a stable `external_id text` per source for dedup (mbox message id, YouTube video id, blob hash for files). Unique index on `(source_id, external_id)` kills duplicates cheaply, which is exactly what Intel does today with its dedup against `kb.json` and `raw/`.
+`item` has `source_id uuid references source(id)` (nullable for manual capture) plus a stable `external_id text` per source for dedup. Manual capture uses `source_id = null`; it is not a source kind. The API must verify that `source_id` belongs to the same user and project before accepting it. The unique index on `(source_id, external_id)` prevents duplicate source items.
+
+The next source foundation adds three separate objects:
+
+- `connected_account`: global OAuth or local connection owned by the account.
+- `source_rule`: versioned project-owned selection and review rules.
+- `source_run`: one sync attempt with counts, timestamps, cursor, status and error.
+
+An immutable `original_record` stores the exact fetched payload and source metadata. The current `item` remains the processed knowledge record shown in Library.
 
 ### How each kind runs
 
-- **Cloud sources** (`youtube_channel`, `rss`, `web_scrape`, `slack_channel`) are polled by an Inngest cron function `sync-due-sources`, same shape as today's `run-due-pipelines`. It loads enabled cloud sources whose `next_run` is due, calls a per-kind fetcher, and for each new external item emits `item/captured` with `projectId` and `sourceId`.
-- **Local sources** (`mail_folder`, `folder_watch`, plus local `drop`) are driven by the local daemon on the Mac. The daemon reads the source config from Trove (or from a local mirror), reads the local files, and POSTs new items to the ingest API. The cloud never tries to touch local paths.
+- **Cloud sources** (`rss`, `web_scrape`, `slack_channel`, and later `youtube_channel`) are polled by the existing Inngest `sync-due-sources` function. It loads enabled cloud sources whose `next_run` is due, calls a per-kind fetcher, and emits `item/captured` for new external items.
+- **Local sources** (`mail_folder` and `folder_watch`) are driven by the local daemon on the Mac. The daemon reads the source config from Trove (or from a local mirror), reads the local files, and POSTs new items to the ingest API. The cloud never tries to touch local paths.
 
 Slack `events` mode is the exception to polling: a Slack app posts to a webhook route which creates items directly. `poll` mode uses `conversations.history` on the cron, simpler to stand up first.
 
@@ -140,13 +165,13 @@ One endpoint, two auth modes.
 `POST /api/ingest`
 
 - **Browser mode:** Clerk session, as `/api/capture` works today. Used by the drag and drop UI.
-- **Agent mode:** a per-user **ingest token** in an `Authorization: Bearer` header. Used by the Python daemon, the Tauri app, and any server to server caller. Tokens live in a new `ingest_token` table (`user_id`, `token_hash`, `project_id` optional default, `created_at`, `revoked_at`). Never Clerk for non-browser callers, they cannot do a browser login.
+- **Agent mode:** a per-user **ingest token** in an `Authorization: Bearer` header. Used by the Python daemon, the Tauri app, and any server to server caller. Tokens live in `ingest_token` (`user_id`, `token_hash`, optional `project_id` lock, `created_at`, `revoked_at`). A token with `project_id` is locked to that project: an omitted request `projectId` uses the lock and another project is rejected with 403. A token with `project_id = null` may select any valid project owned by the user. Deleting a locked project cascades to its tokens, so a locked token can never silently become unlocked. Never use Clerk for non-browser callers; they cannot complete a browser login.
 
 Payload accepts either a file (multipart, as now) or structured text:
 
 ```
 {
-  projectId:  uuid,        required
+  projectId:  uuid,        required for new callers; legacy omission uses inbox or token lock
   sourceId:   uuid | null, which source produced this
   externalId: string,      for dedup
   type:       "text" | "url" | "pdf" | "image" | "docx" | "xlsx" | "textfile"
@@ -159,7 +184,7 @@ Payload accepts either a file (multipart, as now) or structured text:
 
 The endpoint dedups on `(sourceId, externalId)`, writes the `item` as `pending`, uploads any file to blob, and emits `item/captured`. That is the entire seam. Everything else is downstream and unchanged in shape.
 
-**Security note, blocking.** `/api/capture` today uploads with `access: "public"` (`app/api/capture/route.ts:144`). Anyone with the blob URL reads the file. Fine for your own notes, unacceptable once client freelance material enters. v2 uploads private and serves through signed URLs. This must land before any external project data touches Trove. It is called out again in the security section.
+**Security status.** New uploads are private and files are served through an authenticated item route. Legacy public blob URLs may still exist and should be migrated or retired separately.
 
 ## Item lifecycle, unchanged in spirit
 
@@ -171,29 +196,30 @@ The current `ingestItem` Inngest function already does the right thing: mark pro
 
 Extractors already cover pdf, image, docx, xlsx, textfile, url. The Intel Python has battle-tested logic for mail body cleaning and transcript normalisation. We port the cleaning rules, not the runtime.
 
-## Local daemon: reuse the Python
+## Local runtime: Tauri app with temporary Python compatibility
 
-The daemon is the fastest path to dogfooding and it reuses code that already works. It is a thin adaptation of the Intel scripts, not a rewrite.
+The signed Tauri menu bar app is the intended local runtime. Intel's Python scripts remain useful reference implementations and can post through the same ingest contract during migration.
 
-What it is: a small Python process on the Mac, scheduled by launchd (the Intel YouTube miner already runs this way), that reads local sources and posts to `/api/ingest` with an ingest token.
+The local runtime reads configured local sources and posts files or extracted mail through `/api/ingest` with an ingest token and an explicit project id. It never posts a local path as if it were file content.
 
 Mapping from what exists today:
 
 | Intel script                    | becomes source kind | change needed |
 |---------------------------------|---------------------|---------------|
 | `ingest_newsletters.py`         | `mail_folder`       | instead of writing `.txt` to `raw/`, POST body + subject as a `text` item |
-| `youtube_transcript_miner.py`   | `youtube_channel`   | can stay local at first, later move to a cloud fetcher; POST transcript as `text` |
+| `youtube_transcript_miner.py`   | project-specific tool | stays outside Trove Core; generic transcription can be added later |
 | `watch_kb.py`                   | `folder_watch`      | on new file, POST the file to `/api/ingest` |
-| `sort_kb.py`, `process_kb.py`   | retired             | sorting, tagging, enrichment now happen in Trove's cloud pipeline |
+| `sort_kb.py`, `process_kb.py`   | retired             | sorting, tagging and enrichment move to Trove's ingestion worker |
 
 Config lives in Trove (`source.config`) and the daemon reads it once per run, or we start even simpler with a local config file and graduate to server-driven config. Checkpoints move from `checkpoint.json` into `source.cursor`, so re-runs are idempotent across machines.
 
-Net effect: the Intel pipeline stops being a separate island writing `kb.json` and becomes three Trove sources feeding one project. The desktop `intel/` folder can keep running until the daemon reaches parity, then retire.
+Net effect: Intel stops being a separate island writing `kb.json`. Its general mail and watched-folder patterns become Trove sources, while its specialized podcast mining can continue as a project-specific tool that posts selected results to Trove.
 
-## Mail architecture, two stages
+## Mail architecture
 
-- **Stage 1, local mbox, now.** Reuse `ingest_newsletters.py`. It already scans a curated `Newsletters.mbox`, applies a promo blocklist, decodes headers, dedups. Point it at `/api/ingest` instead of `raw/`. Ships this week, zero new external services.
-- **Stage 2, cloud IMAP or Gmail, later.** For the product, and for pulling a client's shared mailbox, connect server-side over IMAP or the Gmail API and read a labelled folder. Works when the Mac is off. More setup (OAuth, token storage), so it waits until the local path proves the value.
+- **Gmail connection.** Connect once at account level, then let each project select its own label or folder, source rule and schedule.
+- **Apple Mail or local mailbox.** The Tauri app reads locally permitted mail and posts selected messages through `/api/ingest`. The local mailbox path stays on the Mac.
+- **Intel compatibility.** `ingest_newsletters.py` can temporarily prove the flow, but it is not the long-term product UI or runtime.
 
 Both write the same `text` items through the same seam. Sender filters and dedup rules are shared config on the `mail_folder` and future `imap` source kinds.
 
@@ -213,7 +239,9 @@ The current pipeline engine stays: filter items, run one Haiku prompt, shape the
 3. **Richer triggers, later.** Cron now. Add "on new item matching filter" as an event trigger once sources are in, so a pipeline can react to arrivals, not just wake on a clock.
 4. **Answers model.** Keep Haiku for cheap digest and list shapes. Use a stronger model (Sonnet class) for the chat answer path and for retrieval-heavy pipelines. Reconcile model ids while here, see the config cleanup below.
 
-The weekly digest becomes just one seeded pipeline per project, which is already how `weeklyDigest` half-works today.
+The weekly digest is already implemented as one seeded pipeline per project. It remains a normal pipeline rather than a separate subsystem. The current seed runs Sunday at 09:00, while the product templates specify Friday at 15:00, and the Digest page depends on the seeded name `weekly-digest`. Unify the schedule and remove the magic-name dependency when the template picker is built.
+
+The first product templates are **Morning brief** on weekday mornings and **Weekly summary** on Friday afternoon. A project may install both. Each template creates an ordinary, independently editable pipeline with its own schedule, source scope, delivery and run history. When email is selected, the run sends the report and records recipient and delivery status; the same report remains stored in Trove. Plain-language custom creation remains available after the template picker.
 
 ## Inngest topology after v2
 
@@ -223,15 +251,16 @@ The weekly digest becomes just one seeded pipeline per project, which is already
 | `sync-due-sources`  | cron `*/10 * * * *`  | new. Polls due cloud sources, emits `item/captured` |
 | `cluster-topics`    | cron `0 4 * * *`     | cluster per project, not per user |
 | `run-due-pipelines` | cron `*/10 * * * *`  | scope by project, optional retrieval |
-| `weekly-digest`     | cron `0 9 * * 0`     | fold into a per-project seeded pipeline |
 
 Slack `events` mode adds a plain route (`/api/slack/events`), outside Inngest, that creates items directly.
 
-## Config and model cleanup, while we are in here
+## Model configuration
 
-- **Embeddings.** Reality is Gemini `gemini-embedding-001` at 768 dims (`lib/ai/embed.ts`), and the schema is `vector(768)`. The root CLAUDE.md still says "OpenAI text-embedding-3-small, 1536 dims." That line is wrong. Fix CLAUDE.md to match the code.
-- **Answer and enrich models.** Functions use `claude-haiku-4-5`. CLAUDE.md says "Sonnet 4.6 for answers." Pick current ids (Sonnet class for answers, Haiku 4.5 for extract and enrich) and make CLAUDE.md and code agree.
-- **Uncommitted work.** `app/api/ask/route.ts`, `app/ask-overlay.tsx`, `lib/ai/embed.ts` are modified and uncommitted. Commit or discard before starting v2 so we branch from a known state.
+- **Embeddings:** Gemini `gemini-embedding-001`, 768 dimensions.
+- **Answers and pipeline compilation:** Claude Sonnet 4.6.
+- **Extraction, enrichment and ordinary pipeline runs:** Claude Haiku 4.5.
+
+The code, root `CLAUDE.md` and the generated 0001 migration agree on these choices. The fresh-database migration path has been executed and verified against a disposable empty database via `pnpm db:verify-fresh` (see `docs/review-fix-plan-2026-07-21.md`).
 
 ## Left sidebar shell, structure only
 
@@ -257,24 +286,33 @@ The top nav (`app/shell.tsx`, `MODULES` array) becomes a left sidebar. Visual de
 
 - **Project switcher** at the top of the sidebar sets the active project. Active project id lives in the route (`/p/[projectSlug]/...`) so it is shareable and server-renderable, and in a small client context for the switcher. Prefer the route as source of truth, a lesson already learned about Next.js router cache freezing `useState`.
 - **New "sources" section** is where you add and monitor connectors: last sync, item counts, errors. This is the surface the old Intel folder never had.
-- Everything else (capture, library, wiki, pipelines, ask) is the existing modules, re-homed and project-scoped.
+- Capture, Library, Sources, Pipelines, Digest and Ask are existing project surfaces. Topic clustering exists in the backend but has no current browsing route.
 
 ## Build order
 
-Phased so each phase is shippable and dogfoodable on its own.
+Phased by dependency rather than by source type:
 
-- **Phase 0, hygiene.** Commit or discard the three modified files. Fix the CLAUDE.md embedding and model lines. Flip blob uploads to private. Small, unblocks everything.
-- **Phase 1, projects.** `project` table, backfill, `project_id` everywhere, scope all queries, retire `space`. Route becomes `/p/[slug]/...`. Sidebar skeleton with the project switcher.
-- **Phase 2, the seam plus daemon.** `/api/ingest` with ingest tokens, `source` and `ingest_token` tables, the Python daemon posting `folder_watch` and `drop`. First real end to end: drop a PDF locally, it lands in a project.
-- **Phase 3, mail.** Point `ingest_newsletters.py` at the seam as a `mail_folder` source. Now newsletters flow in without `kb.json`.
-- **Phase 4, cloud sources.** `sync-due-sources`, then `youtube_channel` and `rss`. Retire the standalone Intel YouTube miner once at parity.
-- **Phase 5, pipelines v2.** Project scope, optional retrieval, seed the per-project weekly digest.
-- **Phase 6, Slack plus scrapers.** `slack_channel` poll then events, `web_scrape`. Then the sidebar visual pass once you send the design.
+1. **Migration and isolation.** Generate real migrations for the current schema and 768-dimensional vectors. Backfill projects, make required project relations non-null, reject invalid project ids, validate source ownership and add isolation tests.
+2. **One ingest path.** Move browser capture and Tauri from `/api/capture` to `/api/ingest`. Tauri sends real files with ingest token and explicit project. Remove `/api/capture` after clients have moved.
+3. **Stabilise existing product.** Verify Capture, Library, Ask, RSS, web, Slack, Pipelines and Digest end to end. Add Morning brief and Friday weekly summary as starter templates on the existing pipeline engine. Keep private blob access and add focused ingestion and pipeline tests.
+4. **Source foundation.** Add connected accounts, versioned source rules, source runs and immutable originals. Expose setup preview, health and retry in the UI.
+5. **Review and deletion.** Add review decisions, project trash, permanent blob/artifact deletion and a minimal deletion marker that prevents unwanted re-import. Review must exist before mail can offer “add to review queue.”
+6. **Mail and watched folders.** Build Gmail and local mailbox/folder flows on the shared source foundation, including its review-queue branch.
+7. **Persist Ask conversations.** Write Ask threads and messages to `conversation` and `message`, including citations and follow-up context, within the active project.
+8. **Later expansion.** Generic YouTube transcription, source and pipeline templates, shared projects and vertical packs.
 
 ## Open questions, deferred
 
-- **Item in two projects.** Hard walls say no. If a shared reference (one PDF, two clients) becomes a real need, add an explicit "copy to project" action rather than softening the wall.
-- **Ingest token scope.** One token per user, or one per source or machine. Start with one per user, tighten if the daemon fleet grows.
-- **Where source config lives.** Server-driven from day one, or local config file first. Simpler to start local and graduate.
-- **YouTube runtime.** Keep local (reuse the miner) or move to a cloud fetcher. Local first, cloud when the daemon is a liability.
-- **Tauri timing.** The daemon buys time. Fold local sources into the signed menu bar app when the product story needs one binary, not before.
+- **Move or copy across projects.** Manual material (`source_id = null`) can move by reassigning the item and chunks, then re-clustering topics. Material from an automatic source is copied instead, because a source belongs to exactly one project and moving the same item would create a cross-project `source_id`. The copied item belongs to the destination and is processed there; the original remains in its source project.
+- **Ingest token granularity.** Project locking is defined. Whether users should issue one token per user, source or machine remains a product and operations choice.
+- **Local source configuration cache.** The server owns the source configuration. Decide how much the Tauri app caches for offline resilience.
+- **Generic YouTube runtime.** Decide cloud or local only when generic transcription becomes a core source. Tactical Athlete's specialized miner remains separate.
+- **Tauri distribution.** Signing, notarization and update delivery remain product-release work after project-scoped ingest is correct.
+
+## Avgränsat till senare
+
+- `source_rule`-tabellen är inte byggd; urvals- och granskningsregler ligger tills vidare i `source.config`.
+- UI för att skapa och återkalla ingest-tokens är inte byggt.
+- Slack-konfigurationen lagrar i dag bara `channelId`; `teamId` och `mode` saknas.
+- Uppladdningsprocenten i capture-wireframen saknar teknisk backing.
+- `[id]`-endpoints för item, source och pipeline är i dag endast user-scopade, inte projektscopade. Det räcker som isolering så länge projekt inte delas, men projektscope måste läggas till innan projektdelning byggs.

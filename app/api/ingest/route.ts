@@ -1,26 +1,74 @@
 import { NextRequest, NextResponse } from "next/server";
-import { put } from "@vercel/blob";
 import { and, eq } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
-import { inngest } from "@/lib/inngest/client";
-import { resolveProjectId } from "@/lib/projects";
-import { resolveIngestAuth, IngestAuth } from "@/lib/ingest-auth";
+import { schema } from "@/lib/db";
+import { InvalidProjectError, isUuid } from "@/lib/projects";
+import {
+  InvalidSourceError,
+  LockedProjectError,
+  enforceTokenLock,
+  verifySourceOwnership,
+} from "@/lib/ingest-validation";
+import { IngestAuth } from "@/lib/ingest-auth";
 import { MAX_FILE_BYTES, classifyFile, contentTypeFor, isUrl } from "@/lib/capture";
+import { ingestDeps } from "./deps";
 
 // The capture seam: one endpoint, two auth modes (Clerk session for the
 // browser, ingest token for the local daemon and other server callers).
 // See docs/architecture-v2.md.
 export async function POST(req: NextRequest) {
-  const ingestAuth = await resolveIngestAuth(req);
+  const ingestAuth = await ingestDeps.resolveIngestAuth(req);
   if (!ingestAuth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const contentType = req.headers.get("content-type") ?? "";
-  if (contentType.includes("multipart/form-data")) {
-    return handleFile(req, ingestAuth);
+  try {
+    const contentType = req.headers.get("content-type") ?? "";
+    if (contentType.includes("multipart/form-data")) {
+      return await handleFile(req, ingestAuth);
+    }
+    return await handleJson(req, ingestAuth);
+  } catch (error) {
+    if (error instanceof LockedProjectError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    if (error instanceof InvalidProjectError || error instanceof InvalidSourceError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
   }
-  return handleJson(req, ingestAuth);
+}
+
+async function resolveIngestProjectId(
+  ingestAuth: IngestAuth,
+  providedProjectId: unknown
+): Promise<string> {
+  enforceTokenLock(ingestAuth.lockedProjectId, providedProjectId);
+  return ingestDeps.requireProjectId(
+    ingestAuth.userId,
+    ingestAuth.lockedProjectId ?? providedProjectId
+  );
+}
+
+// The row is fetched by id alone; ownership and project membership are
+// decided in verifySourceOwnership so tests can exercise the real check.
+async function requireSource(
+  userId: string,
+  projectId: string,
+  sourceId: unknown
+): Promise<string | null> {
+  if (sourceId == null || sourceId === "") return null;
+  if (!isUuid(sourceId)) throw new InvalidSourceError();
+
+  const rows = await ingestDeps.db
+    .select({
+      id: schema.source.id,
+      userId: schema.source.userId,
+      projectId: schema.source.projectId,
+    })
+    .from(schema.source)
+    .where(eq(schema.source.id, sourceId))
+    .limit(1);
+  return verifySourceOwnership(userId, projectId, rows[0]);
 }
 
 async function findDuplicate(
@@ -29,7 +77,7 @@ async function findDuplicate(
   externalId: string | null
 ) {
   if (!sourceId || !externalId) return null;
-  const rows = await db
+  const rows = await ingestDeps.db
     .select({ id: schema.item.id, status: schema.item.status })
     .from(schema.item)
     .where(
@@ -77,7 +125,12 @@ async function handleJson(req: NextRequest, ingestAuth: IngestAuth) {
     );
   }
 
-  const sourceId = body.sourceId ?? null;
+  const projectId = await resolveIngestProjectId(ingestAuth, body.projectId);
+  const sourceId = await requireSource(
+    ingestAuth.userId,
+    projectId,
+    body.sourceId
+  );
   const externalId = body.externalId ?? null;
 
   const duplicate = await findDuplicate(ingestAuth.userId, sourceId, externalId);
@@ -89,12 +142,7 @@ async function handleJson(req: NextRequest, ingestAuth: IngestAuth) {
     });
   }
 
-  const projectId = await resolveProjectId(
-    ingestAuth.userId,
-    body.projectId ?? ingestAuth.defaultProjectId
-  );
-
-  const [item] = await db
+  const [item] = await ingestDeps.db
     .insert(schema.item)
     .values({
       userId: ingestAuth.userId,
@@ -109,7 +157,7 @@ async function handleJson(req: NextRequest, ingestAuth: IngestAuth) {
     })
     .returning({ id: schema.item.id });
 
-  inngest.send({ name: "item/captured", data: { itemId: item.id } }).catch((e) =>
+  ingestDeps.inngest.send({ name: "item/captured", data: { itemId: item.id } }).catch((e) =>
     console.warn("[inngest] send failed, item will be processed on next poll:", e?.message)
   );
 
@@ -138,9 +186,17 @@ async function handleFile(req: NextRequest, ingestAuth: IngestAuth) {
     );
   }
 
+  const projectId = await resolveIngestProjectId(
+    ingestAuth,
+    form.get("projectId")
+  );
   const sourceIdField = form.get("sourceId");
   const externalIdField = form.get("externalId");
-  const sourceId = typeof sourceIdField === "string" && sourceIdField ? sourceIdField : null;
+  const sourceId = await requireSource(
+    ingestAuth.userId,
+    projectId,
+    sourceIdField
+  );
   const externalId =
     typeof externalIdField === "string" && externalIdField ? externalIdField : null;
 
@@ -156,22 +212,15 @@ async function handleFile(req: NextRequest, ingestAuth: IngestAuth) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const blobKey = `${kind}/${ingestAuth.userId}/${Date.now()}-${safeName}`;
 
-  const blob = await put(blobKey, file, {
+  const blob = await ingestDeps.put(blobKey, file, {
     access: "private",
     contentType: contentTypeFor(kind, file),
     token: process.env.PRIVATE_BLOB_READ_WRITE_TOKEN,
   });
 
-  const projectIdField = form.get("projectId");
-  const projectId = await resolveProjectId(
-    ingestAuth.userId,
-    (typeof projectIdField === "string" ? projectIdField : null) ??
-      ingestAuth.defaultProjectId
-  );
-
   const capturedAtField = form.get("capturedAt");
 
-  const [item] = await db
+  const [item] = await ingestDeps.db
     .insert(schema.item)
     .values({
       userId: ingestAuth.userId,
@@ -188,7 +237,7 @@ async function handleFile(req: NextRequest, ingestAuth: IngestAuth) {
     })
     .returning({ id: schema.item.id });
 
-  inngest.send({ name: "item/captured", data: { itemId: item.id } }).catch((e) =>
+  ingestDeps.inngest.send({ name: "item/captured", data: { itemId: item.id } }).catch((e) =>
     console.warn("[inngest] send failed, item will be processed on next poll:", e?.message)
   );
 

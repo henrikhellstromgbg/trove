@@ -36,10 +36,10 @@ export const source = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id").notNull(),
-    projectId: uuid("project_id").references(() => project.id, {
-      onDelete: "cascade",
-    }),
-    kind: text("kind").notNull(), // drop | mail_folder | folder_watch | youtube_channel | rss | web_scrape | slack_channel
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(), // mail_folder | folder_watch | youtube_channel | rss | web_scrape | slack_channel
     name: text("name").notNull(),
     config: jsonb("config").notNull().default({}),
     runtime: text("runtime").notNull(), // cloud | local
@@ -61,8 +61,9 @@ export const ingestToken = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id").notNull(),
     tokenHash: text("token_hash").notNull(),
+    // Project-bound tokens must disappear with the project, never become unlocked.
     projectId: uuid("project_id").references(() => project.id, {
-      onDelete: "set null",
+      onDelete: "cascade",
     }),
     label: text("label"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

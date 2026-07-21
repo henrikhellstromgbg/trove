@@ -1,6 +1,6 @@
 # CLAUDE.md, Trove
 
-Personal knowledge base for people drowning in inputs. Drop anything in, ask it anything later, with auto-generated topic pages and one weekly digest pipeline. v0.1 ships as a signed Mac menu bar app over a Next.js backend.
+Project-scoped personal knowledge base for people drowning in inputs. Capture files, text, URLs and recurring sources, ask with citations, and create recurring pipeline reports. A Tauri menu bar app is the local capture runtime over a Next.js backend.
 
 Audience is designers, freelancers, indie operators, researchers. Not "normal people."
 
@@ -10,11 +10,11 @@ Audience is designers, freelancers, indie operators, researchers. Not "normal pe
 - Neon Postgres with pgvector
 - Drizzle ORM (Neon serverless driver), drizzle-kit for migrations
 - Clerk for auth (email magic links)
-- Inngest for background jobs and crons (planned)
-- Vercel Blob for file storage (planned)
+- Inngest for background jobs and crons
+- Private Vercel Blob storage for uploaded files
 - Anthropic Claude: Sonnet 4.6 for answers, Haiku 4.5 for extract/enrich
 - Gemini gemini-embedding-001 for embeddings (768 dims)
-- Tauri 2 for the macOS menu bar shell (planned, week 2)
+- Tauri 2 for the partial macOS menu bar shell
 - Hosting on Vercel
 
 ## Folder structure
@@ -29,11 +29,11 @@ trove/
 │   └── globals.css
 ├── lib/
 │   └── db/
-│       ├── schema.ts          Drizzle schema, 7 tables
+│       ├── schema.ts          Drizzle schema, 10 tables
 │       ├── index.ts           Drizzle client (Neon serverless + ws polyfill)
 │       ├── migrate.ts         Migration runner, enables pgvector
 │       └── migrations/        Generated SQL
-├── middleware.ts              Clerk middleware, protects everything except sign-in, sign-up, /api/inngest
+├── middleware.ts              Clerk middleware; ingest and Inngest have route-specific auth
 ├── drizzle.config.ts          Loads .env.local explicitly
 ├── .env.local                 Real keys (gitignored)
 └── .env.local.example         Placeholders for all env vars
@@ -41,11 +41,14 @@ trove/
 
 ## Database schema
 
-Seven tables in `lib/db/schema.ts`. All keyed by `user_id` (Clerk user id, stored as text). Every query must filter by `user_id`.
+Ten tables in `lib/db/schema.ts`. `project` is the hard knowledge boundary. Every query must validate `user_id` and scope to a verified `project_id`, directly or through an owning relation.
 
 | Table          | Purpose |
 |----------------|---------|
-| `item`         | One captured thing (text, url, pdf, image, audio). Status flows pending to processing to ready. |
+| `project`      | Hard container for all knowledge, sources, conversations and pipelines. |
+| `source`       | Project-owned recurring input. RSS, web scrape and Slack poll are implemented. |
+| `ingest_token` | Revocable token for local and server callers of `/api/ingest`. |
+| `item`         | One captured thing (text, url, pdf or image). Status flows pending to processing to ready. |
 | `chunk`        | Text chunk of an item with `vector(768)` embedding. HNSW cosine index. Powers retrieval. |
 | `conversation` | Chat thread against the corpus. |
 | `message`      | One message in a conversation, with `citations` JSONB array of item ids. |
@@ -65,7 +68,9 @@ ANTHROPIC_API_KEY                  Claude for answer, extract, enrich
 GEMINI_API_KEY                     Embeddings only
 INNGEST_EVENT_KEY                  Inngest (week 1)
 INNGEST_SIGNING_KEY                Inngest (week 1)
-BLOB_READ_WRITE_TOKEN              Vercel Blob (week 1)
+PRIVATE_BLOB_READ_WRITE_TOKEN      Private Vercel Blob store
+RESEND_API_KEY                     Optional pipeline email delivery
+SLACK_BOT_TOKEN                    Optional Slack poll source
 ```
 
 ## Scripts
@@ -75,6 +80,7 @@ pnpm dev          Next.js dev server on :3000
 pnpm build        Next.js production build
 pnpm db:generate  drizzle-kit generate, creates SQL from schema
 pnpm db:migrate   tsx lib/db/migrate.ts, enables pgvector then applies migrations
+pnpm db:verify-fresh  applies 0000 + 0001 to a separate empty VERIFY_DATABASE_URL and compares it with schema.ts
 pnpm db:push      drizzle-kit push, skips migration files (dev only)
 pnpm db:studio    drizzle-kit studio, web UI on the DB
 ```
@@ -96,37 +102,35 @@ Already done in `drizzle.config.ts` and `lib/db/migrate.ts`.
 
 **Clerk v7 control components.** `SignedIn` and `SignedOut` are gone. Use `<Show when="signed-in">` and `<Show when="signed-out">` from `@clerk/nextjs`. Note the kebab-case condition strings.
 
-**User scoping.** Every DB query must include `where userId = currentUserId`. Items, chunks, conversations, pipelines, topics, all of it. No cross-tenant reads, ever.
+**Project scoping.** Every DB query must validate `userId = currentUserId` and the active project. Do not accept an item, source or pipeline id without verifying that it belongs to the same user and project. No cross-project reads, ever.
 
-**Naming.** Tables and columns are snake_case in SQL, camelCase in TypeScript via Drizzle. Schema names: `item`, `chunk`, `conversation`, `message`, `pipeline`, `pipeline_run`, `topic`. Singular nouns.
+**Migration safety.** `0000 + 0001` is only the fresh-install path for an empty database. Never run it against the existing db:push-created production database. Its backup, comparison and baselining procedure is documented in [docs/review-fix-plan-2026-07-21.md](docs/review-fix-plan-2026-07-21.md), under “Reconciliation for the existing db:push database”; document and test that procedure on a restored copy before any production action.
 
-## v0.1 scope
+**Naming.** Tables and columns are snake_case in SQL, camelCase in TypeScript via Drizzle. Schema names are singular nouns. Sources import material. Pipelines read a project's library and create recurring results. Never call a source selection rule a pipeline.
 
-Reference in user memory under `project-trove`. Summary:
+## Product boundary
 
-- Capture: drop to icon, ⌃⇧Space ask window
-- Recall: chat answers with citations
-- Auto-wiki view: nightly clustering job, browseable topic pages
-- One pipeline: weekly digest of saved items, with a "forgotten" serendipity pick
-- Tauri 2 Mac menu bar shell, signed and notarized DMG
-- Hotkey is ⌃⇧Space (not ⌘⇧Space, that collides with macOS character viewer)
-
-Deferred to v0.2: user-defined pipelines, email-in, voice notes, Safari share extension.
+- Project is the only hard content boundary in v2. The longer-term product plan's `Case` maps to Project for now.
+- Current core: project navigation, Capture, Library, Ask, RSS/web/Slack sources, user-defined pipelines and seeded weekly Digest.
+- Next core: one ingest path, strict project isolation, Morning brief and Friday weekly summary templates, connected accounts, source runs/originals, mail, watched folders, review and trash.
+- Later: more specialized pipeline/source templates, generic YouTube transcription, shared projects, vertical packs, voice notes and browser extensions.
+- Tactical Athlete's specialized long-podcast mining remains a project-specific tool outside Trove Core.
 
 ## Build state
 
 | Step | State | Notes |
 |------|-------|-------|
 | Scaffold Next.js 16 | Done | App Router, Tailwind, Turbopack, dev server returns HTTP 200 |
-| Neon + Drizzle + pgvector | Done | Schema applied, pgvector extension enabled |
-| Clerk auth | Code complete | Awaiting Clerk dashboard setup and keys in .env.local |
-| /api/capture + Vercel Blob | Pending | |
-| Inngest + ingest worker | Pending | |
-| /api/ask retrieval | Pending | |
-| Auto-wiki clustering | Done | Nightly cron 4am UTC, greedy clustering on item summaries, `/wiki` page renders topics |
-| Weekly digest pipeline | Done | Sunday 9am UTC cron, `/digest` page, idempotent per week |
-| Minimal web UI | Pending | |
-| Tauri 2 shell | Partial | Scaffolded at `desktop/`. Tray, hotkey, window, capture POST written. Rust not installed yet, run `desktop/README.md` setup then `pnpm tauri dev`. |
+| Neon + Drizzle + pgvector | Partial | 0001 brings fresh installs to the current schema and vector(768); verified against a disposable database via `pnpm db:verify-fresh`. Prod (db:push-created) still needs the documented reconciliation and baselining. |
+| Clerk auth | Done | Protects application routes; `/api/ingest` supports its own Clerk/token auth. |
+| Capture + private Vercel Blob | Done | Browser still uses legacy `/api/capture`; migration to `/api/ingest` remains. |
+| Inngest + ingest worker | Done | Extraction, chunking, embedding, enrichment, topic clustering, source sync and due pipelines exist. |
+| Ask retrieval | Done | Streams project-scoped cited answers and requires an owned project id; conversation persistence remains. |
+| Topic clustering | Backend only | Nightly project-scoped clustering exists; no current topic browsing route. |
+| Sources | Partial | RSS, web and Slack poll exist. Mail, watched folders, connected accounts and source runs remain. |
+| User-defined pipelines | Done | Plain-language compile, scheduling, run-now, pause, history, email and Digest exist. |
+| Web UI | Partial | Ask, Library, Sources and Pipelines exist. Item detail, review, trash and Trove settings are planned. |
+| Tauri 2 shell | Partial | Tray, hotkey and capture POST exist, but it still targets `/api/capture` and does not send project-scoped file uploads. |
 | Sign, notarize, DMG | Pending | Apple Developer Program signup needed first |
 
 ## Reference architecture

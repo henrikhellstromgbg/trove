@@ -72,21 +72,58 @@ export async function listProjects(userId: string): Promise<Project[]> {
     .orderBy(asc(schema.project.createdAt));
 }
 
-// Validate an optional caller-supplied project id against the owner, falling
-// back to the default inbox project. Used by capture and pipeline creation.
-export async function resolveProjectId(
-  userId: string,
-  provided?: string | null
-): Promise<string> {
-  if (provided) {
-    const rows = await db
-      .select({ id: schema.project.id })
-      .from(schema.project)
-      .where(and(eq(schema.project.id, provided), eq(schema.project.userId, userId)))
-      .limit(1);
-    if (rows[0]) return rows[0].id;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export class InvalidProjectError extends Error {
+  constructor(message = "Invalid projectId") {
+    super(message);
+    this.name = "InvalidProjectError";
   }
-  return getDefaultProjectId(userId);
+}
+
+export function isUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_PATTERN.test(value);
+}
+
+// UUID text is case-insensitive; normalize before any string comparison.
+export function normalizeUuid(value: string): string {
+  return value.toLowerCase();
+}
+
+export type ProjectOwnershipRow = { id: string; userId: string };
+
+// The single ownership decision point, pure so tests can feed it real rows.
+// Removing either comparison must fail the isolation tests.
+export function verifyProjectOwnership(
+  userId: string,
+  provided: string,
+  row: ProjectOwnershipRow | undefined
+): string {
+  if (!row) throw new InvalidProjectError();
+  if (row.userId !== userId) throw new InvalidProjectError();
+  if (normalizeUuid(row.id) !== normalizeUuid(provided)) {
+    throw new InvalidProjectError();
+  }
+  return row.id;
+}
+
+// An omitted project id uses the user's inbox. An explicitly supplied id must
+// be a valid UUID owned by the user and never silently falls back. The row is
+// fetched by id alone; ownership is decided in verifyProjectOwnership.
+export async function requireProjectId(
+  userId: string,
+  provided?: unknown
+): Promise<string> {
+  if (provided == null) return getDefaultProjectId(userId);
+  if (!isUuid(provided)) throw new InvalidProjectError();
+
+  const rows = await db
+    .select({ id: schema.project.id, userId: schema.project.userId })
+    .from(schema.project)
+    .where(eq(schema.project.id, normalizeUuid(provided)))
+    .limit(1);
+  return verifyProjectOwnership(userId, provided, rows[0]);
 }
 
 // One project by slug, scoped to the owner. Null if not found or not theirs.

@@ -1,10 +1,7 @@
-import { auth } from "@clerk/nextjs/server";
 import { and, eq, cosineDistance } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
-import { db, schema } from "@/lib/db";
-import { embedQuery } from "@/lib/ai/embed";
-
-const anthropic = new Anthropic();
+import { schema } from "@/lib/db";
+import { InvalidProjectError } from "@/lib/projects";
+import { askDeps } from "./deps";
 
 const SYSTEM_PROMPT = `You answer questions using ONLY the user's own saved content, which is provided as numbered sources.
 
@@ -17,7 +14,7 @@ Rules:
 type AskBody = { question?: string; projectId?: string };
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
+  const { userId } = await askDeps.auth();
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -33,7 +30,19 @@ export async function POST(req: Request) {
   if (!question) {
     return Response.json({ error: "question required" }, { status: 400 });
   }
-  const projectId = body.projectId;
+  if (body.projectId == null) {
+    return Response.json({ error: "projectId required" }, { status: 400 });
+  }
+
+  let projectId: string;
+  try {
+    projectId = await askDeps.requireProjectId(userId, body.projectId);
+  } catch (error) {
+    if (error instanceof InvalidProjectError) {
+      return Response.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  }
 
   const encoder = new TextEncoder();
 
@@ -44,10 +53,10 @@ export async function POST(req: Request) {
       };
 
       try {
-        const queryVec = await embedQuery(question);
+        const queryVec = await askDeps.embedQuery(question);
         const distance = cosineDistance(schema.chunk.embedding, queryVec);
 
-        const matches = await db
+        const matches = await askDeps.db
           .select({
             chunkText: schema.chunk.text,
             itemId: schema.chunk.itemId,
@@ -59,7 +68,7 @@ export async function POST(req: Request) {
           .where(
             and(
               eq(schema.chunk.userId, userId),
-              projectId ? eq(schema.chunk.projectId, projectId) : undefined
+              eq(schema.chunk.projectId, projectId)
             )
           )
           .orderBy(distance)
@@ -111,7 +120,7 @@ export async function POST(req: Request) {
           .map((it) => `[${it.n}] ${it.title}\n${it.chunks.join("\n\n")}`)
           .join("\n\n---\n\n");
 
-        const claudeStream = anthropic.messages.stream({
+        const claudeStream = askDeps.anthropic.messages.stream({
           model: "claude-sonnet-4-6",
           max_tokens: 1024,
           system: SYSTEM_PROMPT,

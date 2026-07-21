@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { put } from "@vercel/blob";
-import { db, schema } from "@/lib/db";
-import { inngest } from "@/lib/inngest/client";
-import { resolveProjectId } from "@/lib/projects";
+import { schema } from "@/lib/db";
+import { InvalidProjectError } from "@/lib/projects";
 import { MAX_FILE_BYTES, classifyFile, contentTypeFor, isUrl } from "@/lib/capture";
+import { captureDeps } from "./deps";
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth();
+  const { userId } = await captureDeps.auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -50,9 +48,17 @@ async function handleJson(req: NextRequest, userId: string) {
     );
   }
 
-  const projectId = await resolveProjectId(userId, body.projectId);
+  let projectId: string;
+  try {
+    projectId = await captureDeps.requireProjectId(userId, body.projectId);
+  } catch (error) {
+    if (error instanceof InvalidProjectError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  }
 
-  const [item] = await db
+  const [item] = await captureDeps.db
     .insert(schema.item)
     .values({
       userId,
@@ -64,7 +70,7 @@ async function handleJson(req: NextRequest, userId: string) {
     })
     .returning({ id: schema.item.id });
 
-  inngest.send({ name: "item/captured", data: { itemId: item.id } }).catch((e) =>
+  captureDeps.inngest.send({ name: "item/captured", data: { itemId: item.id } }).catch((e) =>
     console.warn("[inngest] send failed, item will be processed on next poll:", e?.message)
   );
 
@@ -93,22 +99,27 @@ async function handleFile(req: NextRequest, userId: string) {
     );
   }
 
+  const providedProjectId = form.get("projectId");
+  let projectId: string;
+  try {
+    projectId = await captureDeps.requireProjectId(userId, providedProjectId);
+  } catch (error) {
+    if (error instanceof InvalidProjectError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  }
+
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const blobKey = `${kind}/${userId}/${Date.now()}-${safeName}`;
 
-  const blob = await put(blobKey, file, {
+  const blob = await captureDeps.put(blobKey, file, {
     access: "private",
     contentType: contentTypeFor(kind, file),
     token: process.env.PRIVATE_BLOB_READ_WRITE_TOKEN,
   });
 
-  const providedProjectId = form.get("projectId");
-  const projectId = await resolveProjectId(
-    userId,
-    typeof providedProjectId === "string" ? providedProjectId : null
-  );
-
-  const [item] = await db
+  const [item] = await captureDeps.db
     .insert(schema.item)
     .values({
       userId,
@@ -120,7 +131,7 @@ async function handleFile(req: NextRequest, userId: string) {
     })
     .returning({ id: schema.item.id });
 
-  inngest.send({ name: "item/captured", data: { itemId: item.id } }).catch((e) =>
+  captureDeps.inngest.send({ name: "item/captured", data: { itemId: item.id } }).catch((e) =>
     console.warn("[inngest] send failed, item will be processed on next poll:", e?.message)
   );
 
