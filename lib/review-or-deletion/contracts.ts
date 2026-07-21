@@ -114,9 +114,12 @@ export function buildReviewDecisionUpdate(
   }
 
   if (decision === "approve") {
+    // Held review items were never processed, so approval sends them back to
+    // "pending" and re-emits item/captured; the normal extract/chunk/embed
+    // pipeline then makes them "ready" and reachable by Ask.
     return {
       itemUpdate: {
-        status: "ready",
+        status: "pending",
         trashedAt: null,
         restoreStatus: null,
       } as const,

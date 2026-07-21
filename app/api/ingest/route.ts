@@ -14,6 +14,10 @@ import {
   DeletedExternalItemError,
   assertExternalItemNotDeleted,
 } from "@/lib/review-or-deletion/import-guard";
+import {
+  importedItemStatus,
+  type ReviewCandidate,
+} from "@/lib/sources/review-rules";
 import { ingestDeps } from "./deps";
 
 // The capture seam: one endpoint, two auth modes (Clerk session for the
@@ -76,6 +80,20 @@ async function requireSource(
     .where(eq(schema.source.id, sourceId))
     .limit(1);
   return verifySourceOwnership(userId, projectId, rows[0]);
+}
+
+// A source-attributed item is held for review when the source's active review
+// rule matches. Held items are inserted as "review" and never emitted, so they
+// gain no chunks and stay out of Ask until approved. Manual capture (no source)
+// is never gated.
+async function resolveInitialStatus(
+  projectId: string,
+  sourceId: string | null,
+  candidate: ReviewCandidate
+): Promise<"pending" | "review"> {
+  if (!sourceId) return "pending";
+  const config = await ingestDeps.loadReviewRuleConfig(projectId, sourceId);
+  return importedItemStatus(config, candidate);
 }
 
 async function findDuplicate(
@@ -150,6 +168,13 @@ async function handleJson(req: NextRequest, ingestAuth: IngestAuth) {
     });
   }
 
+  const rawText = body.type === "text" ? body.text : null;
+  const sourceLabel = body.type === "url" ? body.text : body.source ?? null;
+  const status = await resolveInitialStatus(projectId, sourceId, {
+    source: sourceLabel,
+    text: rawText,
+  });
+
   const [item] = await ingestDeps.db
     .insert(schema.item)
     .values({
@@ -158,18 +183,20 @@ async function handleJson(req: NextRequest, ingestAuth: IngestAuth) {
       sourceId,
       externalId,
       type: body.type,
-      rawText: body.type === "text" ? body.text : null,
-      source: body.type === "url" ? body.text : body.source ?? null,
-      status: "pending",
+      rawText,
+      source: sourceLabel,
+      status,
       ...(body.capturedAt ? { capturedAt: new Date(body.capturedAt) } : {}),
     })
     .returning({ id: schema.item.id });
 
-  ingestDeps.inngest.send({ name: "item/captured", data: { itemId: item.id } }).catch((e) =>
-    console.warn("[inngest] send failed, item will be processed on next poll:", e?.message)
-  );
+  if (status === "pending") {
+    ingestDeps.inngest.send({ name: "item/captured", data: { itemId: item.id } }).catch((e) =>
+      console.warn("[inngest] send failed, item will be processed on next poll:", e?.message)
+    );
+  }
 
-  return NextResponse.json({ id: item.id, status: "pending" });
+  return NextResponse.json({ id: item.id, status });
 }
 
 async function handleFile(req: NextRequest, ingestAuth: IngestAuth) {
@@ -228,6 +255,10 @@ async function handleFile(req: NextRequest, ingestAuth: IngestAuth) {
   });
 
   const capturedAtField = form.get("capturedAt");
+  const status = await resolveInitialStatus(projectId, sourceId, {
+    source: file.name,
+    text: null,
+  });
 
   const [item] = await ingestDeps.db
     .insert(schema.item)
@@ -239,16 +270,18 @@ async function handleFile(req: NextRequest, ingestAuth: IngestAuth) {
       type: kind,
       blobUrl: blob.url,
       source: file.name,
-      status: "pending",
+      status,
       ...(typeof capturedAtField === "string" && capturedAtField
         ? { capturedAt: new Date(capturedAtField) }
         : {}),
     })
     .returning({ id: schema.item.id });
 
-  ingestDeps.inngest.send({ name: "item/captured", data: { itemId: item.id } }).catch((e) =>
-    console.warn("[inngest] send failed, item will be processed on next poll:", e?.message)
-  );
+  if (status === "pending") {
+    ingestDeps.inngest.send({ name: "item/captured", data: { itemId: item.id } }).catch((e) =>
+      console.warn("[inngest] send failed, item will be processed on next poll:", e?.message)
+    );
+  }
 
-  return NextResponse.json({ id: item.id, status: "pending", kind });
+  return NextResponse.json({ id: item.id, status, kind });
 }

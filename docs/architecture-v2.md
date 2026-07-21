@@ -32,7 +32,7 @@ Decisions taken for this version:
 | One ingest API | Exists | Browser capture and Tauri use `/api/ingest`; `/api/capture` remains temporarily as a compatibility route for older clients. |
 | Private blobs | Exists | New uploads are private and served through an authenticated route. |
 | Source runs and immutable originals | Exists | Source sync records runs and immutable original versions; local and Gmail runtimes remain. |
-| Review, trash and deletion markers | Partial | Project-scoped routes support decisions, trash, restore and retryable permanent deletion. Deletion markers prevent same-source re-import. Source rules are stored but do not yet route items into review; product UI remains. |
+| Review, trash and deletion markers | Partial | Project-scoped routes support decisions, trash, restore and retryable permanent deletion. Deletion markers prevent same-source re-import. An active, version-bound, project-scoped review rule now routes matching items to `review` at import (both source sync and `/api/ingest`); held items are never emitted, so they gain no chunks and stay out of Ask until approval sends them back to `pending`. Product UI remains. |
 | Account connections and settings | Partial | Account metadata and ownership exist. OAuth, credential storage and settings UI are not built. |
 
 ## The one constraint that shapes everything
@@ -297,7 +297,7 @@ Phased by dependency rather than by source type:
 2. **One ingest path.** Move browser capture and Tauri from `/api/capture` to `/api/ingest`. Tauri sends real files with ingest token and explicit project. Remove `/api/capture` after clients have moved.
 3. **Stabilise existing product.** Verify Capture, Library, Ask, RSS, web, Slack, Pipelines and Digest end to end. Add Morning brief and Friday weekly summary as starter templates on the existing pipeline engine. Keep private blob access and add focused ingestion and pipeline tests.
 4. **Source foundation.** Backend complete: connected accounts, versioned source rules, source runs and immutable originals. Setup preview, health and retry UI remain.
-5. **Review and deletion.** Backend foundation complete: review decisions, project trash, restore, retryable permanent blob/artifact deletion and deletion markers. Applying review rules during ingest and product UI remain.
+5. **Review and deletion.** Backend complete: review decisions, project trash, restore, retryable permanent blob/artifact deletion, deletion markers, and review rules applied during import (source sync and `/api/ingest`) that hold matching items for approval. Product UI remains.
 6. **Mail and watched folders.** Build Gmail and local mailbox/folder flows on the shared source foundation, including its review-queue branch.
 7. **Persist Ask conversations.** Complete: Ask writes project-scoped threads and messages, including citations and follow-up intent.
 8. **Later expansion.** Generic YouTube transcription, source templates, shared projects and vertical packs.

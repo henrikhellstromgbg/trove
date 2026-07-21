@@ -6,6 +6,7 @@ import {
   isSupportedSourceRuleType,
   readJsonObject,
 } from "@/lib/sources/contracts";
+import { parseReviewRuleConfig } from "@/lib/sources/review-rules";
 import { sourceRuleDeps } from "./deps";
 
 async function resolveProjectId(
@@ -47,6 +48,11 @@ export async function POST(
   let config: Record<string, unknown>;
   try {
     config = readJsonObject(body.config, "config must be an object");
+    // Review rules gate ingestion, so their config is validated and normalized
+    // to the stored shape rather than accepted opaquely.
+    if (ruleType === "review") {
+      config = parseReviewRuleConfig(config) as unknown as Record<string, unknown>;
+    }
   } catch (error) {
     if (error instanceof InvalidSourceRuleError) {
       return NextResponse.json({ error: error.message }, { status: 400 });

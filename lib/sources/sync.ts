@@ -4,6 +4,12 @@ import type { Source } from "@/lib/db/schema";
 import { inngest } from "@/lib/inngest/client";
 import { nextRunFromCron } from "@/lib/pipelines/cron";
 import { loadDeletedExternalIds } from "@/lib/review-or-deletion/import-guard";
+import { summarizeActiveSourceRules } from "./contracts";
+import {
+  importedItemStatus,
+  safeParseReviewRuleConfig,
+  type ReviewRuleConfig,
+} from "./review-rules";
 import { fetchRssEntries } from "./rss";
 import { fetchSlackMessages } from "./slack";
 import { fetchWebScrapeEntries } from "./web-scrape";
@@ -138,6 +144,38 @@ async function insertOriginalVersions(
   return inserted.length;
 }
 
+// The active, version-bound, project-scoped review rule for a source, if any.
+// Only the highest-version enabled review rule applies; a corrupt stored config
+// is treated as no rule so it can never wedge ingestion.
+export async function loadActiveReviewRuleConfig(
+  reader: Pick<SyncDbClient, "select">,
+  sourceId: string,
+  projectId: string
+): Promise<ReviewRuleConfig | null> {
+  const rows = await reader
+    .select({
+      id: schema.sourceRule.id,
+      version: schema.sourceRule.version,
+      ruleType: schema.sourceRule.ruleType,
+      enabled: schema.sourceRule.enabled,
+      config: schema.sourceRule.config,
+    })
+    .from(schema.sourceRule)
+    .where(
+      and(
+        eq(schema.sourceRule.sourceId, sourceId),
+        eq(schema.sourceRule.projectId, projectId),
+        eq(schema.sourceRule.ruleType, "review"),
+        eq(schema.sourceRule.enabled, true)
+      )
+    );
+
+  const active = summarizeActiveSourceRules(
+    rows as Array<{ id: string; version: number; ruleType: string; enabled: boolean; config: unknown }>
+  ).review;
+  return active ? safeParseReviewRuleConfig(active.config) : null;
+}
+
 async function loadItemIdByExternalId(
   dbClient: SyncDbClient,
   sourceId: string,
@@ -193,6 +231,11 @@ async function persistSyncBatch(
     );
     const itemIdByExternalId = await loadItemIdByExternalId(tx, source.id, externalIds);
 
+    // An active review rule holds matching items in the review queue: they are
+    // persisted (with their immutable original) but never emitted, so they get
+    // no chunks and cannot be reached by Ask until approved.
+    const reviewConfig = await loadActiveReviewRuleConfig(tx, source.id, source.projectId);
+
     const freshItems = allowedItems.filter((item) => !itemIdByExternalId.has(item.externalId));
     const inserted =
       freshItems.length > 0
@@ -207,7 +250,10 @@ async function persistSyncBatch(
                 type: item.type,
                 source: item.source,
                 ...(item.rawText != null ? { rawText: item.rawText } : {}),
-                status: "pending",
+                status: importedItemStatus(reviewConfig, {
+                  source: item.source,
+                  text: item.rawText ?? null,
+                }),
                 ...(item.capturedAt ? { capturedAt: item.capturedAt } : {}),
               }))
             )

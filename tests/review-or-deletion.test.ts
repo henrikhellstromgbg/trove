@@ -360,6 +360,68 @@ test("applyReviewDecision reject moves review items to trash and records the dec
   assert.equal(db.state.reviewDecisions[0]?.note, "off-topic");
 });
 
+test("applyReviewDecision approve re-enters the ingest pipeline as pending", async () => {
+  const db = new MockLifecycleDb({
+    items: [
+      {
+        id: ITEM_ID,
+        userId: USER_ID,
+        projectId: PROJECT_ID,
+        status: "review",
+        trashedAt: null,
+        restoreStatus: null,
+        sourceId: null,
+        externalId: null,
+        blobUrl: null,
+      },
+    ],
+  });
+  const captured: string[] = [];
+  Object.assign(reviewOrDeletionDeps as unknown as MutableDeps, {
+    db,
+    sendItemCaptured: async (itemId: string) => {
+      captured.push(itemId);
+    },
+  });
+
+  const result = await applyReviewDecision(USER_ID, PROJECT_ID, ITEM_ID, "approve");
+
+  assert.equal(result.item.status, "pending");
+  assert.equal(result.item.restoreStatus, null);
+  assert.equal(db.state.reviewDecisions[0]?.decision, "approve");
+  // Approval, not rejection, is what re-triggers processing.
+  assert.deepEqual(captured, [ITEM_ID]);
+});
+
+test("applyReviewDecision reject never re-enters the ingest pipeline", async () => {
+  const db = new MockLifecycleDb({
+    items: [
+      {
+        id: ITEM_ID,
+        userId: USER_ID,
+        projectId: PROJECT_ID,
+        status: "review",
+        trashedAt: null,
+        restoreStatus: null,
+        sourceId: null,
+        externalId: null,
+        blobUrl: null,
+      },
+    ],
+  });
+  const captured: string[] = [];
+  Object.assign(reviewOrDeletionDeps as unknown as MutableDeps, {
+    db,
+    sendItemCaptured: async (itemId: string) => {
+      captured.push(itemId);
+    },
+  });
+
+  await applyReviewDecision(USER_ID, PROJECT_ID, ITEM_ID, "reject");
+
+  assert.deepEqual(captured, []);
+});
+
 test("restoreItem returns a trashed item to its stored prior status", async () => {
   const db = new MockLifecycleDb({
     items: [

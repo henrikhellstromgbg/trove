@@ -395,6 +395,49 @@ for (const mode of ["json", "multipart"] as const) {
     assert.equal(response.status, 200);
     assert.equal(db.insertValues[0]?.projectId, PROJECT_B);
   });
+
+  test(`an active review rule holds source-attributed items without emitting (${mode})`, async () => {
+    const db = new MockDb();
+    db.selectResults.push([{ id: SOURCE_A, userId: USER_ID, projectId: PROJECT_A }]);
+    let ruleLookups = 0;
+    Object.assign(ingestDeps as unknown as MutableDeps, {
+      db,
+      requireProjectId: async (_userId: string, projectId: unknown) => projectId,
+      loadReviewRuleConfig: async () => {
+        ruleLookups += 1;
+        return { mode: "all", contains: [] };
+      },
+    });
+
+    const response = await ingestPost(
+      ingestRequest(mode, { projectId: PROJECT_A, sourceId: SOURCE_A })
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(ruleLookups, 1);
+    assert.equal(db.insertValues[0]?.status, "review");
+    // Held items must never enter the ingest pipeline.
+    assert.equal(sendCalls, 0);
+    assert.equal((await response.json()).status, "review");
+  });
+
+  test(`no review rule lets source-attributed items flow to pending and emit (${mode})`, async () => {
+    const db = new MockDb();
+    db.selectResults.push([{ id: SOURCE_A, userId: USER_ID, projectId: PROJECT_A }]);
+    Object.assign(ingestDeps as unknown as MutableDeps, {
+      db,
+      requireProjectId: async (_userId: string, projectId: unknown) => projectId,
+      loadReviewRuleConfig: async () => null,
+    });
+
+    const response = await ingestPost(
+      ingestRequest(mode, { projectId: PROJECT_A, sourceId: SOURCE_A })
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(db.insertValues[0]?.status, "pending");
+    assert.equal(sendCalls, 1);
+  });
 }
 
 test("ask requires projectId", async () => {

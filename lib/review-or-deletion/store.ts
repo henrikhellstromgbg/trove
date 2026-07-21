@@ -1,6 +1,7 @@
 import { del } from "@vercel/blob";
 import { and, desc, eq, or } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { inngest } from "@/lib/inngest/client";
 import type {
   DeletionMarker,
   Item,
@@ -59,6 +60,9 @@ export type PermanentDeleteResult = {
 export const reviewOrDeletionDeps = {
   db,
   now: () => new Date(),
+  sendItemCaptured: async (itemId: string) => {
+    await inngest.send({ name: "item/captured", data: { itemId } });
+  },
   deleteBlobIfPresent: async (blobUrl: string | null) => {
     if (!blobUrl || !blobUrl.includes(PRIVATE_HOST_MARKER)) return false;
     await del(blobUrl, {
@@ -226,7 +230,7 @@ export async function applyReviewDecision(
     reviewOrDeletionDeps.now()
   );
 
-  return reviewOrDeletionDeps.db.transaction(async (tx) => {
+  const result = await reviewOrDeletionDeps.db.transaction(async (tx) => {
     const [decisionRecord] = await tx
       .insert(schema.reviewDecision)
       .values({
@@ -258,6 +262,14 @@ export async function applyReviewDecision(
 
     return { item: updated, decision: decisionRecord };
   });
+
+  // Approval re-enters the ingest pipeline. Emitted only after the decision and
+  // status change commit, so a rolled-back approval never triggers processing.
+  if (decision === "approve" && result.item.status === "pending") {
+    await reviewOrDeletionDeps.sendItemCaptured(result.item.id);
+  }
+
+  return result;
 }
 
 export async function permanentlyDeleteItem(

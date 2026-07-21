@@ -12,6 +12,7 @@ type TableRow = Record<string, unknown>;
 
 type DbState = {
   sources: TableRow[];
+  sourceRules: TableRow[];
   sourceRuns: TableRow[];
   items: TableRow[];
   originals: TableRow[];
@@ -34,6 +35,7 @@ const originalDeps = { ...sourceSyncDeps };
 
 function tableName(table: unknown): keyof DbState {
   if (table === schema.source) return "sources";
+  if (table === schema.sourceRule) return "sourceRules";
   if (table === schema.sourceRun) return "sourceRuns";
   if (table === schema.item) return "items";
   if (table === schema.originalRecord) return "originals";
@@ -68,6 +70,7 @@ class MockSyncDb {
   constructor(initial?: Partial<DbState>) {
     this.state = {
       sources: initial?.sources ?? [],
+      sourceRules: initial?.sourceRules ?? [],
       sourceRuns: initial?.sourceRuns ?? [],
       items: initial?.items ?? [],
       originals: initial?.originals ?? [],
@@ -115,7 +118,20 @@ class MockSyncDb {
           },
           where: async () => {
             if (!selectedTable) throw new Error("select table missing");
-            return projectRows(state[selectedTable], fields);
+            let rows = state[selectedTable];
+            // The pending-item re-query (which decides what gets emitted)
+            // selects only { id }. Honour its status='pending' filter so held
+            // review items are correctly excluded from emission; every other
+            // item query selects externalId too and wants all rows.
+            if (
+              selectedTable === "items" &&
+              fields &&
+              "id" in fields &&
+              !("externalId" in fields)
+            ) {
+              rows = rows.filter((row) => row.status === "pending");
+            }
+            return projectRows(rows, fields);
           },
         };
         return chain;
@@ -456,6 +472,73 @@ test("Slack sync keeps its cursor behind until item/captured succeeds", async ()
   });
   assert.equal(db.state.items.length, 1);
   assert.equal(sendAttempts, 2);
+});
+
+test("an active review rule holds matching items and never emits them", async () => {
+  const db = new MockSyncDb({
+    sources: [{ id: SOURCE.id, lastStatus: null, lastError: null }],
+    sourceRules: [
+      // Superseded selection rule and an older disabled review rule must be
+      // ignored in favour of the highest-version enabled review rule.
+      {
+        id: "rule-old",
+        sourceId: SOURCE.id,
+        projectId: SOURCE.projectId,
+        version: 1,
+        ruleType: "review",
+        enabled: false,
+        config: { mode: "all", contains: [] },
+      },
+      {
+        id: "rule-active",
+        sourceId: SOURCE.id,
+        projectId: SOURCE.projectId,
+        version: 2,
+        ruleType: "review",
+        enabled: true,
+        config: { mode: "match", contains: ["fresh"] },
+      },
+    ],
+  });
+
+  Object.assign(sourceSyncDeps as unknown as MutableDeps, {
+    db,
+    fetchRssEntries: async () => [
+      {
+        externalId: "held-entry",
+        title: "Held entry",
+        url: "https://example.com/fresh-drop",
+        publishedAt: new Date("2026-07-21T09:00:00.000Z"),
+      },
+      {
+        externalId: "pending-entry",
+        title: "Pending entry",
+        url: "https://example.com/routine",
+        publishedAt: new Date("2026-07-21T09:05:00.000Z"),
+      },
+    ],
+    sendItemCaptured: async (itemId: string) => {
+      db.log.push(`event:${itemId}`);
+    },
+  });
+
+  const result = await runSourceSync(SOURCE, "manual");
+
+  assert.equal(result.ok, true);
+  assert.equal(result.newItems, 2);
+  assert.equal(result.newOriginals, 2);
+
+  const held = db.state.items.find((row) => row.externalId === "held-entry");
+  const routine = db.state.items.find((row) => row.externalId === "pending-entry");
+  assert.equal(held?.status, "review");
+  assert.equal(routine?.status, "pending");
+
+  // Immutable originals are still recorded for both, but only the pending item
+  // is emitted for processing.
+  assert.equal(db.state.originals.length, 2);
+  const emitted = db.log.filter((entry) => entry.startsWith("event:"));
+  assert.equal(emitted.length, 1);
+  assert.equal(emitted[0], `event:${routine?.id}`);
 });
 
 test("runSourceSync skips external ids blocked by deletion markers", async () => {
