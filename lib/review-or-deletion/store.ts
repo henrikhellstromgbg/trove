@@ -265,8 +265,17 @@ export async function applyReviewDecision(
 
   // Approval re-enters the ingest pipeline. Emitted only after the decision and
   // status change commit, so a rolled-back approval never triggers processing.
+  // Best-effort like the ingest route: the approve has already committed, so a
+  // transient emit failure is logged rather than surfaced as a 500.
   if (decision === "approve" && result.item.status === "pending") {
-    await reviewOrDeletionDeps.sendItemCaptured(result.item.id);
+    try {
+      await reviewOrDeletionDeps.sendItemCaptured(result.item.id);
+    } catch (e) {
+      console.warn(
+        "[review] approve emit failed; item stays pending until re-triggered:",
+        e instanceof Error ? e.message : e
+      );
+    }
   }
 
   return result;
