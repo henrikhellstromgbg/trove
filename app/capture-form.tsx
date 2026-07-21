@@ -54,7 +54,7 @@ export function CaptureForm() {
           form.append("file", file);
           form.append("projectId", project.id);
 
-          const res = await fetch("/api/capture", { method: "POST", body: form });
+          const res = await fetch("/api/ingest", { method: "POST", body: form });
           if (res.ok) {
             setFile(null);
             setStatus("saved");
@@ -69,12 +69,12 @@ export function CaptureForm() {
         const looksLikeUrl = /^https?:\/\//i.test(trimmed);
         setStatus("saving");
 
-        const res = await fetch("/api/capture", {
+        const res = await fetch("/api/ingest", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             type: looksLikeUrl ? "url" : "text",
-            content: trimmed,
+            text: trimmed,
             projectId: project.id,
           }),
         });

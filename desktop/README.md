@@ -7,7 +7,28 @@ Tauri 2 menu bar shell for Trove. Lives in the macOS menu bar, no dock icon. Wra
 - Sits in the menu bar with a tray icon.
 - Global hotkey `Ctrl+Shift+Space` toggles a 600x400 borderless window pointing at `localhost:3000`.
 - Tray menu: open Trove, quit.
-- Drag a file or a URL onto the open window and the contents are POSTed to `localhost:3000/api/capture` as `{type: "text", content: "..."}` or `{type: "url", content: "..."}`.
+- Drag a file or a URL onto the open window and the app POSTs to `/api/ingest`.
+- URLs and non-file text are sent as JSON with `{type, text, projectId}`.
+- Dropped files are sent as multipart with `file` bytes plus `projectId`.
+- Agent-mode requests use `Authorization: Bearer <ingest token>`.
+
+## Desktop ingest config
+
+Set these env vars before launching Tauri:
+
+```
+export TROVE_INGEST_TOKEN=your-ingest-token
+export TROVE_PROJECT_ID=your-project-uuid
+```
+
+Optional:
+
+```
+# Defaults to http://localhost:3000
+export TROVE_BACKEND_URL=http://localhost:3000
+```
+
+The desktop app reads `TROVE_BACKEND_URL`, trims a trailing slash, and posts to `${TROVE_BACKEND_URL}/api/ingest`. `TROVE_INGEST_TOKEN` and `TROVE_PROJECT_ID` are required for desktop uploads.
 
 ## Prerequisites
 
@@ -32,7 +53,7 @@ Node and pnpm are already installed on this machine.
 ## First run
 
 ```
-cd ~/Developer/trove/desktop
+cd ~/sites/trove/desktop
 pnpm install
 pnpm tauri dev
 ```
@@ -42,14 +63,14 @@ The first build takes a few minutes while Cargo compiles Tauri and its plugins.
 Make sure the Next.js backend is running in another terminal:
 
 ```
-cd ~/Developer/trove
+cd ~/sites/trove
 pnpm dev
 ```
 
 ## Build an unsigned `.app` and `.dmg`
 
 ```
-cd ~/Developer/trove/desktop
+cd ~/sites/trove/desktop
 pnpm tauri build
 ```
 
@@ -82,7 +103,7 @@ desktop/
     ├── icons/                Placeholder dark squares, replace before release
     └── src/
         ├── main.rs
-        └── lib.rs            Tray, hotkey, window toggle, capture POST
+        └── lib.rs            Tray, hotkey, window toggle, ingest POST
 ```
 
 ## Notes

@@ -52,7 +52,7 @@ export function CaptureOverlay() {
       form.append("file", file);
       form.append("projectId", project.id);
       setFlash(`capturing ${file.name}…`);
-      const res = await fetch("/api/capture", { method: "POST", body: form });
+      const res = await fetch("/api/ingest", { method: "POST", body: form });
       if (res.ok) {
         setFlash(`captured ${file.name} into ${project.name}`);
         startTransition(() => router.refresh());
