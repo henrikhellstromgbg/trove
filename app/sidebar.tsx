@@ -8,7 +8,6 @@ import { useUser, useClerk } from "@clerk/nextjs";
 import {
   Chat,
   Catalog,
-  Wikis,
   DataShare,
   FlowConnection,
   Download,
@@ -33,7 +32,6 @@ type Destination = {
 
 const DESTINATIONS: Destination[] = [
   { seg: "library", label: "Library", Icon: Catalog },
-  { seg: "wiki", label: "Wiki", Icon: Wikis },
   { seg: "sources", label: "Sources", Icon: DataShare },
   { seg: "pipelines", label: "Pipelines", Icon: FlowConnection },
 ];

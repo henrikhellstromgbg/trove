@@ -44,7 +44,7 @@ export function NewPipelineForm() {
 
   return (
     <div className="grid grid-cols-1 gap-10 lg:grid-cols-[2fr,1fr]">
-      <div className="glass flex flex-col gap-4 rounded-3xl p-6 md:p-8">
+      <div className="flex flex-col gap-4 rounded-2xl border border-line bg-paper p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)] md:p-8">
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -52,7 +52,7 @@ export function NewPipelineForm() {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
           }}
           placeholder="describe your pipeline. cmd return to save."
-          className="min-h-[200px] resize-none bg-transparent font-display text-2xl leading-snug text-ink placeholder:text-ink-faint md:text-3xl"
+          className="min-h-[200px] resize-none bg-transparent text-lg leading-relaxed text-ink placeholder:text-ink-faint md:text-xl"
         />
         <div className="flex items-center justify-between gap-4 border-t border-line pt-4">
           <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
@@ -61,7 +61,7 @@ export function NewPipelineForm() {
           <motion.button
             onClick={submit}
             whileTap={{ scale: 0.97 }}
-            className="rounded-full border border-line-strong bg-neutral-50 px-4 py-2 text-xs font-medium uppercase tracking-wider text-ink transition-colors hover:bg-neutral-100 hover:border-ink"
+            className="shrink-0 rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
           >
             compile and save
           </motion.button>
@@ -69,16 +69,16 @@ export function NewPipelineForm() {
       </div>
 
       <aside className="flex flex-col gap-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-faint">
+        <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink-faint">
           patterns
         </p>
         {EXAMPLES.map((ex) => (
           <button
             key={ex}
             onClick={() => setDescription(ex)}
-            className="group rounded-2xl border border-line bg-ink/[0.02] p-4 text-left transition-colors hover:border-line-strong"
+            className="group rounded-2xl border border-line bg-paper p-4 text-left shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-line-strong"
           >
-            <p className="font-display text-lg italic leading-snug text-ink-dim group-hover:text-ink">
+            <p className="text-sm leading-relaxed text-ink-dim group-hover:text-ink">
               {ex}
             </p>
           </button>

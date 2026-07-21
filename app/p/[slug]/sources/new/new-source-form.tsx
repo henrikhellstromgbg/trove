@@ -78,7 +78,7 @@ export function NewSourceForm() {
   }
 
   return (
-    <div className="glass flex max-w-xl flex-col gap-5 rounded-3xl p-6 md:p-8">
+    <div className="flex max-w-xl flex-col gap-5 rounded-2xl border border-line bg-paper p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)] md:p-8">
       <div className="flex flex-col gap-2">
         <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
           kind
@@ -88,7 +88,7 @@ export function NewSourceForm() {
             <button
               key={k.value}
               onClick={() => setKind(k.value)}
-              className={`rounded-full border px-3 py-1.5 text-xs uppercase tracking-wider transition-colors ${
+              className={`rounded-lg border px-3 py-1.5 text-xs uppercase tracking-wider transition-colors ${
                 kind === k.value
                   ? "border-ink bg-ink text-canvas"
                   : "border-line text-ink-dim hover:border-line-strong"
@@ -108,7 +108,7 @@ export function NewSourceForm() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="a blog, a newsletter, whatever it is"
-          className="bg-transparent font-display text-xl text-ink placeholder:text-ink-faint"
+          className="bg-transparent text-lg text-ink placeholder:text-ink-faint"
         />
       </label>
 
@@ -121,7 +121,7 @@ export function NewSourceForm() {
             value={feedUrl}
             onChange={(e) => setFeedUrl(e.target.value)}
             placeholder="https://example.com/feed.xml"
-            className="bg-transparent font-display text-xl text-ink placeholder:text-ink-faint"
+            className="bg-transparent text-lg text-ink placeholder:text-ink-faint"
           />
         </label>
       ) : null}
@@ -136,7 +136,7 @@ export function NewSourceForm() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com/blog"
-              className="bg-transparent font-display text-xl text-ink placeholder:text-ink-faint"
+              className="bg-transparent text-lg text-ink placeholder:text-ink-faint"
             />
           </label>
           <label className="flex flex-col gap-2">
@@ -189,7 +189,7 @@ export function NewSourceForm() {
             <button
               key={p.value}
               onClick={() => setCron(p.value)}
-              className={`rounded-full border px-3 py-1.5 text-xs uppercase tracking-wider transition-colors ${
+              className={`rounded-lg border px-3 py-1.5 text-xs uppercase tracking-wider transition-colors ${
                 cron === p.value
                   ? "border-ink bg-ink text-canvas"
                   : "border-line text-ink-dim hover:border-line-strong"
@@ -208,7 +208,7 @@ export function NewSourceForm() {
         <motion.button
           onClick={submit}
           whileTap={{ scale: 0.97 }}
-          className="rounded-full border border-line-strong bg-neutral-50 px-4 py-2 text-xs font-medium uppercase tracking-wider text-ink transition-colors hover:bg-neutral-100 hover:border-ink"
+          className="shrink-0 rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
         >
           add source
         </motion.button>
