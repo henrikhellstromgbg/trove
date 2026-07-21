@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Close, Add } from "@carbon/icons-react";
 import { useProject } from "./project-context";
 import { CaptureForm } from "./capture-form";
+import { trapFocus } from "./focus-trap";
 
 // Ambient capture (option B). Drop a file anywhere in the app and it is
 // captured straight away — no page to visit. The dedicated form (URL/text
@@ -17,6 +18,8 @@ export function CaptureOverlay() {
   const [dragging, setDragging] = useState(false);
   const [flash, setFlash] = useState<string>("");
   const [, startTransition] = useTransition();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   // Modal open via the sidebar button.
   useEffect(() => {
@@ -26,6 +29,13 @@ export function CaptureOverlay() {
     window.addEventListener("trove:open-capture", onOpen);
     return () => window.removeEventListener("trove:open-capture", onOpen);
   }, []);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+    return () => previousFocusRef.current?.focus();
+  }, [modalOpen]);
 
   // Escape closes the modal.
   useEffect(() => {
@@ -44,7 +54,7 @@ export function CaptureOverlay() {
       setFlash(`capturing ${file.name}…`);
       const res = await fetch("/api/capture", { method: "POST", body: form });
       if (res.ok) {
-        setFlash(`captured ${file.name}`);
+        setFlash(`captured ${file.name} into ${project.name}`);
         startTransition(() => router.refresh());
       } else {
         const err = await res.json().catch(() => ({}));
@@ -52,7 +62,7 @@ export function CaptureOverlay() {
       }
       setTimeout(() => setFlash(""), 2600);
     },
-    [project.id, router]
+    [project.id, project.name, router]
   );
 
   // Ambient drag-and-drop anywhere on the window.
@@ -102,7 +112,7 @@ export function CaptureOverlay() {
         <div className="pointer-events-none fixed inset-3 z-50 flex items-center justify-center rounded-3xl border-2 border-dashed border-capture bg-canvas/70 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3 text-capture">
             <Add size={40} />
-            <p className="font-mono text-sm">drop to capture</p>
+            <p className="font-mono text-sm">drop into {project.name}</p>
           </div>
         </div>
       ) : null}
@@ -119,12 +129,21 @@ export function CaptureOverlay() {
       {modalOpen ? (
         <div
           onClick={() => setModalOpen(false)}
-          className="fixed inset-0 z-50 flex items-start justify-center bg-ink/20 px-6 pt-24 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="capture-dialog-title"
+          ref={dialogRef}
+          tabIndex={-1}
+          onKeyDown={(event) => trapFocus(event, dialogRef.current!)}
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/20 px-4 py-12 backdrop-blur-sm sm:px-6 sm:pt-24"
         >
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl">
             <div className="mb-3 flex items-center justify-between">
-              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-                capture into {project.name}
+              <p
+                id="capture-dialog-title"
+                className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint"
+              >
+                capture into <span className="text-brand">{project.name}</span>
               </p>
               <button
                 onClick={() => setModalOpen(false)}

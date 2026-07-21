@@ -1,6 +1,6 @@
 # Trove UI and interaction layout, v2
 
-Status: proposal, 2026-07-20. Companion to `architecture-v2.md`. This is IA and interaction model, not visual design. Wireframes are approximate, Henrik supplies the visual pass.
+Status: living UI architecture, updated 2026-07-21. Companion to `architecture-v2.md` and `trove-project-flow-architecture.html`. The visual HTML is the canonical wireframe set; this file explains behavior and route status.
 
 ## Principles
 
@@ -21,12 +21,12 @@ Left sidebar, project scoped main area. The sidebar is the same on every screen.
 │ │ tactical   ▾ │ │  └───────────────────────────────────────┘  │
 │ └──────────────┘ │                                             │
 │                  │  ┌────────┐ ┌────────┐ ┌────────┐           │
-│  capture         │  │ pdf    │ │ yt     │ │ mail   │           │
+│  ask             │  │ pdf    │ │ web    │ │ mail   │           │
 │  library      ●  │  │ title  │ │ title  │ │ title  │           │
-│  wiki            │  │ summary│ │ summary│ │ summary│           │
-│  sources         │  └────────┘ └────────┘ └────────┘           │
-│  pipelines       │  ┌────────┐ ┌────────┐ ┌────────┐           │
-│  ask             │  │ ...    │ │ ...    │ │ ...    │           │
+│  sources         │  │ summary│ │ summary│ │ summary│           │
+│  pipelines       │  └────────┘ └────────┘ └────────┘           │
+│                  │  ┌────────┐ ┌────────┐ ┌────────┐           │
+│                  │  │ ...    │ │ ...    │ │ ...    │           │
 │                  │  └────────┘ └────────┘ └────────┘           │
 │  ──────────────  │                                             │
 │  ⚙ settings      │                                             │
@@ -35,8 +35,9 @@ Left sidebar, project scoped main area. The sidebar is the same on every screen.
 ```
 
 - **Project switcher** (top): current project name, opens the switcher panel.
-- **Nav**: capture, library, wiki, sources, pipelines, ask. Each is project scoped. The active dot marks the current view.
-- **Settings** (bottom): opens global settings.
+- **Nav**: Ask, Library, Sources and Pipelines. Each is project scoped. `/p/[slug]` is the project overview; Ask has its own focused workspace at `/p/[slug]/ask`.
+- **Capture**: a project-scoped action below the main navigation. It opens the existing capture overlay instead of requiring a separate route.
+- **Settings** (bottom): currently opens Clerk's account profile. The visualized Trove settings pages are planned.
 - **User** (bottom): account menu, sign out.
 
 Route is the source of truth for the active project, `/p/[slug]/library`, `/p/[slug]/sources`, and so on. The switcher just navigates. This avoids the router cache freezing client state, a lesson already logged.
@@ -93,7 +94,7 @@ Clicking the switcher opens a panel, not a bare dropdown, so it can carry the "n
 
 Two levels, and the split is the whole point.
 
-### Global settings  ( ⚙ at sidebar bottom, route /settings )
+### Global settings (planned route `/settings`)
 
 Account wide, and shared resources that projects draw on.
 
@@ -125,7 +126,7 @@ Account wide, and shared resources that projects draw on.
 
 The reason connected accounts are global: you authorise Gmail or Slack once as yourself, then a project decides which label or channel to ingest. The OAuth grant is an account resource, the source config that uses it is per project.
 
-### Project settings  ( from switcher, or gear in project header, route /p/[slug]/settings )
+### Project settings (planned route `/p/[slug]/settings`)
 
 One corpus only.
 
@@ -162,7 +163,7 @@ The active project is shown at the moment of capture, every time. That is the fi
 
 ```
 ┌─────────────────────────────────────────────┐
-│  capture into  ● tactical athlete intel  ▾   │
+│  capture into  ● tactical athlete intel      │
 │                                             │
 │   ┌───────────────────────────────────────┐ │
 │   │   drop files here                     │ │
@@ -175,12 +176,12 @@ The active project is shown at the moment of capture, every time. That is the fi
 └─────────────────────────────────────────────┘
 ```
 
-- The target project is named right on the drop zone, and you can switch it there before dropping, without leaving capture.
-- Local daemon captures carry their `projectId` from the source config, so a `folder_watch` source always lands in its assigned project.
+- The target project is named on the ambient drop zone and in the capture dialog. An in-dialog project switcher is planned; today the active route project is the destination.
+- Local app captures carry an explicit `projectId` from the source config, so a `folder_watch` source always lands in its assigned project.
 
 ### If it still lands in the wrong project
 
-Two recovery paths, because mistakes happen both ways.
+Two planned recovery paths, because mistakes happen both ways. Neither is implemented yet.
 
 1. **Undo toast.** Right after any capture, a toast offers "captured into tactical athlete intel · undo · move." Move opens the project picker inline.
 2. **Move from anywhere later.** Every item detail and every library selection has "move to project." Select one or many, choose the destination, done.
@@ -195,11 +196,11 @@ Two recovery paths, because mistakes happen both ways.
                              └──────────────────┘
 ```
 
-**What "move" does under the hood:** reassign `project_id` on the item and its chunks, drop it from its old project's topics, queue a re-cluster. The blob file is untouched. It is cheap and safe, no re-extraction, no re-embedding. A toast confirms with undo.
+**What “move” does under the hood:** manual material with `source_id = null` is moved by reassigning `project_id` on the item and its chunks, removing it from the old project's topics and queuing a re-cluster. Material from an automatic source is copied instead, because its source belongs to one project and moving the same item would create a cross-project `source_id`. The copy belongs to the destination and is processed there; the source-project original remains. The action labels must say “move” or “copy” accordingly.
 
 ## Item detail and the file viewer
 
-One screen does viewing and all single-item actions. Opened from any card in library, wiki, or a citation.
+The current read-only viewer is opened from Library or an Ask citation. The richer screen below is planned as the single place for viewing and all item actions.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -235,7 +236,7 @@ Viewer behaviour by type:
 Per-item actions:
 
 - **rename**: edits the title only. Extraction guesses titles and often gets them wrong, so this is common. Inline, no modal.
-- **retag**: add or remove tags, which affects pipeline filters and wiki clustering.
+- **retag**: add or remove tags, which affects pipeline filters and topic clustering.
 - **reprocess**: re-run extract, chunk, embed, enrich. For when a source improved or extraction failed.
 - **move to**: the recovery flow above.
 - **copy link**: a stable internal link to this item.
@@ -284,37 +285,62 @@ Where the old Intel folder finally gets a face. Lists connectors for the active 
 │                                                             │
 │  ● newsletters        mail folder   local   ok    2h ago    │
 │      312 items · Newsletters.mbox                           │
-│  ● tactical channels  youtube       cloud   ok    9h ago    │
+│  ● sportsci feed      rss           cloud   ok    9h ago    │
 │      13 channels · 1,204 transcripts                        │
 │  ● ruck pdfs          folder watch  local   ok    1d ago    │
 │      ~/intel/raw · 88 items                                 │
 │  ⚠ sportsci feed      rss           cloud   error 3h ago    │
 │      last error: feed timeout · retry                       │
 │                                                             │
-│  add source ▾  drop · mail folder · folder watch ·          │
-│                youtube · rss · web scrape · slack           │
+│  add source ▾  mail folder · folder watch · rss ·           │
+│                web scrape · slack                           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-Each source row shows kind, where it runs (local or cloud), last status, last sync, and a count. Local sources show as "local" so it is clear they depend on the Mac and the daemon. Adding a source opens a kind-specific form (mbox path and filters for mail, channel ids for youtube, and so on, per the `source.config` table in the architecture doc).
+Each source row shows kind, where it runs, last status, last sync and a count. Local sources show that they depend on the Mac app. Today RSS, web scrape and Slack have setup forms. Mail and watched folders use the planned guided setup with connection, scope, source rule and preview. Generic YouTube transcription is later.
+
+## Pipelines view
+
+A source brings material into the project. A pipeline reads material already in the project and produces a recurring result. The UI must not call source selection rules pipelines.
+
+The pipeline journey has five screens:
+
+1. **List:** name, schedule, delivery and active or paused state.
+2. **Templates:** choose one or several clear outcomes, such as Morning brief and Friday weekly summary.
+3. **Create:** plain-language instruction plus explicit scope and delivery preview for a custom pipeline.
+4. **Detail:** compiled instruction, schedule, pause/edit/run-now and complete run history.
+5. **Result:** when email delivery is selected, the report is sent at the scheduled time and the UI shows recipient and delivery status. The same cited report remains stored in Trove for history, opening and resend if delivery fails.
+
+Each selected template creates a separate project pipeline. Morning and weekly reports therefore have independent schedules, instructions, source scope, delivery and run history. Templates are defaults, not a locked mode.
+
+The current code already implements list, plain-language creation, detail, run-now, pause, delete and run history. The visual architecture adds the missing complete wireframe journey and makes the persisted result explicit.
 
 ## Screen inventory
 
-| route                     | screen        | scope   |
-|---------------------------|---------------|---------|
-| `/p/[slug]/capture`       | capture       | project |
-| `/p/[slug]/library`       | library grid  | project |
-| `/p/[slug]/item/[id]`     | item viewer   | project |
-| `/p/[slug]/wiki`          | wiki topics   | project |
-| `/p/[slug]/sources`       | sources       | project |
-| `/p/[slug]/pipelines`     | pipelines     | project |
-| `/p/[slug]/ask`           | chat          | project |
-| `/p/[slug]/settings`      | project settings | project |
-| `/settings`               | global settings  | account |
+| route or surface | screen | scope | status |
+|------------------|--------|-------|--------|
+| `/p/[slug]` | project overview and Ask launcher | project | exists |
+| `/p/[slug]/ask` | focused Ask workspace with citations | project | exists; persistence planned |
+| capture overlay | file, link and text capture | project | exists |
+| `/p/[slug]/library` | library list | project | exists |
+| `/p/[slug]/library/[id]` | item viewer | project | read-only exists; actions planned |
+| `/p/[slug]/sources` | source list | project | exists |
+| `/p/[slug]/sources/new` | RSS, web and Slack setup | project | exists |
+| `/p/[slug]/sources/[id]` | source status and latest items | project | exists, richer run history planned |
+| `/p/[slug]/pipelines` | pipeline list | project | exists |
+| pipeline template picker | choose one or several starter pipelines | project | planned next |
+| `/p/[slug]/pipelines/new` | plain-language custom pipeline setup | project | exists, preview planned |
+| `/p/[slug]/pipelines/[id]` | pipeline detail and run history | project | exists |
+| pipeline run result | persisted report with citations | project | partial through Digest |
+| Library review filter | review queue | project | planned |
+| Library trash filter | trash and restore | project | planned |
+| `/p/[slug]/settings` | project settings | project | planned |
+| `/settings` | profile, connections and security | account | planned; Clerk currently handles profile/security |
 
-## Open UI questions
+## Decided behavior and remaining questions
 
-- **Global inbox.** Do captures with an ambiguous destination land in a cross-project inbox for triage, or must every capture pick a project up front. Leaning: always pick, with the active project pre-filled, since the wall matters more than the convenience.
-- **Trash lifetime.** Auto-empty trash after 30 days, or keep until manual. Leaning auto after 30 days, with a setting.
-- **Move and re-embed.** Moving keeps embeddings as is, which is correct since the vector does not depend on the project. Confirm no pipeline assumes otherwise.
-- **Multi-select scope.** Bulk move and delete in library, yes. Bulk retag, probably. Bulk reprocess, maybe, it is expensive.
+- **Project is mandatory:** every capture has an explicit active project. There is no cross-project triage inbox.
+- **Trash lifetime:** items stay recoverable for 30 days, with explicit restore and permanent-delete actions.
+- **Move/copy:** manual material moves with its chunks and is re-clustered without re-extraction or re-embedding. Automatic-source material is copied and processed in the destination so its original never gets a cross-project `source_id`.
+- **Source deletion:** default is stop the source and keep imported items. The alternative moves its imported items to project trash.
+- **Still open:** exact bulk actions in Library and whether project owners can change the 30-day retention period.

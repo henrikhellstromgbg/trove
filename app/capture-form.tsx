@@ -2,6 +2,8 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Add } from "@carbon/icons-react";
+import { runOnce } from "@/lib/submission-lock";
 import { useProject } from "./project-context";
 
 export function CaptureForm() {
@@ -11,9 +13,11 @@ export function CaptureForm() {
   const [status, setStatus] = useState<string>("");
   const [pending, startTransition] = useTransition();
   const [isDragging, setIsDragging] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     function onPaste(e: ClipboardEvent) {
@@ -38,48 +42,57 @@ export function CaptureForm() {
   }, []);
 
   async function submit() {
-    if (file) {
-      setStatus("uploading");
-      const form = new FormData();
-      form.append("file", file);
-      form.append("projectId", project.id);
-
-      const res = await fetch("/api/capture", { method: "POST", body: form });
-      if (res.ok) {
-        setFile(null);
-        setStatus("saved");
-        startTransition(() => router.refresh());
-      } else {
-        const err = await res.json().catch(() => ({}));
-        setStatus(`error ${err.error ?? res.status}`);
-      }
-      return;
-    }
-
     const trimmed = value.trim();
-    if (trimmed.length === 0) return;
+    if (!file && trimmed.length === 0) return;
 
-    const looksLikeUrl = /^https?:\/\//i.test(trimmed);
-    setStatus("saving");
+    await runOnce(submittingRef, async () => {
+      setSubmitting(true);
+      try {
+        if (file) {
+          setStatus("uploading");
+          const form = new FormData();
+          form.append("file", file);
+          form.append("projectId", project.id);
 
-    const res = await fetch("/api/capture", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: looksLikeUrl ? "url" : "text",
-        content: trimmed,
-        projectId: project.id,
-      }),
+          const res = await fetch("/api/capture", { method: "POST", body: form });
+          if (res.ok) {
+            setFile(null);
+            setStatus("saved");
+            startTransition(() => router.refresh());
+          } else {
+            const err = await res.json().catch(() => ({}));
+            setStatus(`error ${err.error ?? res.status}`);
+          }
+          return;
+        }
+
+        const looksLikeUrl = /^https?:\/\//i.test(trimmed);
+        setStatus("saving");
+
+        const res = await fetch("/api/capture", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: looksLikeUrl ? "url" : "text",
+            content: trimmed,
+            projectId: project.id,
+          }),
+        });
+
+        if (res.ok) {
+          setValue("");
+          setStatus("saved");
+          startTransition(() => router.refresh());
+        } else {
+          const err = await res.json().catch(() => ({}));
+          setStatus(`error ${err.error ?? res.status}`);
+        }
+      } catch {
+        setStatus("connection error");
+      } finally {
+        setSubmitting(false);
+      }
     });
-
-    if (res.ok) {
-      setValue("");
-      setStatus("saved");
-      startTransition(() => router.refresh());
-    } else {
-      const err = await res.json().catch(() => ({}));
-      setStatus(`error ${err.error ?? res.status}`);
-    }
   }
 
   function onDragOver(e: React.DragEvent) {
@@ -104,90 +117,107 @@ export function CaptureForm() {
     }
   }
 
-  const ready = !!file || value.trim().length > 0;
+  const ready = !submitting && (!!file || value.trim().length > 0);
 
   return (
     <div
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className={`relative flex w-full flex-col overflow-hidden rounded-2xl border border-line bg-paper shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors ${
-        isDragging ? "ring-1 ring-silver/60" : ""
+      className={`relative flex w-full flex-col overflow-hidden rounded-2xl border border-line bg-paper px-5 py-8 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors sm:px-8 sm:py-14 ${
+        isDragging ? "ring-1 ring-capture/50" : ""
       }`}
     >
       {isDragging ? (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-canvas/50 backdrop-blur-sm">
-          <p className="text-lg text-ink-dim">release to keep</p>
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-canvas/60 backdrop-blur-sm">
+          <p className="font-mono text-sm text-ink-dim">release to keep</p>
         </div>
       ) : null}
 
-      <textarea
-        ref={textRef}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
-        }}
-        placeholder={
-          file
-            ? "a file is waiting. press capture."
-            : "paste a link, type a thought, drop a file. nothing is too small."
-        }
-        disabled={!!file}
-        rows={4}
-        className="min-h-[160px] resize-none bg-transparent px-8 pb-2 pt-8 text-lg leading-snug text-ink placeholder:text-ink-faint disabled:opacity-40"
-      />
+      {/* centered drop affordance: plus + mono headline + mono subline */}
+      <div className="flex flex-col items-center text-center">
+        <Add size={40} className="text-brand" />
+        <p className="mt-6 max-w-xl font-mono text-[15px] font-semibold text-ink">
+          PDF, DOCX, XLSX, JPG, PNG, TXT… anything really.
+        </p>
+        <p className="mt-2 max-w-2xl font-mono text-[13px] leading-relaxed text-ink-faint">
+          Drop anything. I&apos;ll organize it, preserve the original, and make
+          it searchable, browsable, and askable.
+        </p>
+      </div>
 
-      {file ? (
-        <div className="mx-8 mt-1 flex items-center justify-between rounded-2xl border border-line bg-canvas/40 px-4 py-3 font-mono text-[11px] text-ink-dim">
-          <span className="truncate">{file.name}</span>
-          <button
-            onClick={() => {
-              setFile(null);
-              setStatus("");
-            }}
-            className="ml-3 text-ink-faint hover:text-ink"
-            aria-label="remove file"
-          >
-            remove
-          </button>
-        </div>
-      ) : null}
+      {/* input */}
+      <div className="mx-auto mt-8 w-full max-w-xl">
+        <textarea
+          ref={textRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
+          }}
+          placeholder={
+            file
+              ? "a file is waiting. press capture."
+              : "paste a link or type a thought, or just drop a file above."
+          }
+          disabled={!!file || submitting}
+          rows={1}
+          className="min-h-[52px] w-full resize-none rounded-lg border border-line-strong bg-canvas/30 px-4 py-3.5 text-base leading-snug text-ink transition-colors placeholder:text-ink-faint hover:border-ink/40 focus:border-ink focus:outline-none disabled:opacity-40"
+        />
 
-      <div className="flex items-center justify-between gap-4 px-8 py-5">
-        <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-          <span className={status === "saved" ? "text-silver" : ""}>
-            {pending ? "settling" : status || "ready"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.docx,.xlsx,.txt,.md,.markdown,.csv,.tsv,.json,.html,.xml,.log,.yaml,.yml"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) {
-                setFile(f);
-                setValue("");
+        {file ? (
+          <div className="mt-3 flex items-center justify-between rounded-lg border border-line bg-canvas/40 px-4 py-3 font-mono text-[11px] text-ink-dim">
+            <span className="truncate">{file.name}</span>
+            <button
+              onClick={() => {
+                setFile(null);
                 setStatus("");
-              }
-              e.target.value = "";
-            }}
-          />
-          <button
-            onClick={() => inputRef.current?.click()}
-            className="rounded-lg border border-line-strong px-4 py-2 text-sm font-medium text-ink-dim transition-colors hover:border-ink hover:text-ink"
-          >
-            attach
-          </button>
-          <button
-            onClick={submit}
-            className="rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
-          >
-            capture
-          </button>
+              }}
+              className="ml-3 text-ink-faint transition-colors hover:text-ink"
+              aria-label="remove file"
+            >
+              remove
+            </button>
+          </div>
+        ) : null}
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
+            <span className={status === "saved" ? "text-capture" : ""}>
+              {pending ? "settling" : status || "ready"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.docx,.xlsx,.txt,.md,.markdown,.csv,.tsv,.json,.html,.xml,.log,.yaml,.yml"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) {
+                  setFile(f);
+                  setValue("");
+                  setStatus("");
+                }
+                e.target.value = "";
+              }}
+            />
+            <button
+              onClick={() => inputRef.current?.click()}
+              disabled={submitting}
+              className="rounded-lg border border-line-strong px-4 py-2 text-sm font-medium text-ink-dim transition-colors hover:border-ink hover:text-ink disabled:opacity-40"
+            >
+              attach
+            </button>
+            <button
+              onClick={submit}
+              disabled={!ready}
+              className="rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink disabled:opacity-40 disabled:hover:border-line-strong"
+            >
+              capture
+            </button>
+          </div>
         </div>
       </div>
     </div>

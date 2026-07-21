@@ -124,7 +124,7 @@ export default async function ProjectDashboard({
         </h1>
       </header>
 
-      <DashboardAsk projectId={project.id} />
+      <DashboardAsk slug={project.slug} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Processing — the old Ingestions, now status not a destination */}

@@ -1,0 +1,1574 @@
+<div id="trove-flow-architecture" class="trove-architecture">
+  <style>
+    #trove-flow-architecture {
+      --ta-red: var(--viz-series-1);
+      --ta-green: var(--viz-series-2);
+      --ta-blue: var(--viz-series-3);
+      --ta-amber: var(--viz-series-4);
+      --ta-purple: var(--viz-series-5);
+      color: var(--foreground);
+    }
+
+    #trove-flow-architecture * { box-sizing: border-box; }
+    #trove-flow-architecture .ta-kicker {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      margin-bottom: .8rem;
+      color: var(--muted-foreground);
+    }
+    #trove-flow-architecture .ta-mark {
+      width: .7rem;
+      height: .7rem;
+      border-radius: 50%;
+      background: var(--ta-red);
+      box-shadow: 0 0 0 5px color-mix(in srgb, var(--ta-red) 13%, transparent);
+    }
+    #trove-flow-architecture .ta-nav {
+      display: flex;
+      gap: .4rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      padding-bottom: .9rem;
+      border-bottom: 1px solid var(--border);
+    }
+    #trove-flow-architecture .ta-tab[aria-selected="true"] {
+      background: var(--primary);
+      color: var(--primary-foreground);
+    }
+    #trove-flow-architecture .ta-view[hidden] { display: none; }
+    #trove-flow-architecture .ta-section-label {
+      margin: 0 0 .7rem;
+      color: var(--muted-foreground);
+      font-weight: 500;
+    }
+    #trove-flow-architecture .ta-note {
+      color: var(--muted-foreground);
+      margin: 0;
+    }
+    #trove-flow-architecture .ta-rule {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .65rem;
+      margin-bottom: 1rem;
+    }
+    #trove-flow-architecture .ta-rule > div {
+      min-width: 0;
+      padding: .75rem 0;
+      border-top: 3px solid var(--border);
+    }
+    #trove-flow-architecture .ta-rule > div:nth-child(1) { border-color: var(--ta-blue); }
+    #trove-flow-architecture .ta-rule > div:nth-child(2) { border-color: var(--ta-red); }
+    #trove-flow-architecture .ta-rule > div:nth-child(3) { border-color: var(--ta-green); }
+    #trove-flow-architecture .ta-rule strong,
+    #trove-flow-architecture .ta-node strong,
+    #trove-flow-architecture .ta-flow-step strong,
+    #trove-flow-architecture .ta-model-node strong { display: block; font-weight: 500; }
+    #trove-flow-architecture .ta-rule span,
+    #trove-flow-architecture .ta-node span,
+    #trove-flow-architecture .ta-flow-step span,
+    #trove-flow-architecture .ta-model-node span {
+      display: block;
+      color: var(--muted-foreground);
+    }
+
+    #trove-flow-architecture .ta-system {
+      display: grid;
+      grid-template-columns: minmax(0, .8fr) 2rem minmax(0, 1.15fr) 2rem minmax(0, .9fr);
+      align-items: stretch;
+      gap: .35rem;
+    }
+    #trove-flow-architecture .ta-lane {
+      min-width: 0;
+      padding: .75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--card) 84%, transparent);
+    }
+    #trove-flow-architecture .ta-lane-title {
+      display: flex;
+      justify-content: space-between;
+      gap: .5rem;
+      align-items: baseline;
+      padding-bottom: .55rem;
+      margin-bottom: .55rem;
+      border-bottom: 1px solid var(--border);
+      font-weight: 500;
+    }
+    #trove-flow-architecture .ta-lane-title small { color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-node-list { display: grid; gap: .45rem; }
+    #trove-flow-architecture .ta-node {
+      width: 100%;
+      text-align: left;
+      padding: .65rem;
+      border: 0;
+      border-left: 3px solid var(--border);
+      border-radius: 0 6px 6px 0;
+      background: var(--muted);
+      color: var(--foreground);
+      cursor: pointer;
+    }
+    #trove-flow-architecture .ta-node:hover,
+    #trove-flow-architecture .ta-node:focus-visible,
+    #trove-flow-architecture .ta-node.is-active {
+      background: var(--accent);
+      color: var(--accent-foreground);
+      border-left-color: var(--ta-red);
+    }
+    #trove-flow-architecture .ta-node[data-tone="green"] { border-left-color: var(--ta-green); }
+    #trove-flow-architecture .ta-node[data-tone="blue"] { border-left-color: var(--ta-blue); }
+    #trove-flow-architecture .ta-node[data-tone="amber"] { border-left-color: var(--ta-amber); }
+    #trove-flow-architecture .ta-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted-foreground);
+      font-size: 1.35rem;
+    }
+    #trove-flow-architecture .ta-detail {
+      margin-top: .85rem;
+      padding: .8rem 0 0;
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: minmax(8rem, .35fr) 1fr;
+      gap: .8rem;
+    }
+    #trove-flow-architecture .ta-detail strong { font-weight: 500; }
+    #trove-flow-architecture .ta-detail p { margin: 0; color: var(--muted-foreground); }
+
+    #trove-flow-architecture .ta-setup {
+      display: grid;
+      grid-template-columns: 1fr 1.5rem 1fr 1.5rem 1fr 1.5rem 1fr;
+      align-items: stretch;
+      gap: .25rem;
+    }
+    #trove-flow-architecture .ta-flow-step {
+      min-width: 0;
+      padding: .8rem;
+      border-top: 4px solid var(--ta-blue);
+      background: var(--muted);
+      border-radius: 0 0 6px 6px;
+    }
+    #trove-flow-architecture .ta-flow-step:nth-of-type(3) { border-color: var(--ta-red); }
+    #trove-flow-architecture .ta-flow-step:nth-of-type(5) { border-color: var(--ta-amber); }
+    #trove-flow-architecture .ta-flow-step:nth-of-type(7) { border-color: var(--ta-green); }
+    #trove-flow-architecture .ta-step-no {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.55rem;
+      height: 1.55rem;
+      border-radius: 50%;
+      margin-bottom: .55rem;
+      background: var(--card);
+      color: var(--card-foreground);
+      border: 1px solid var(--border);
+      font-variant-numeric: tabular-nums;
+    }
+    #trove-flow-architecture .ta-example {
+      margin-top: 1rem;
+      display: grid;
+      grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+      gap: .8rem;
+      align-items: start;
+    }
+    #trove-flow-architecture .ta-prompt {
+      border-left: 3px solid var(--ta-red);
+      padding: .75rem .85rem;
+      background: var(--muted);
+      border-radius: 0 6px 6px 0;
+      margin: 0;
+    }
+    #trove-flow-architecture .ta-config {
+      display: grid;
+      grid-template-columns: 7rem 1fr;
+      gap: .35rem .7rem;
+      margin: 0;
+    }
+    #trove-flow-architecture .ta-config dt { color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-config dd { margin: 0; }
+
+    #trove-flow-architecture .ta-source-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #trove-flow-architecture .ta-source-table th,
+    #trove-flow-architecture .ta-source-table td {
+      text-align: left;
+      vertical-align: top;
+      padding: .65rem .55rem;
+      border-bottom: 1px solid var(--border);
+    }
+    #trove-flow-architecture .ta-source-table th { color: var(--muted-foreground); font-weight: 500; }
+    #trove-flow-architecture .ta-source-table tr:last-child td { border-bottom: 0; }
+    #trove-flow-architecture .ta-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: .18rem .45rem;
+      border-radius: 999px;
+      background: var(--muted);
+      color: var(--muted-foreground);
+      white-space: nowrap;
+    }
+    #trove-flow-architecture .ta-pill[data-state="now"] {
+      background: color-mix(in srgb, var(--ta-green) 16%, var(--card));
+      color: var(--foreground);
+    }
+    #trove-flow-architecture .ta-pill[data-state="next"] {
+      background: color-mix(in srgb, var(--ta-amber) 18%, var(--card));
+      color: var(--foreground);
+    }
+
+    #trove-flow-architecture .ta-lifecycle {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: .4rem;
+      position: relative;
+    }
+    #trove-flow-architecture .ta-life-stage {
+      min-width: 0;
+      padding: .65rem .45rem;
+      border-top: 3px solid var(--border);
+      position: relative;
+    }
+    #trove-flow-architecture .ta-life-stage::after {
+      content: "";
+      position: absolute;
+      top: -3px;
+      right: -.4rem;
+      width: .4rem;
+      border-top: 3px solid var(--border);
+    }
+    #trove-flow-architecture .ta-life-stage:last-child::after { display: none; }
+    #trove-flow-architecture .ta-life-stage:nth-child(1),
+    #trove-flow-architecture .ta-life-stage:nth-child(2) { border-color: var(--ta-blue); }
+    #trove-flow-architecture .ta-life-stage:nth-child(3),
+    #trove-flow-architecture .ta-life-stage:nth-child(4) { border-color: var(--ta-amber); }
+    #trove-flow-architecture .ta-life-stage:nth-child(5) { border-color: var(--ta-red); }
+    #trove-flow-architecture .ta-life-stage:nth-child(6),
+    #trove-flow-architecture .ta-life-stage:nth-child(7) { border-color: var(--ta-green); }
+    #trove-flow-architecture .ta-life-stage strong { font-weight: 500; }
+    #trove-flow-architecture .ta-life-stage span { display: block; color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-branch {
+      margin-top: 1rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: .65rem;
+    }
+    #trove-flow-architecture .ta-branch > div {
+      padding: .75rem;
+      border-left: 3px solid var(--border);
+      background: var(--muted);
+      border-radius: 0 6px 6px 0;
+    }
+    #trove-flow-architecture .ta-branch > div:nth-child(1) { border-color: var(--ta-green); }
+    #trove-flow-architecture .ta-branch > div:nth-child(2) { border-color: var(--ta-amber); }
+    #trove-flow-architecture .ta-branch > div:nth-child(3) { border-color: var(--destructive); }
+    #trove-flow-architecture .ta-branch strong { display: block; font-weight: 500; }
+    #trove-flow-architecture .ta-branch span { color: var(--muted-foreground); }
+
+    #trove-flow-architecture .ta-model {
+      display: grid;
+      grid-template-columns: minmax(0, .85fr) 2rem minmax(0, 1.15fr);
+      gap: .45rem;
+      align-items: center;
+    }
+    #trove-flow-architecture .ta-model-stack { display: grid; gap: .5rem; }
+    #trove-flow-architecture .ta-model-node {
+      padding: .7rem;
+      border-left: 3px solid var(--ta-blue);
+      background: var(--muted);
+      border-radius: 0 6px 6px 0;
+    }
+    #trove-flow-architecture .ta-model-node[data-tone="red"] { border-color: var(--ta-red); }
+    #trove-flow-architecture .ta-model-node[data-tone="green"] { border-color: var(--ta-green); }
+    #trove-flow-architecture .ta-model-node[data-tone="amber"] { border-color: var(--ta-amber); }
+    #trove-flow-architecture .ta-model-status {
+      display: inline-block;
+      margin-top: .35rem;
+      padding: .12rem .4rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted-foreground);
+      font-size: .72rem;
+      line-height: 1.2;
+    }
+    #trove-flow-architecture .ta-model-status[data-state="now"] { border-color: var(--ta-green); color: var(--foreground); }
+    #trove-flow-architecture .ta-model-status[data-state="partial"] { border-color: var(--ta-amber); color: var(--foreground); }
+    #trove-flow-architecture .ta-owns {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .5rem;
+    }
+    #trove-flow-architecture .ta-model-foot {
+      margin-top: .85rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: .45rem;
+    }
+
+    #trove-flow-architecture .ta-roadmap {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: .8rem;
+    }
+    #trove-flow-architecture .ta-roadmap-col { min-width: 0; }
+    #trove-flow-architecture .ta-roadmap-col > strong {
+      display: block;
+      padding-bottom: .55rem;
+      margin-bottom: .55rem;
+      border-bottom: 3px solid var(--border);
+      font-weight: 500;
+    }
+    #trove-flow-architecture .ta-roadmap-col:nth-child(1) > strong { border-color: var(--ta-green); }
+    #trove-flow-architecture .ta-roadmap-col:nth-child(2) > strong { border-color: var(--ta-red); }
+    #trove-flow-architecture .ta-roadmap-col:nth-child(3) > strong { border-color: var(--ta-blue); }
+    #trove-flow-architecture .ta-roadmap-col:nth-child(4) > strong { border-color: var(--ta-purple); }
+    #trove-flow-architecture .ta-roadmap-list { margin: 0; padding-left: 1.1rem; }
+    #trove-flow-architecture .ta-roadmap-list li { margin-bottom: .45rem; }
+    #trove-flow-architecture .ta-roadmap-list span { display: block; color: var(--muted-foreground); }
+
+    #trove-flow-architecture .ta-wire-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .65rem;
+      flex-wrap: wrap;
+      margin-bottom: .8rem;
+    }
+    #trove-flow-architecture .ta-wire-picker,
+    #trove-flow-architecture .ta-device-picker {
+      display: flex;
+      gap: .35rem;
+      flex-wrap: wrap;
+    }
+    #trove-flow-architecture .ta-wire-button[aria-pressed="true"],
+    #trove-flow-architecture .ta-device-button[aria-pressed="true"] {
+      background: var(--primary);
+      color: var(--primary-foreground);
+    }
+    #trove-flow-architecture .ta-wire-stage {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--background);
+    }
+    #trove-flow-architecture .ta-wire-stage.is-mobile {
+      max-width: 24rem;
+      margin-inline: auto;
+    }
+    #trove-flow-architecture .ta-wire-screen[hidden] { display: none; }
+    #trove-flow-architecture .ta-wf-shell {
+      display: grid;
+      grid-template-columns: 8.5rem minmax(0, 1fr);
+      min-height: 28rem;
+    }
+    #trove-flow-architecture .ta-wire-stage.is-mobile .ta-wf-shell {
+      grid-template-columns: 1fr;
+      min-height: 34rem;
+    }
+    #trove-flow-architecture .ta-wf-side {
+      display: flex;
+      flex-direction: column;
+      padding: .75rem .6rem;
+      border-right: 1px solid var(--border);
+      background: var(--muted);
+    }
+    #trove-flow-architecture .ta-wire-stage.is-mobile .ta-wf-side { display: none; }
+    #trove-flow-architecture .ta-wf-brand {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+    #trove-flow-architecture .ta-wf-project {
+      padding: .5rem;
+      margin-bottom: .8rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--card);
+    }
+    #trove-flow-architecture .ta-wf-project small,
+    #trove-flow-architecture .ta-wf-project span { display: block; }
+    #trove-flow-architecture .ta-wf-project small { color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wf-nav { display: grid; gap: .2rem; }
+    #trove-flow-architecture .ta-wf-nav span {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .38rem .45rem;
+      border-radius: 5px;
+      color: var(--muted-foreground);
+    }
+    #trove-flow-architecture .ta-wf-nav span.is-current {
+      color: var(--foreground);
+      background: var(--accent);
+    }
+    #trove-flow-architecture .ta-wf-side-account {
+      display: grid;
+      gap: .25rem;
+      margin-top: auto;
+      padding-top: .55rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted-foreground);
+    }
+    #trove-flow-architecture .ta-wf-side-account span {
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .3rem .4rem;
+      border-radius: 5px;
+    }
+    #trove-flow-architecture .ta-wf-side-account span:last-child { color: var(--foreground); }
+    #trove-flow-architecture .ta-wf-main { min-width: 0; padding: .8rem; }
+    #trove-flow-architecture .ta-wf-mobile-top {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: .65rem;
+      margin-bottom: .65rem;
+      border-bottom: 1px solid var(--border);
+    }
+    #trove-flow-architecture .ta-wire-stage.is-mobile .ta-wf-mobile-top { display: flex; }
+    #trove-flow-architecture .ta-wf-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: .75rem;
+      margin-bottom: .8rem;
+    }
+    #trove-flow-architecture .ta-wf-heading strong { display: block; font-weight: 500; }
+    #trove-flow-architecture .ta-wf-heading span { display: block; color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wf-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .35rem;
+      padding: .38rem .55rem;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--card);
+      color: var(--card-foreground);
+      white-space: nowrap;
+    }
+    #trove-flow-architecture .ta-wf-action.is-primary {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-color: var(--primary);
+    }
+    #trove-flow-architecture .ta-wf-empty {
+      display: grid;
+      place-items: center;
+      min-height: 20rem;
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 7px;
+      padding: 1rem;
+    }
+    #trove-flow-architecture .ta-wf-empty strong { display: block; font-weight: 500; margin-bottom: .25rem; }
+    #trove-flow-architecture .ta-wf-empty p { margin: 0 0 .8rem; color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wf-actions { display: flex; justify-content: center; gap: .4rem; flex-wrap: wrap; }
+    #trove-flow-architecture .ta-wf-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .5rem;
+    }
+    #trove-flow-architecture .ta-wf-source-choice {
+      min-width: 0;
+      padding: .65rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--card);
+    }
+    #trove-flow-architecture .ta-wf-source-choice strong { display: block; font-weight: 500; margin-top: .3rem; }
+    #trove-flow-architecture .ta-wf-source-choice span { display: block; color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wf-source-choice.is-next { border-color: var(--ta-red); }
+    #trove-flow-architecture .ta-wf-steps {
+      display: flex;
+      gap: .25rem;
+      margin-bottom: .75rem;
+    }
+    #trove-flow-architecture .ta-wf-steps span {
+      flex: 1;
+      padding-top: .35rem;
+      border-top: 3px solid var(--border);
+      color: var(--muted-foreground);
+    }
+    #trove-flow-architecture .ta-wf-steps span.is-done { border-color: var(--ta-green); color: var(--foreground); }
+    #trove-flow-architecture .ta-wf-steps span.is-active { border-color: var(--ta-red); color: var(--foreground); }
+    #trove-flow-architecture .ta-wf-form { display: grid; gap: .55rem; }
+    #trove-flow-architecture .ta-wf-field label { display: block; color: var(--muted-foreground); margin-bottom: .2rem; }
+    #trove-flow-architecture .ta-wf-input {
+      min-height: 2rem;
+      padding: .42rem .5rem;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--card);
+      color: var(--card-foreground);
+    }
+    #trove-flow-architecture .ta-wf-input.is-tall { min-height: 5.2rem; }
+    #trove-flow-architecture .ta-wf-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: .5rem;
+      margin-top: .75rem;
+      padding-top: .65rem;
+      border-top: 1px solid var(--border);
+    }
+    #trove-flow-architecture .ta-wf-preview-list,
+    #trove-flow-architecture .ta-wf-source-list,
+    #trove-flow-architecture .ta-wf-review-list,
+    #trove-flow-architecture .ta-wf-library-list,
+    #trove-flow-architecture .ta-wf-log { display: grid; gap: .38rem; }
+    #trove-flow-architecture .ta-wf-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: .55rem;
+      padding: .55rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    #trove-flow-architecture .ta-wf-row:last-child { border-bottom: 0; }
+    #trove-flow-architecture .ta-wf-row strong { display: block; font-weight: 500; }
+    #trove-flow-architecture .ta-wf-row span { display: block; color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wf-status {
+      width: .62rem;
+      height: .62rem;
+      border-radius: 50%;
+      background: var(--ta-green);
+    }
+    #trove-flow-architecture .ta-wf-status.is-review { background: var(--ta-amber); }
+    #trove-flow-architecture .ta-wf-status.is-error { background: var(--destructive); }
+    #trove-flow-architecture .ta-wf-result { text-align: right; }
+    #trove-flow-architecture .ta-wf-review {
+      display: grid;
+      grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+      gap: .7rem;
+    }
+    #trove-flow-architecture .ta-wf-review-detail {
+      padding-left: .7rem;
+      border-left: 1px solid var(--border);
+    }
+    #trove-flow-architecture .ta-wf-review-detail p { color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wf-toolbar {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      flex-wrap: wrap;
+      padding-bottom: .6rem;
+      margin-bottom: .4rem;
+      border-bottom: 1px solid var(--border);
+    }
+    #trove-flow-architecture .ta-wf-search {
+      flex: 1;
+      min-width: 8rem;
+      padding: .4rem .5rem;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--muted-foreground);
+    }
+    #trove-flow-architecture .ta-wf-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .5rem;
+      margin-bottom: .75rem;
+    }
+    #trove-flow-architecture .ta-wf-stat {
+      padding-top: .45rem;
+      border-top: 3px solid var(--border);
+    }
+    #trove-flow-architecture .ta-wf-stat:nth-child(1) { border-color: var(--ta-green); }
+    #trove-flow-architecture .ta-wf-stat:nth-child(2) { border-color: var(--ta-amber); }
+    #trove-flow-architecture .ta-wf-stat:nth-child(3) { border-color: var(--destructive); }
+    #trove-flow-architecture .ta-wf-stat strong { display: block; font-weight: 500; }
+    #trove-flow-architecture .ta-wf-stat span { color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wire-caption {
+      display: grid;
+      grid-template-columns: minmax(7rem, .28fr) 1fr;
+      gap: .7rem;
+      padding-top: .7rem;
+      margin-top: .7rem;
+      border-top: 1px solid var(--border);
+    }
+    #trove-flow-architecture .ta-wire-caption strong { font-weight: 500; }
+    #trove-flow-architecture .ta-wire-caption p { margin: 0; color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wf-dialog-wrap {
+      display: grid;
+      place-items: center;
+      min-height: 24rem;
+      padding: 1rem;
+      background: color-mix(in srgb, var(--muted) 68%, transparent);
+    }
+    #trove-flow-architecture .ta-wf-dialog {
+      width: min(100%, 24rem);
+      padding: .85rem;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--card);
+      color: var(--card-foreground);
+    }
+    #trove-flow-architecture .ta-wf-dialog-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: .5rem;
+      margin-bottom: .75rem;
+    }
+    #trove-flow-architecture .ta-wf-dialog-head strong { font-weight: 500; }
+    #trove-flow-architecture .ta-wf-dialog-head span { color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wf-segments { display: flex; gap: .35rem; }
+    #trove-flow-architecture .ta-wf-segments span {
+      flex: 1;
+      text-align: center;
+      padding: .4rem;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--muted-foreground);
+    }
+    #trove-flow-architecture .ta-wf-segments span.is-selected {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-color: var(--primary);
+    }
+    #trove-flow-architecture .ta-wf-drop {
+      display: grid;
+      place-items: center;
+      min-height: 13rem;
+      padding: 1rem;
+      text-align: center;
+      border: 1px dashed var(--ta-green);
+      border-radius: 7px;
+      background: color-mix(in srgb, var(--ta-green) 8%, transparent);
+    }
+    #trove-flow-architecture .ta-wf-drop strong { display: block; font-weight: 500; margin-top: .35rem; }
+    #trove-flow-architecture .ta-wf-drop span { display: block; color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wf-capture-mode {
+      display: flex;
+      gap: .35rem;
+      margin-bottom: .65rem;
+    }
+    #trove-flow-architecture .ta-wf-capture-mode span {
+      padding: .35rem .5rem;
+      border-bottom: 2px solid transparent;
+      color: var(--muted-foreground);
+    }
+    #trove-flow-architecture .ta-wf-capture-mode span.is-selected {
+      border-color: var(--ta-green);
+      color: var(--foreground);
+    }
+    #trove-flow-architecture .ta-wf-recent { margin-top: .75rem; }
+    #trove-flow-architecture .ta-wf-recent > strong { display: block; font-weight: 500; margin-bottom: .3rem; }
+    #trove-flow-architecture .ta-wf-ask {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      min-height: 24rem;
+      gap: .75rem;
+    }
+    #trove-flow-architecture .ta-wf-chat { display: grid; gap: .65rem; align-content: start; }
+    #trove-flow-architecture .ta-wf-question {
+      justify-self: end;
+      max-width: 82%;
+      padding: .55rem .7rem;
+      border-radius: 7px 7px 0 7px;
+      background: var(--primary);
+      color: var(--primary-foreground);
+    }
+    #trove-flow-architecture .ta-wf-answer {
+      max-width: 94%;
+      padding-left: .7rem;
+      border-left: 3px solid var(--ta-red);
+    }
+    #trove-flow-architecture .ta-wf-answer p { margin: 0 0 .55rem; }
+    #trove-flow-architecture .ta-wf-citations { display: grid; gap: .3rem; }
+    #trove-flow-architecture .ta-wf-citation {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: .45rem;
+      padding: .45rem .5rem;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--card);
+    }
+    #trove-flow-architecture .ta-wf-citation strong { display: block; font-weight: 500; }
+    #trove-flow-architecture .ta-wf-citation span { color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wf-composer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: .45rem;
+      align-items: end;
+      padding-top: .65rem;
+      border-top: 1px solid var(--border);
+    }
+    #trove-flow-architecture .ta-wf-composer .ta-wf-input { min-height: 2.8rem; }
+    #trove-flow-architecture .ta-wf-account-layout {
+      display: grid;
+      grid-template-columns: 9rem minmax(0, 1fr);
+      gap: .8rem;
+    }
+    #trove-flow-architecture .ta-wf-settings-nav { display: grid; gap: .2rem; align-content: start; }
+    #trove-flow-architecture .ta-wf-settings-nav span {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .4rem .45rem;
+      border-radius: 5px;
+      color: var(--muted-foreground);
+    }
+    #trove-flow-architecture .ta-wf-settings-nav span.is-current {
+      background: var(--accent);
+      color: var(--accent-foreground);
+    }
+    #trove-flow-architecture .ta-wf-settings-content { min-width: 0; }
+    #trove-flow-architecture .ta-wf-setting-group { margin-bottom: .8rem; }
+    #trove-flow-architecture .ta-wf-setting-group > strong { display: block; font-weight: 500; margin-bottom: .25rem; }
+    #trove-flow-architecture .ta-wf-setting-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: .65rem;
+      align-items: center;
+      padding: .55rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    #trove-flow-architecture .ta-wf-setting-row strong { display: block; font-weight: 500; }
+    #trove-flow-architecture .ta-wf-setting-row span { display: block; color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wf-avatar {
+      display: grid;
+      place-items: center;
+      width: 3.5rem;
+      height: 3.5rem;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--muted);
+      font-weight: 500;
+    }
+    #trove-flow-architecture .ta-wf-profile-head {
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+      padding-bottom: .75rem;
+      margin-bottom: .6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    #trove-flow-architecture .ta-wf-profile-head strong,
+    #trove-flow-architecture .ta-wf-profile-head span { display: block; }
+    #trove-flow-architecture .ta-wf-profile-head strong { font-weight: 500; }
+    #trove-flow-architecture .ta-wf-profile-head span { color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wf-user-menu-stage {
+      display: grid;
+      grid-template-columns: 8.5rem minmax(0, 1fr);
+      min-height: 28rem;
+    }
+    #trove-flow-architecture .ta-wire-stage.is-mobile .ta-wf-user-menu-stage { grid-template-columns: 1fr; }
+    #trove-flow-architecture .ta-wf-user-menu-side {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      padding: .75rem .6rem;
+      border-right: 1px solid var(--border);
+      background: var(--muted);
+    }
+    #trove-flow-architecture .ta-wire-stage.is-mobile .ta-wf-user-menu-side { display: none; }
+    #trove-flow-architecture .ta-wf-user-trigger {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      padding: .45rem;
+      border-radius: 5px;
+      background: var(--accent);
+    }
+    #trove-flow-architecture .ta-wf-mini-avatar {
+      display: grid;
+      place-items: center;
+      width: 1.65rem;
+      height: 1.65rem;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--card);
+    }
+    #trove-flow-architecture .ta-wf-user-popover {
+      position: absolute;
+      left: .55rem;
+      bottom: 3.35rem;
+      width: 12rem;
+      padding: .4rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--popover);
+      color: var(--popover-foreground);
+      box-shadow: 0 8px 24px color-mix(in srgb, var(--foreground) 12%, transparent);
+    }
+    #trove-flow-architecture .ta-wf-user-popover strong,
+    #trove-flow-architecture .ta-wf-user-popover small { display: block; padding: .25rem .35rem; }
+    #trove-flow-architecture .ta-wf-user-popover small { color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wf-menu-item {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .4rem .35rem;
+      border-radius: 4px;
+    }
+    #trove-flow-architecture .ta-wf-menu-item.is-logout { color: var(--destructive); border-top: 1px solid var(--border); margin-top: .25rem; border-radius: 0; }
+    #trove-flow-architecture .ta-wf-danger {
+      margin-top: .75rem;
+      padding-top: .65rem;
+      border-top: 1px solid var(--destructive);
+    }
+    #trove-flow-architecture .ta-wf-danger > strong { display: block; color: var(--destructive); font-weight: 500; }
+    #trove-flow-architecture .ta-wf-item-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, .9fr);
+      gap: .75rem;
+    }
+    #trove-flow-architecture .ta-wf-document {
+      min-height: 19rem;
+      padding: .8rem;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--card-foreground);
+    }
+    #trove-flow-architecture .ta-wf-doc-line {
+      height: .45rem;
+      margin-bottom: .45rem;
+      border-radius: 2px;
+      background: var(--border);
+    }
+    #trove-flow-architecture .ta-wf-doc-line:nth-child(3n) { width: 74%; }
+    #trove-flow-architecture .ta-wf-item-meta { display: grid; gap: .65rem; align-content: start; }
+    #trove-flow-architecture .ta-wf-item-meta p { margin: 0; color: var(--muted-foreground); }
+    #trove-flow-architecture .ta-wf-tags { display: flex; gap: .3rem; flex-wrap: wrap; }
+    #trove-flow-architecture .ta-wf-delete-options { display: grid; gap: .5rem; }
+    #trove-flow-architecture .ta-wf-delete-option {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: .5rem;
+      padding: .6rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    #trove-flow-architecture .ta-wf-delete-option.is-selected { border-color: var(--ta-red); }
+    #trove-flow-architecture .ta-wf-radio {
+      width: .9rem;
+      height: .9rem;
+      margin-top: .15rem;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+    }
+    #trove-flow-architecture .ta-wf-delete-option.is-selected .ta-wf-radio {
+      border: .28rem solid var(--ta-red);
+    }
+    #trove-flow-architecture .ta-wf-delete-option strong,
+    #trove-flow-architecture .ta-wf-delete-option span { display: block; }
+    #trove-flow-architecture .ta-wf-delete-option strong { font-weight: 500; }
+    #trove-flow-architecture .ta-wf-delete-option span { color: var(--muted-foreground); }
+
+    @media (max-width: 680px) {
+      #trove-flow-architecture .ta-rule,
+      #trove-flow-architecture .ta-roadmap,
+      #trove-flow-architecture .ta-branch { grid-template-columns: 1fr; }
+      #trove-flow-architecture .ta-system,
+      #trove-flow-architecture .ta-model { grid-template-columns: 1fr; }
+      #trove-flow-architecture .ta-arrow { transform: rotate(90deg); min-height: 1.5rem; }
+      #trove-flow-architecture .ta-setup { grid-template-columns: 1fr; }
+      #trove-flow-architecture .ta-setup .ta-arrow { min-height: 1.2rem; }
+      #trove-flow-architecture .ta-example,
+      #trove-flow-architecture .ta-detail { grid-template-columns: 1fr; }
+      #trove-flow-architecture .ta-lifecycle { grid-template-columns: 1fr 1fr; }
+      #trove-flow-architecture .ta-life-stage::after { display: none; }
+      #trove-flow-architecture .ta-owns { grid-template-columns: 1fr; }
+      #trove-flow-architecture .ta-wf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      #trove-flow-architecture .ta-wf-review { grid-template-columns: 1fr; }
+      #trove-flow-architecture .ta-wf-review-detail { padding-left: 0; border-left: 0; border-top: 1px solid var(--border); padding-top: .65rem; }
+      #trove-flow-architecture .ta-wf-account-layout { grid-template-columns: 1fr; }
+      #trove-flow-architecture .ta-wf-settings-nav { display: flex; flex-wrap: wrap; }
+      #trove-flow-architecture .ta-wf-item-layout { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 440px) {
+      #trove-flow-architecture .ta-lifecycle { grid-template-columns: 1fr; }
+      #trove-flow-architecture .ta-source-table th:nth-child(3),
+      #trove-flow-architecture .ta-source-table td:nth-child(3) { display: none; }
+      #trove-flow-architecture .ta-config { grid-template-columns: 1fr; }
+      #trove-flow-architecture .ta-wf-grid,
+      #trove-flow-architecture .ta-wf-stats { grid-template-columns: 1fr; }
+      #trove-flow-architecture .ta-wf-row { grid-template-columns: auto minmax(0, 1fr); }
+      #trove-flow-architecture .ta-wf-result { grid-column: 2; text-align: left; }
+      #trove-flow-architecture .ta-wire-caption { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <div class="ta-kicker">
+    <span class="ta-mark" aria-hidden="true"></span>
+    <span>Projektet är alltid gränsen för innehåll, regler och resultat</span>
+  </div>
+
+  <div class="ta-nav" role="tablist" aria-label="Arkitekturvyer">
+    <button class="btn btn-secondary ta-tab" type="button" role="tab" aria-selected="true" aria-controls="ta-overview" id="tab-overview" data-view="overview">Helhet</button>
+    <button class="btn btn-secondary ta-tab" type="button" role="tab" aria-selected="false" aria-controls="ta-setup" id="tab-setup" data-view="setup">Setup</button>
+    <button class="btn btn-secondary ta-tab" type="button" role="tab" aria-selected="false" aria-controls="ta-sources" id="tab-sources" data-view="sources">Datakällor</button>
+    <button class="btn btn-secondary ta-tab" type="button" role="tab" aria-selected="false" aria-controls="ta-processing" id="tab-processing" data-view="processing">Bearbetning</button>
+    <button class="btn btn-secondary ta-tab" type="button" role="tab" aria-selected="false" aria-controls="ta-model" id="tab-model" data-view="model">Datamodell</button>
+    <button class="btn btn-secondary ta-tab" type="button" role="tab" aria-selected="false" aria-controls="ta-wireframes" id="tab-wireframes" data-view="wireframes">Wireframes</button>
+    <button class="btn btn-secondary ta-tab" type="button" role="tab" aria-selected="false" aria-controls="ta-roadmap" id="tab-roadmap" data-view="roadmap">Byggordning</button>
+  </div>
+
+  <section class="ta-view" id="ta-overview" role="tabpanel" aria-labelledby="tab-overview" data-panel="overview">
+    <div class="ta-rule" aria-label="Tre arkitekturregler">
+      <div><strong>Kontot äger anslutningen</strong><span>Gmail, Slack och lokala åtkomstnycklar kopplas en gång.</span></div>
+      <div><strong>Projektet äger datakällan</strong><span>Mapp, urval, regler, historik och allt infångat material.</span></div>
+      <div><strong>Trove äger motorn</strong><span>Samma import, kontroll, bearbetning och sökning för alla källor.</span></div>
+    </div>
+
+    <div class="ta-system" aria-label="Trove helhetsarkitektur">
+      <div class="ta-lane">
+        <div class="ta-lane-title"><span>1. In</span><small>manuellt eller automatiskt</small></div>
+        <div class="ta-node-list">
+          <button class="ta-node is-active" type="button" data-node="capture" data-tone="green"><strong>Drag and drop</strong><span>PDF, Word, Excel, bild och text</span></button>
+          <button class="ta-node" type="button" data-node="mail" data-tone="blue"><strong>Mailmapp</strong><span>Nyhetsbrev och valda mappar</span></button>
+          <button class="ta-node" type="button" data-node="folder" data-tone="blue"><strong>Bevakad mapp</strong><span>Lokala filer via Mac-appen</span></button>
+          <button class="ta-node" type="button" data-node="cloud"><strong>Webbkällor</strong><span>RSS, webb och Slack</span></button>
+        </div>
+      </div>
+
+      <div class="ta-arrow" aria-hidden="true">→</div>
+
+      <div class="ta-lane">
+        <div class="ta-lane-title"><span>2. Trove Core</span><small>en gemensam väg</small></div>
+        <div class="ta-node-list">
+          <button class="ta-node" type="button" data-node="ingest" data-tone="blue"><strong>Ta emot och spara original</strong><span>Projekt, källa, extern identitet och tid</span></button>
+          <button class="ta-node" type="button" data-node="select" data-tone="amber"><strong>Välj och kontrollera</strong><span>Regler, relevans, dubletter och säkerhet</span></button>
+          <button class="ta-node" type="button" data-node="process" data-tone="amber"><strong>Bearbeta</strong><span>Text, metadata, fakta, delar och sökindex</span></button>
+          <button class="ta-node" type="button" data-node="review"><strong>Granska vid behov</strong><span>Osäkert, trasigt eller känsligt material</span></button>
+        </div>
+      </div>
+
+      <div class="ta-arrow" aria-hidden="true">→</div>
+
+      <div class="ta-lane">
+        <div class="ta-lane-title"><span>3. Ut</span><small>användbar kunskap</small></div>
+        <div class="ta-node-list">
+          <button class="ta-node" type="button" data-node="library" data-tone="green"><strong>Bibliotek</strong><span>Sök, filter, original och historik</span></button>
+          <button class="ta-node" type="button" data-node="ask" data-tone="green"><strong>Fråga Trove</strong><span>Svar med tydliga källhänvisningar</span></button>
+          <button class="ta-node" type="button" data-node="pipelines" data-tone="green"><strong>Pipelines och rapporter</strong><span>Återkommande sammanställning och leverans</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ta-detail" aria-live="polite">
+      <strong id="ta-detail-title">Drag and drop</strong>
+      <p id="ta-detail-text">Den befintliga fångstytan är den manuella datakällan. Användaren ser alltid vilket projekt filen hamnar i. Filen sparas som original och går sedan genom samma behandling som automatiska källor.</p>
+    </div>
+  </section>
+
+  <section class="ta-view" id="ta-wireframes" role="tabpanel" aria-labelledby="tab-wireframes" data-panel="wireframes" hidden>
+    <div class="ta-wire-controls">
+      <div class="ta-wire-picker" aria-label="Välj skärm">
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="true" data-wire="project">Skapa projekt</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="empty">Tomt projekt</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="capture">Drag and drop</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="choose">Välj källa</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="mail">Mail-setup</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="preview">Provkör</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="sources">Källor</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="pipelines">Pipelines</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="pipelinetemplates">Pipeline-mallar</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="newpipeline">Skapa pipeline</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="pipelinedetail">Pipeline-detalj</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="report">Rapportresultat</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="review">Granska</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="library">Bibliotek</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="item">Postdetalj</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="trash">Papperskorg</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="deletesource">Ta bort källa</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="ask">Ask</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="usermenu">Användarmeny</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="profile">Profil</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="connections">Anslutningar</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="security">Säkerhet</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="projectsettings">Projektinställningar</button>
+        <button class="btn btn-secondary ta-wire-button" type="button" aria-pressed="false" data-wire="health">Källdetalj</button>
+      </div>
+      <div class="ta-device-picker" aria-label="Välj skärmstorlek">
+        <button class="btn btn-ghost ta-device-button" type="button" aria-pressed="true" data-device="desktop"><i data-lucide="monitor" aria-hidden="true"></i> Desktop</button>
+        <button class="btn btn-ghost ta-device-button" type="button" aria-pressed="false" data-device="mobile"><i data-lucide="smartphone" aria-hidden="true"></i> Mobil</button>
+      </div>
+    </div>
+
+    <div class="ta-wire-stage" id="ta-wire-stage">
+      <div class="ta-wire-screen" data-wire-panel="project">
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side">
+            <div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div>
+            <div class="ta-wf-project"><small>Projekt</small><span>Inbox</span></div>
+            <nav class="ta-wf-nav"><span class="is-current">Ask</span><span>Library</span><span>Sources</span><span>Pipelines</span><span>Capture</span></nav>
+          </aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Inbox</span></div>
+            <div class="ta-wf-heading"><div><strong>Projekt</strong><span>Separata kunskapsområden</span></div><span class="ta-wf-action is-primary">Nytt projekt</span></div>
+            <div class="ta-wf-dialog-wrap">
+              <div class="ta-wf-dialog">
+                <div class="ta-wf-dialog-head"><div><strong>Skapa projekt</strong><span>Namnet visas i sidomenyn och vid all import.</span></div><i data-lucide="x" aria-hidden="true"></i></div>
+                <div class="ta-wf-form">
+                  <div class="ta-wf-field"><label>Projektnamn</label><div class="ta-wf-input">Tactical Athlete</div></div>
+                  <div class="ta-wf-field"><label>Typ</label><div class="ta-wf-segments"><span class="is-selected">Personligt</span><span>Kundprojekt</span></div></div>
+                  <div class="ta-wf-field"><label>Vad ska projektet hjälpa dig med? <span class="text-muted">Valfritt</span></label><div class="ta-wf-input is-tall">Samla forskning, nyhetsbrev och träningsmaterial för tactical athletes.</div></div>
+                </div>
+                <div class="ta-wf-footer"><span class="ta-wf-action">Avbryt</span><span class="ta-wf-action is-primary">Skapa projekt</span></div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="empty" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side">
+            <div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div>
+            <div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div>
+            <nav class="ta-wf-nav"><span>Ask</span><span class="is-current">Library</span><span>Sources</span><span>Pipelines</span><span>Capture</span></nav>
+          </aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Tactical Athlete</span></div>
+            <div class="ta-wf-heading"><div><strong>Tactical Athlete</strong><span>Nytt projekt</span></div></div>
+            <div class="ta-wf-empty">
+              <div><i data-lucide="inbox" aria-hidden="true"></i><strong>Projektet är tomt</strong><p>Droppa material nu eller koppla en källa som fyller på automatiskt.</p><div class="ta-wf-actions"><span class="ta-wf-action is-primary">Lägg till material</span><span class="ta-wf-action">Koppla datakälla</span></div></div>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="capture" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span>Library</span><span>Sources</span><span>Pipelines</span><span class="is-current">Capture</span></nav></aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Tactical Athlete</span></div>
+            <div class="ta-wf-heading"><div><strong>Capture</strong><span>Materialet hamnar i Tactical Athlete</span></div><span class="ta-wf-action">Byt projekt</span></div>
+            <div class="ta-wf-capture-mode"><span class="is-selected">Filer</span><span>Länk</span><span>Text</span></div>
+            <div class="ta-wf-drop"><div><i data-lucide="download" aria-hidden="true"></i><strong>Släpp filer här</strong><span>PDF, Word, Excel, bild eller text</span><span class="ta-wf-action">Välj filer</span></div></div>
+            <div class="ta-wf-recent"><strong>Senaste importerna</strong><div class="ta-wf-row"><span class="ta-wf-status"></span><div><strong>load-carriage-review.pdf</strong><span>Bearbetar text · nyss</span></div><div class="ta-wf-result">42%</div></div><div class="ta-wf-row"><span class="ta-wf-status"></span><div><strong>selection-standards.docx</strong><span>Klar · 3 minuter sedan</span></div><div class="ta-wf-result">Öppna</div></div></div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="choose" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span>Library</span><span class="is-current">Sources</span><span>Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Tactical Athlete</span></div>
+            <div class="ta-wf-heading"><div><strong>Lägg till datakälla</strong><span>Välj var materialet finns</span></div><span class="ta-wf-action">Stäng</span></div>
+            <div class="ta-wf-grid">
+              <div class="ta-wf-source-choice is-next"><i data-lucide="mail" aria-hidden="true"></i><strong>Mail</strong><span>Mappar eller etiketter</span></div>
+              <div class="ta-wf-source-choice is-next"><i data-lucide="folder-sync" aria-hidden="true"></i><strong>Bevakad mapp</strong><span>Nya lokala filer</span></div>
+              <div class="ta-wf-source-choice"><i data-lucide="rss" aria-hidden="true"></i><strong>RSS</strong><span>Nya poster i ett flöde</span></div>
+              <div class="ta-wf-source-choice"><i data-lucide="globe" aria-hidden="true"></i><strong>Webbsida</strong><span>Sida eller länklista</span></div>
+              <div class="ta-wf-source-choice"><i data-lucide="messages-square" aria-hidden="true"></i><strong>Slack</strong><span>Vald kanal</span></div>
+              <div class="ta-wf-source-choice"><i data-lucide="upload" aria-hidden="true"></i><strong>Manuell import</strong><span>Drag and drop</span></div>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="mail" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span>Library</span><span class="is-current">Sources</span><span>Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Tactical Athlete</span></div>
+            <div class="ta-wf-heading"><div><strong>Koppla mail</strong><span>Steg 2 av 4</span></div><span class="ta-wf-action">Spara utkast</span></div>
+            <div class="ta-wf-steps"><span class="is-done">Konto</span><span class="is-active">Mapp</span><span>Urval</span><span>Test</span></div>
+            <div class="ta-wf-form">
+              <div class="ta-wf-field"><label>Anslutet konto</label><div class="ta-wf-input">Henriks Gmail · anslutet</div></div>
+              <div class="ta-wf-field"><label>Mapp eller etikett</label><div class="ta-wf-input">Newsletters</div></div>
+              <div class="ta-wf-field"><label>Vilka mejl ska sparas?</label><div class="ta-wf-input is-tall">Behåll sådant om träning, nutrition och återhämtning. Hoppa över reklam, kvitton och orderbekräftelser.</div></div>
+              <div class="ta-wf-field"><label>När Trove är osäker</label><div class="ta-wf-input">Lägg i granskningskön</div></div>
+            </div>
+            <div class="ta-wf-footer"><span class="ta-wf-action">Tillbaka</span><span class="ta-wf-action is-primary">Provkör på 20 mejl</span></div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="preview" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span>Library</span><span class="is-current">Sources</span><span>Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Tactical Athlete</span></div>
+            <div class="ta-wf-heading"><div><strong>Provkörning</strong><span>20 mejl från Newsletters</span></div><span class="ta-wf-action">Ändra regler</span></div>
+            <div class="ta-wf-stats"><div class="ta-wf-stat"><strong>12 sparas</strong><span>Tydlig träff</span></div><div class="ta-wf-stat"><strong>3 granskas</strong><span>Osäker relevans</span></div><div class="ta-wf-stat"><strong>5 hoppas över</strong><span>Reklam eller kvitto</span></div></div>
+            <div class="ta-wf-preview-list">
+              <div class="ta-wf-row"><span class="ta-wf-status"></span><div><strong>How to build durable aerobic capacity</strong><span>Träning · tydlig träff</span></div><div class="ta-wf-result">Spara</div></div>
+              <div class="ta-wf-row"><span class="ta-wf-status is-review"></span><div><strong>Sunday notes from Coach Dave</strong><span>Blandat innehåll · 62% säker</span></div><div class="ta-wf-result">Granska</div></div>
+              <div class="ta-wf-row"><span class="ta-wf-status is-error"></span><div><strong>Your order has shipped</strong><span>Orderbekräftelse</span></div><div class="ta-wf-result">Hoppa över</div></div>
+            </div>
+            <div class="ta-wf-footer"><span class="ta-wf-action">Kör nytt urval</span><span class="ta-wf-action is-primary">Aktivera källan</span></div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="sources" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span>Library</span><span class="is-current">Sources</span><span>Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Tactical Athlete</span></div>
+            <div class="ta-wf-heading"><div><strong>Datakällor</strong><span>4 aktiva · 1 behöver åtgärd</span></div><span class="ta-wf-action is-primary">Lägg till källa</span></div>
+            <div class="ta-wf-source-list">
+              <div class="ta-wf-row"><span class="ta-wf-status"></span><div><strong>Newsletters</strong><span>Mail · varje timme · 312 poster</span></div><div class="ta-wf-result">2 h sedan</div></div>
+              <div class="ta-wf-row"><span class="ta-wf-status"></span><div><strong>Tactical PDFs</strong><span>Bevakad mapp · Mac online · 88 poster</span></div><div class="ta-wf-result">12 min sedan</div></div>
+              <div class="ta-wf-row"><span class="ta-wf-status"></span><div><strong>Sport science feeds</strong><span>RSS · var sjätte timme · 140 poster</span></div><div class="ta-wf-result">4 h sedan</div></div>
+              <div class="ta-wf-row"><span class="ta-wf-status is-error"></span><div><strong>Research index</strong><span>Webb · timeout vid senaste körningen</span></div><div class="ta-wf-result">Försök igen</div></div>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="pipelines" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span>Library</span><span>Sources</span><span class="is-current">Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Pipelines</span></div>
+            <div class="ta-wf-heading"><div><strong>Pipelines</strong><span>Återkommande arbete på projektets bibliotek</span></div><span class="ta-wf-action is-primary">Ny pipeline</span></div>
+            <div class="ta-wf-source-list">
+              <div class="ta-wf-row"><span class="ta-wf-status"></span><div><strong>Morgonbrief</strong><span>Vardagar 08:00 · nytt sedan igår · e-post</span></div><div class="ta-wf-result">Aktiv</div></div>
+              <div class="ta-wf-row"><span class="ta-wf-status"></span><div><strong>Veckosammanställning</strong><span>Fredagar 15:00 · senaste 7 dagarna · e-post</span></div><div class="ta-wf-result">Aktiv</div></div>
+              <div class="ta-wf-row"><span class="ta-wf-status is-review"></span><div><strong>Månadsöversikt för klient</strong><span>Första dagen i månaden · sparas i Trove</span></div><div class="ta-wf-result">Pausad</div></div>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="pipelinetemplates" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span>Library</span><span>Sources</span><span class="is-current">Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Pipeline-mallar</span></div>
+            <div class="ta-wf-heading"><div><strong>Vilka sammanställningar vill du ha?</strong><span>Välj en eller flera. De kan ändras separat senare.</span></div><span class="ta-wf-action">Stäng</span></div>
+            <div class="ta-wf-delete-options">
+              <div class="ta-wf-delete-option is-selected"><span class="ta-wf-radio"></span><div><strong>Morgonbrief</strong><span>Vardagar 08:00 · nytt sedan igår och sådant som behöver uppmärksamhet</span></div></div>
+              <div class="ta-wf-delete-option is-selected"><span class="ta-wf-radio"></span><div><strong>Veckosammanställning</strong><span>Fredagar 15:00 · veckans viktigaste insikter, förändringar och uppföljning</span></div></div>
+              <div class="ta-wf-delete-option"><span class="ta-wf-radio"></span><div><strong>Månadsöversikt</strong><span>Första vardagen i månaden · längre utveckling och återkommande teman</span></div></div>
+            </div>
+            <div class="ta-wf-footer"><span class="ta-wf-action">Skapa en egen</span><span class="ta-wf-action is-primary">Fortsätt med 2 valda</span></div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="newpipeline" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span>Library</span><span>Sources</span><span class="is-current">Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Ny pipeline</span></div>
+            <div class="ta-wf-heading"><div><strong>Skapa pipeline</strong><span>Beskriv resultatet du vill få återkommande</span></div><span class="ta-wf-action">Avbryt</span></div>
+            <div class="ta-wf-form">
+              <div class="ta-wf-field"><label>Vad ska Trove göra?</label><div class="ta-wf-input is-tall">Varje söndag, sammanfatta de viktigaste nya insikterna om träning och återhämtning från den senaste veckan.</div></div>
+              <div class="ta-wf-field"><label>Urval</label><div class="ta-wf-input">Hela projektet · material från senaste 7 dagarna</div></div>
+              <div class="ta-wf-field"><label>Leverans</label><div class="ta-wf-input">Spara i Trove och skicka via e-post</div></div>
+            </div>
+            <div class="ta-wf-footer"><span class="ta-wf-action">Spara utkast</span><span class="ta-wf-action is-primary">Förhandsgranska</span></div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="pipelinedetail" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span>Library</span><span>Sources</span><span class="is-current">Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Pipeline</span></div>
+            <div class="ta-wf-heading"><div><strong>Veckosammanställning</strong><span>Aktiv · nästa körning fredag 15:00 · skickas via e-post</span></div><div class="ta-wf-actions"><span class="ta-wf-action">Pausa</span><span class="ta-wf-action">Redigera</span></div></div>
+            <div class="ta-wf-stats"><div class="ta-wf-stat"><strong>12</strong><span>Körningar</span></div><div class="ta-wf-stat"><strong>11</strong><span>Lyckade</span></div><div class="ta-wf-stat"><strong>1</strong><span>Misslyckad</span></div></div>
+            <div class="ta-wf-field"><label>Instruktion</label><div class="ta-wf-input is-tall">Sammanfatta nya insikter om träning och återhämtning från den senaste veckan. Visa källor till varje huvudpunkt.</div></div>
+            <div class="ta-wf-heading"><div><strong>Körhistorik</strong><span>Resultat och fel sparas per körning</span></div><span class="ta-wf-action is-primary">Kör nu</span></div>
+            <div class="ta-wf-log"><div class="ta-wf-row"><span class="ta-wf-status"></span><div><strong>17 juli 15:00</strong><span>18 poster lästa · skickad till henrik@example.com</span></div><div class="ta-wf-result">Öppna</div></div><div class="ta-wf-row"><span class="ta-wf-status"></span><div><strong>10 juli 15:00</strong><span>24 poster lästa · skickad till henrik@example.com</span></div><div class="ta-wf-result">Öppna</div></div><div class="ta-wf-row"><span class="ta-wf-status is-error"></span><div><strong>3 juli 15:00</strong><span>E-post kunde inte levereras · rapporten finns sparad i Trove</span></div><div class="ta-wf-result">Skicka igen</div></div></div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="report" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span>Library</span><span>Sources</span><span class="is-current">Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Rapport</span></div>
+            <div class="ta-wf-heading"><div><strong>Veckosammanställning</strong><span>Skickad till henrik@example.com · fredag 17 juli 15:00 · 18 källposter</span></div><div class="ta-wf-actions"><span class="ta-wf-action">Skicka igen</span><span class="ta-wf-action">Exportera</span></div></div>
+            <div class="ta-wf-answer"><p>Veckans material lyfter främst en försiktigare ökning av löpvolym, tydligare skillnad mellan konditionsträning och marschträning samt bättre planering av återhämtning efter tung belastning.</p><div class="ta-wf-citations"><div class="ta-wf-citation"><span>1</span><div><strong>Concurrent training review</strong><span>RSS · resultat och diskussion</span></div></div><div class="ta-wf-citation"><span>2</span><div><strong>Programming loaded marches</strong><span>Newsletter · avsnitt 3</span></div></div><div class="ta-wf-citation"><span>3</span><div><strong>Recovery after load carriage</strong><span>PDF · sidorna 8–11</span></div></div></div></div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="review" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span class="is-current">Library</span><span>Sources</span><span>Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Review · 3</span></div>
+            <div class="ta-wf-heading"><div><strong>Behöver granskas</strong><span>Osäkra träffar från projektets källor</span></div></div>
+            <div class="ta-wf-review">
+              <div class="ta-wf-review-list"><div class="ta-wf-row"><span class="ta-wf-status is-review"></span><div><strong>Sunday notes</strong><span>Mail · 62% säker</span></div></div><div class="ta-wf-row"><span class="ta-wf-status is-review"></span><div><strong>Community digest</strong><span>Mail · 55% säker</span></div></div><div class="ta-wf-row"><span class="ta-wf-status is-review"></span><div><strong>Scanned document</strong><span>PDF · svag textutvinning</span></div></div></div>
+              <div class="ta-wf-review-detail"><strong>Sunday notes from Coach Dave</strong><p>Trove hittade ett stycke om värmeträning, men resten handlar om en kommande kurs.</p><div class="ta-wf-field"><label>Varför osäker?</label><div class="ta-wf-input">Relevant ämne i 18% av innehållet</div></div><div class="ta-wf-actions"><span class="ta-wf-action">Hoppa över</span><span class="ta-wf-action is-primary">Spara</span></div></div>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="library" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span class="is-current">Library</span><span>Sources</span><span>Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Library</span></div>
+            <div class="ta-wf-heading"><div><strong>Bibliotek</strong><span>540 poster i Tactical Athlete</span></div><span class="ta-wf-action is-primary">Capture</span></div>
+            <div class="ta-wf-toolbar"><div class="ta-wf-search">Sök i projektet</div><span class="ta-wf-action">Typ</span><span class="ta-wf-action">Källa</span><span class="ta-wf-action">Ämne</span></div>
+            <div class="ta-wf-library-list">
+              <div class="ta-wf-row"><i data-lucide="mail" aria-hidden="true"></i><div><strong>How to build durable aerobic capacity</strong><span>Newsletters · träning, uthållighet · idag</span></div><div class="ta-wf-result">Klar</div></div>
+              <div class="ta-wf-row"><i data-lucide="file-text" aria-hidden="true"></i><div><strong>Load carriage and injury risk</strong><span>Tactical PDFs · forskning · igår</span></div><div class="ta-wf-result">Klar</div></div>
+              <div class="ta-wf-row"><i data-lucide="rss" aria-hidden="true"></i><div><strong>New review of concurrent training</strong><span>Sport science feeds · forskning · 2 dagar</span></div><div class="ta-wf-result">Klar</div></div>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="health" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span>Library</span><span class="is-current">Sources</span><span>Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Sources</span></div>
+            <div class="ta-wf-heading"><div><strong>Newsletters</strong><span>Mail · aktiv · körs varje timme</span></div><span class="ta-wf-action">Redigera</span></div>
+            <div class="ta-wf-stats"><div class="ta-wf-stat"><strong>312</strong><span>Sparade poster</span></div><div class="ta-wf-stat"><strong>18</strong><span>Granskade</span></div><div class="ta-wf-stat"><strong>2</strong><span>Fel senaste 30 dagar</span></div></div>
+            <div class="ta-wf-field"><label>Aktiv regel</label><div class="ta-wf-input is-tall">Behåll sådant om träning, nutrition och återhämtning. Hoppa över reklam, kvitton och orderbekräftelser.</div></div>
+            <div class="ta-wf-heading"><div><strong>Senaste körningar</strong><span>Full historik för felsökning och tillit</span></div><span class="ta-wf-action">Kör nu</span></div>
+            <div class="ta-wf-log"><div class="ta-wf-row"><span class="ta-wf-status"></span><div><strong>Idag 14:00</strong><span>8 lästa · 3 sparade · 1 granskning</span></div><div class="ta-wf-result">Klar</div></div><div class="ta-wf-row"><span class="ta-wf-status"></span><div><strong>Idag 13:00</strong><span>2 lästa · 1 sparad</span></div><div class="ta-wf-result">Klar</div></div><div class="ta-wf-row"><span class="ta-wf-status is-error"></span><div><strong>Idag 12:00</strong><span>Gmail svarade inte inom 30 sekunder</span></div><div class="ta-wf-result">Omkörd</div></div></div>
+          </main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="item" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span class="is-current">Library</span><span>Sources</span><span>Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main"><div class="ta-wf-mobile-top"><strong>Trove</strong><span>Library</span></div><div class="ta-wf-heading"><div><strong>Load carriage and injury risk</strong><span>PDF · Tactical PDFs · klar</span></div><div class="ta-wf-actions"><span class="ta-wf-action">Flytta</span><span class="ta-wf-action">•••</span></div></div><div class="ta-wf-item-layout"><div class="ta-wf-document" aria-label="Schematisk dokumentförhandsvisning"><div class="ta-wf-doc-line"></div><div class="ta-wf-doc-line"></div><div class="ta-wf-doc-line"></div><div class="ta-wf-doc-line"></div><div class="ta-wf-doc-line"></div><div class="ta-wf-doc-line"></div><div class="ta-wf-doc-line"></div><div class="ta-wf-doc-line"></div><div class="ta-wf-doc-line"></div></div><div class="ta-wf-item-meta"><div><strong>Sammanfattning</strong><p>Forskningsöversikt om belastning, marschvana och skadeutfall vid militär packmarsch.</p></div><div><strong>Ämnen</strong><div class="ta-wf-tags"><span class="ta-pill">load carriage</span><span class="ta-pill">injury risk</span><span class="ta-pill">research</span></div></div><div><strong>Källa</strong><p>Tactical PDFs · importerad 21 juli</p></div><div><strong>Åtgärder</strong><div class="ta-wf-actions"><span class="ta-wf-action">Byt namn</span><span class="ta-wf-action">Kör om</span><span class="ta-wf-action">Öppna original</span><span class="ta-wf-action">Radera</span></div></div></div></div></main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="trash" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span class="is-current">Library</span><span>Sources</span><span>Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main"><div class="ta-wf-mobile-top"><strong>Trove</strong><span>Trash</span></div><div class="ta-wf-heading"><div><strong>Papperskorg</strong><span>Raderade poster tas bort permanent efter 30 dagar</span></div><span class="ta-wf-action">Töm papperskorgen</span></div><div class="ta-wf-source-list"><div class="ta-wf-row"><i data-lucide="file-text" aria-hidden="true"></i><div><strong>Old selection guide.pdf</strong><span>Tactical PDFs · raderas om 28 dagar</span></div><div class="ta-wf-actions"><span class="ta-wf-action">Återställ</span><span class="ta-wf-action">Radera nu</span></div></div><div class="ta-wf-row"><i data-lucide="mail" aria-hidden="true"></i><div><strong>Sunday promotion</strong><span>Newsletters · raderas om 29 dagar</span></div><div class="ta-wf-actions"><span class="ta-wf-action">Återställ</span><span class="ta-wf-action">Radera nu</span></div></div><div class="ta-wf-row"><i data-lucide="rss" aria-hidden="true"></i><div><strong>Duplicate research summary</strong><span>Sport science feeds · raderas om 30 dagar</span></div><div class="ta-wf-actions"><span class="ta-wf-action">Återställ</span><span class="ta-wf-action">Radera nu</span></div></div></div></main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="deletesource" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span>Library</span><span class="is-current">Sources</span><span>Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main"><div class="ta-wf-mobile-top"><strong>Trove</strong><span>Sources</span></div><div class="ta-wf-heading"><div><strong>Newsletters</strong><span>Mail · 312 importerade poster</span></div></div><div class="ta-wf-dialog-wrap"><div class="ta-wf-dialog"><div class="ta-wf-dialog-head"><div><strong>Ta bort datakällan?</strong><span>Newsletters slutar kontrolleras direkt.</span></div><i data-lucide="x" aria-hidden="true"></i></div><div class="ta-wf-delete-options"><div class="ta-wf-delete-option is-selected"><span class="ta-wf-radio"></span><div><strong>Behåll importerat material</strong><span>312 poster ligger kvar i biblioteket. Detta är det säkra standardvalet.</span></div></div><div class="ta-wf-delete-option"><span class="ta-wf-radio"></span><div><strong>Flytta allt material till papperskorgen</strong><span>Poster kan återställas i 30 dagar innan permanent radering.</span></div></div></div><div class="ta-wf-footer"><span class="ta-wf-action">Avbryt</span><span class="ta-wf-action is-primary">Ta bort källan</span></div></div></div></main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="usermenu" hidden>
+        <div class="ta-wf-user-menu-stage">
+          <aside class="ta-wf-user-menu-side">
+            <div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div>
+            <div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div>
+            <nav class="ta-wf-nav"><span class="is-current">Ask</span><span>Library</span><span>Sources</span><span>Pipelines</span><span>Capture</span></nav>
+            <div class="ta-wf-user-popover"><strong>Henrik Hellström</strong><small>henrik@example.com</small><div class="ta-wf-menu-item"><i data-lucide="user" aria-hidden="true"></i>Profil</div><div class="ta-wf-menu-item"><i data-lucide="settings" aria-hidden="true"></i>Inställningar</div><div class="ta-wf-menu-item is-logout"><i data-lucide="log-out" aria-hidden="true"></i>Logga ut</div></div>
+            <div class="ta-wf-user-trigger"><span class="ta-wf-mini-avatar">HH</span><span>Henrik</span><i data-lucide="chevron-up" aria-hidden="true"></i></div>
+          </aside>
+          <main class="ta-wf-main"><div class="ta-wf-mobile-top"><strong>Trove</strong><span>Konto</span></div><div class="ta-wf-empty"><div><i data-lucide="mouse-pointer-click" aria-hidden="true"></i><strong>Användarmenyn öppnas längst ned</strong><p>Profil, globala inställningar och logga ut finns alltid på samma plats, oberoende av aktivt projekt.</p><div class="ta-wf-actions"><span class="ta-wf-action">Profil</span><span class="ta-wf-action">Inställningar</span><span class="ta-wf-action">Logga ut</span></div></div></div></main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="profile" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><nav class="ta-wf-nav"><span class="is-current">Account settings</span><span>Back to project</span></nav></aside>
+          <main class="ta-wf-main"><div class="ta-wf-mobile-top"><strong>Trove</strong><span>Settings</span></div><div class="ta-wf-heading"><div><strong>Inställningar</strong><span>Gäller hela kontot</span></div></div><div class="ta-wf-account-layout"><nav class="ta-wf-settings-nav"><span class="is-current"><i data-lucide="user" aria-hidden="true"></i>Profil</span><span><i data-lucide="plug" aria-hidden="true"></i>Anslutningar</span><span><i data-lucide="shield" aria-hidden="true"></i>Säkerhet</span></nav><div class="ta-wf-settings-content"><div class="ta-wf-profile-head"><div class="ta-wf-avatar">HH</div><div><strong>Henrik Hellström</strong><span>henrik@example.com</span></div><span class="ta-wf-action">Byt bild</span></div><div class="ta-wf-form"><div class="ta-wf-field"><label>Namn</label><div class="ta-wf-input">Henrik Hellström</div></div><div class="ta-wf-field"><label>Primär e-post</label><div class="ta-wf-input">henrik@example.com · verifierad</div></div><div class="ta-wf-field"><label>Språk och tidszon</label><div class="ta-wf-input">Svenska · Europe/Stockholm</div></div></div><div class="ta-wf-footer"><span></span><span class="ta-wf-action is-primary">Spara ändringar</span></div></div></div></main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="connections" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><nav class="ta-wf-nav"><span class="is-current">Account settings</span><span>Back to project</span></nav></aside>
+          <main class="ta-wf-main"><div class="ta-wf-mobile-top"><strong>Trove</strong><span>Settings</span></div><div class="ta-wf-heading"><div><strong>Anslutna konton</strong><span>Behörigheter som kan återanvändas av flera projekt</span></div></div><div class="ta-wf-account-layout"><nav class="ta-wf-settings-nav"><span><i data-lucide="user" aria-hidden="true"></i>Profil</span><span class="is-current"><i data-lucide="plug" aria-hidden="true"></i>Anslutningar</span><span><i data-lucide="shield" aria-hidden="true"></i>Säkerhet</span></nav><div class="ta-wf-settings-content"><div class="ta-wf-setting-group"><strong>Mail och samarbetsverktyg</strong><div class="ta-wf-setting-row"><div><strong>Gmail</strong><span>henrik@example.com · anslutet till kontot</span></div><span class="ta-wf-action">Hantera</span></div><div class="ta-wf-setting-row"><div><strong>Slack</strong><span>Inte anslutet</span></div><span class="ta-wf-action is-primary">Anslut</span></div><div class="ta-wf-setting-row"><div><strong>Apple Mail på denna Mac</strong><span>Mac-appen online · lokal åtkomst</span></div><span class="ta-wf-action">Hantera</span></div></div><div class="ta-wf-setting-group"><strong>Projekt använder anslutningarna</strong><div class="ta-wf-input is-tall">Tactical Athlete → Gmail / Newsletters<br>Client: Acme → Gmail / Acme<br><br>Varje projekt väljer sin egen mapp och egna regler. Projekten delar aldrig importerade mejl.</div></div></div></div></main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="security" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><nav class="ta-wf-nav"><span class="is-current">Account settings</span><span>Back to project</span></nav></aside>
+          <main class="ta-wf-main"><div class="ta-wf-mobile-top"><strong>Trove</strong><span>Security</span></div><div class="ta-wf-heading"><div><strong>Säkerhet</strong><span>Inloggning och aktiva enheter</span></div></div><div class="ta-wf-account-layout"><nav class="ta-wf-settings-nav"><span><i data-lucide="user" aria-hidden="true"></i>Profil</span><span><i data-lucide="plug" aria-hidden="true"></i>Anslutningar</span><span class="is-current"><i data-lucide="shield" aria-hidden="true"></i>Säkerhet</span></nav><div class="ta-wf-settings-content"><div class="ta-wf-setting-row"><div><strong>Inloggning</strong><span>henrik@example.com · hanteras säkert av Troves inloggning</span></div><span class="ta-wf-action">Hantera inloggning</span></div><div class="ta-wf-setting-row"><div><strong>Den här enheten</strong><span>MacBook Pro · Stockholm · aktiv nu</span></div><span class="ta-pill" data-state="now">Aktiv</span></div><div class="ta-wf-setting-row"><div><strong>Andra enheter</strong><span>Inga andra aktiva sessioner</span></div><span class="ta-wf-action">Logga ut alla</span></div></div></div></main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="projectsettings" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span>Ask</span><span>Library</span><span>Sources</span><span>Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main"><div class="ta-wf-mobile-top"><strong>Trove</strong><span>Tactical Athlete</span></div><div class="ta-wf-heading"><div><strong>Projektinställningar</strong><span>Gäller bara Tactical Athlete</span></div></div><div class="ta-wf-account-layout"><nav class="ta-wf-settings-nav"><span class="is-current">Allmänt</span><span>Datakällor</span><span>Granskning</span><span>Medlemmar</span><span>Export</span></nav><div class="ta-wf-settings-content"><div class="ta-wf-form"><div class="ta-wf-field"><label>Projektnamn</label><div class="ta-wf-input">Tactical Athlete</div></div><div class="ta-wf-field"><label>Projektadress</label><div class="ta-wf-input">/p/tactical-athlete · ändras separat</div></div><div class="ta-wf-field"><label>Standard för osäkert material</label><div class="ta-wf-input">Lägg i granskningskön</div></div><div class="ta-wf-field"><label>Projektets synlighet</label><div class="ta-wf-input">Privat · endast du</div></div></div><div class="ta-wf-setting-row"><div><strong>Datakällor</strong><span>4 aktiva · hanteras i Sources</span></div><span class="ta-wf-action">Öppna Sources</span></div><div class="ta-wf-danger"><strong>Projektets livscykel</strong><div class="ta-wf-setting-row"><div><strong>Arkivera projekt</strong><span>Stoppar datakällor men behåller allt innehåll</span></div><span class="ta-wf-action">Arkivera</span></div><div class="ta-wf-setting-row"><div><strong>Radera projekt</strong><span>Tar bort 540 poster efter tydlig bekräftelse</span></div><span class="ta-wf-action">Radera</span></div></div></div></div></main>
+        </div>
+      </div>
+
+      <div class="ta-wire-screen" data-wire-panel="ask" hidden>
+        <div class="ta-wf-shell">
+          <aside class="ta-wf-side"><div class="ta-wf-brand"><span class="ta-mark"></span>Trove</div><div class="ta-wf-project"><small>Projekt</small><span>Tactical Athlete</span></div><nav class="ta-wf-nav"><span class="is-current">Ask</span><span>Library</span><span>Sources</span><span>Pipelines</span><span>Capture</span></nav></aside>
+          <main class="ta-wf-main">
+            <div class="ta-wf-mobile-top"><strong>Trove</strong><span>Ask</span></div>
+            <div class="ta-wf-heading"><div><strong>Ask Tactical Athlete</strong><span>Svar hämtas bara från detta projekt</span></div><span class="ta-wf-action">Ny fråga</span></div>
+            <div class="ta-wf-ask">
+              <div class="ta-wf-chat">
+                <div class="ta-wf-question">Vilka återkommande riskfaktorer nämns för skador vid tung packmarsch?</div>
+                <div class="ta-wf-answer"><p>Materialet återkommer främst till snabb ökning av belastning, låg tidigare marschvana, hög total träningsvolym och otillräcklig återhämtning. Flera källor betonar att kroppsvikt och tidigare skador påverkar risken, men resultaten är inte helt enhetliga.</p><div class="ta-wf-citations"><div class="ta-wf-citation"><span>1</span><div><strong>Load carriage and injury risk</strong><span>PDF · sidorna 12–14</span></div></div><div class="ta-wf-citation"><span>2</span><div><strong>Programming loaded marches</strong><span>Newsletter · avsnitt 3</span></div></div><div class="ta-wf-citation"><span>3</span><div><strong>Military training injury review</strong><span>Research feed · resultat</span></div></div></div></div>
+              </div>
+              <div class="ta-wf-composer"><div class="ta-wf-input">Ställ en följdfråga...</div><span class="ta-wf-action is-primary"><i data-lucide="arrow-up" aria-hidden="true"></i> Skicka</span></div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <div class="ta-wire-caption" aria-live="polite"><strong id="ta-wire-title">Skapa projekt</strong><p id="ta-wire-text">Användaren anger ett synligt namn och väljer projekttyp. Den valfria beskrivningen hjälper Trove föreslå relevanta datakällor och startregler, men styr aldrig projektets säkerhetsgräns.</p></div>
+  </section>
+
+  <section class="ta-view" id="ta-setup" role="tabpanel" aria-labelledby="tab-setup" data-panel="setup" hidden>
+    <p class="ta-section-label">Ett nytt projekt går från tomt till aktivt kunskapsflöde i fyra steg</p>
+    <div class="ta-setup" aria-label="Setupflöde">
+      <div class="ta-flow-step"><span class="ta-step-no">1</span><strong>Skapa projekt</strong><span>Namn, typ och tydlig innehållsgräns.</span></div>
+      <div class="ta-arrow" aria-hidden="true">→</div>
+      <div class="ta-flow-step"><span class="ta-step-no">2</span><strong>Välj datakälla</strong><span>Mail, mapp, uppladdning, RSS, webb eller Slack.</span></div>
+      <div class="ta-arrow" aria-hidden="true">→</div>
+      <div class="ta-flow-step"><span class="ta-step-no">3</span><strong>Beskriv vad du vill ha</strong><span>Vanlig svenska blir tydliga regler och ett AI-uppdrag.</span></div>
+      <div class="ta-arrow" aria-hidden="true">→</div>
+      <div class="ta-flow-step"><span class="ta-step-no">4</span><strong>Förhandsgranska</strong><span>Testa på ett urval, justera och aktivera.</span></div>
+    </div>
+
+    <div class="ta-example">
+      <blockquote class="ta-prompt">“Läs nya mejl i Newsletters. Behåll sådant om träning, nutrition och återhämtning. Hoppa över reklam och orderbekräftelser. Lägg osäkra mejl för granskning.”</blockquote>
+      <dl class="ta-config">
+        <dt>Anslutning</dt><dd>Henriks Gmail</dd>
+        <dt>Omfattning</dt><dd>Mappen Newsletters</dd>
+        <dt>Urval</dt><dd>Ämnesregel + AI-bedömning</dd>
+        <dt>Osäkerhet</dt><dd>Skicka till granskning</dd>
+        <dt>Resultat</dt><dd>Tactical Athlete</dd>
+        <dt>Körning</dt><dd>Varje timme</dd>
+      </dl>
+    </div>
+    <p class="ta-note">Setupen skapar en projektägd källkonfiguration och en versionshanterad källregel. Det är inte en pipeline och den skriver inte ett nytt skript.</p>
+  </section>
+
+  <section class="ta-view" id="ta-sources" role="tabpanel" aria-labelledby="tab-sources" data-panel="sources" hidden>
+    <p class="ta-section-label">Varje typ av källa får en generell anslutning. Projekten återanvänder den med egna mappar, regler och mål.</p>
+    <div class="table-responsive">
+      <table class="ta-source-table">
+        <thead><tr><th>Källa</th><th>Projektets setup</th><th>Körs var</th><th>Roll</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Drag and drop</strong></td><td>Projekt väljs i fångstytan</td><td>Webb</td><td><span class="ta-pill" data-state="now">Finns</span></td></tr>
+          <tr><td><strong>Klistra in</strong></td><td>Text eller webbadress</td><td>Webb</td><td><span class="ta-pill" data-state="now">Finns</span></td></tr>
+          <tr><td><strong>Mail</strong></td><td>Konto, mapp, avsändare, urval och schema</td><td>Moln för Gmail, Mac för Apple Mail</td><td><span class="ta-pill" data-state="next">Nästa kärnflöde</span></td></tr>
+          <tr><td><strong>Bevakad mapp</strong></td><td>Lokal sökväg, filtyper och schema</td><td>Mac-app</td><td><span class="ta-pill" data-state="next">Nästa kärnflöde</span></td></tr>
+          <tr><td><strong>RSS</strong></td><td>Flödesadress, intervall och urval</td><td>Moln</td><td><span class="ta-pill" data-state="now">Finns enkelt</span></td></tr>
+          <tr><td><strong>Webb</strong></td><td>Adress, område på sidan och länkdjup</td><td>Moln</td><td><span class="ta-pill" data-state="now">Finns enkelt</span></td></tr>
+          <tr><td><strong>Slack</strong></td><td>Konto, kanal, trådar, filer och urval</td><td>Moln</td><td><span class="ta-pill" data-state="now">Delvis</span></td></tr>
+          <tr><td><strong>YouTube</strong></td><td>Kanal eller enskild video, vanlig transkribering</td><td>Moln eller lokal</td><td><span class="ta-pill">Senare</span></td></tr>
+          <tr><td><strong>Specialverktyg</strong></td><td>Projektunik analys ovanpå Trove</td><td>Valfritt</td><td><span class="ta-pill">Utanför kärnan</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="ta-view" id="ta-processing" role="tabpanel" aria-labelledby="tab-processing" data-panel="processing" hidden>
+    <p class="ta-section-label">Samma livscykel används oavsett om materialet droppas, hämtas från mail eller kommer från en webbtjänst</p>
+    <div class="ta-lifecycle" aria-label="Bearbetningens livscykel">
+      <div class="ta-life-stage"><strong>Upptäckt</strong><span>Källan ser något nytt</span></div>
+      <div class="ta-life-stage"><strong>Original</strong><span>Innehåll och källmetadata sparas</span></div>
+      <div class="ta-life-stage"><strong>Kontroll</strong><span>Dublett, filtyp och säkerhet</span></div>
+      <div class="ta-life-stage"><strong>Urval</strong><span>Regler och relevansbedömning</span></div>
+      <div class="ta-life-stage"><strong>Bearbetning</strong><span>Text, fakta, metadata och delar</span></div>
+      <div class="ta-life-stage"><strong>Indexering</strong><span>Sökning och källhänvisningar</span></div>
+      <div class="ta-life-stage"><strong>Klar</strong><span>Bibliotek, frågor och rapporter</span></div>
+    </div>
+
+    <div class="ta-branch" aria-label="Möjliga resultat efter kontroll">
+      <div><strong>Automatiskt godkänd</strong><span>Hög säkerhet och tydlig regelträff. Fortsätter direkt.</span></div>
+      <div><strong>Behöver granskas</strong><span>Osäker relevans, känsligt innehåll eller låg kvalitet.</span></div>
+      <div><strong>Misslyckad</strong><span>Fel sparas med orsak och kan köras om utan ny import.</span></div>
+    </div>
+  </section>
+
+  <section class="ta-view" id="ta-model" role="tabpanel" aria-labelledby="tab-model" data-panel="model" hidden>
+    <p class="ta-section-label">Samlad ägar- och datamodell. Status visar vad som finns i koden idag.</p>
+    <div class="ta-model">
+      <div class="ta-model-stack">
+        <div class="ta-model-node"><strong>Konto</strong><span>Identitet och inloggning hanteras av Clerk.</span><small class="ta-model-status" data-state="partial">Delvis</small></div>
+        <div class="ta-model-node"><strong>Anslutet konto</strong><span>Gmail, Slack och andra behörigheter. Kopplas en gång.</span><small class="ta-model-status">Planerad</small></div>
+        <div class="ta-model-node"><strong>Ingest-nyckel</strong><span>Ger Mac-appen rätt att skicka till ett bestämt projekt.</span><small class="ta-model-status" data-state="now">Finns</small></div>
+      </div>
+      <div class="ta-arrow" aria-hidden="true">→</div>
+      <div class="ta-model-stack">
+        <div class="ta-model-node" data-tone="red"><strong>Projekt</strong><span>Den hårda gränsen. Allt nedan ägs av ett projekt.</span><small class="ta-model-status" data-state="partial">Finns, behöver låsas</small></div>
+        <div class="ta-owns">
+          <div class="ta-model-node"><strong>Datakälla</strong><span>Vad som bevakas, var och hur ofta.</span><small class="ta-model-status" data-state="now">Finns</small></div>
+          <div class="ta-model-node" data-tone="amber"><strong>Källregel</strong><span>Urval, osäkerhet och granskningsregler.</span><small class="ta-model-status">Planerad</small></div>
+          <div class="ta-model-node"><strong>Källkörning</strong><span>Status, fel, räknare, tider och sparad position.</span><small class="ta-model-status" data-state="partial">Delvis i datakällan</small></div>
+          <div class="ta-model-node"><strong>Originalpost</strong><span>Oföränderlig kopia av det som hämtades.</span><small class="ta-model-status">Planerad</small></div>
+          <div class="ta-model-node" data-tone="green"><strong>Kunskapspost</strong><span>Posten som visas i biblioteket.</span><small class="ta-model-status" data-state="now">Finns som Item</small></div>
+          <div class="ta-model-node" data-tone="green"><strong>Bearbetade resultat</strong><span>Textdelar, metadata och sökindex.</span><small class="ta-model-status" data-state="partial">Delvis</small></div>
+          <div class="ta-model-node" data-tone="amber"><strong>Granskningsbeslut</strong><span>Godkänd, avvisad eller korrigerad.</span><small class="ta-model-status">Planerad</small></div>
+          <div class="ta-model-node" data-tone="red"><strong>Papperskorg och raderingsmarkör</strong><span>Återställning och skydd mot oönskad återimport.</span><small class="ta-model-status">Planerad</small></div>
+          <div class="ta-model-node" data-tone="green"><strong>Pipeline</strong><span>Återkommande arbete på projektets bibliotek.</span><small class="ta-model-status" data-state="now">Finns</small></div>
+          <div class="ta-model-node" data-tone="green"><strong>Pipeline-körning</strong><span>Status och sparat rapportresultat.</span><small class="ta-model-status" data-state="now">Finns</small></div>
+          <div class="ta-model-node"><strong>Konversation och meddelande</strong><span>Frågehistorik och källhänvisningar.</span><small class="ta-model-status" data-state="partial">Datamodell finns</small></div>
+          <div class="ta-model-node"><strong>Ämne</strong><span>Automatiskt grupperad kunskap i projektet.</span><small class="ta-model-status" data-state="now">Finns</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="ta-model-foot" aria-label="Viktiga unika nycklar">
+      <span class="ta-pill">projekt + källa + extern identitet</span>
+      <span class="ta-pill">projekt är enda huvudgränsen</span>
+      <span class="ta-pill">källor importerar</span>
+      <span class="ta-pill">pipelines skapar resultat</span>
+      <span class="ta-pill">planerat: original skrivs aldrig över</span>
+      <span class="ta-pill">planerat: raderade källposter importeras inte igen</span>
+    </div>
+  </section>
+
+  <section class="ta-view" id="ta-roadmap" role="tabpanel" aria-labelledby="tab-roadmap" data-panel="roadmap" hidden>
+    <div class="ta-roadmap">
+      <div class="ta-roadmap-col">
+        <strong>1. Blockerande grund</strong>
+        <ul class="ta-roadmap-list">
+          <li>Riktiga databasmigreringar<span>Schema, migrering och 768-dimensionella embeddings måste stämma.</span></li>
+          <li>Lås projektgränsen<span>Alla API:er, relationer och frågor ska kräva och kontrollera projekt.</span></li>
+          <li>En enda importväg<span>Webb, Mac-app och molnkällor ska använda /api/ingest.</span></li>
+          <li>Grundtester<span>Bevisa projektisolering, import och återkommande körningar.</span></li>
+        </ul>
+      </div>
+      <div class="ta-roadmap-col">
+        <strong>2. Stabilisera det som finns</strong>
+        <ul class="ta-roadmap-list">
+          <li>Capture, Library och Ask<span>Behåll befintliga flöden och gör projektkravet tydligt.</span></li>
+          <li>RSS, webb och Slack<span>Behåll enkla källor men gör anslutning och fel tydliga.</span></li>
+          <li>Pipelines, Digest och startmallar<span>Behåll motorn och erbjud morgonbrief samt fredagssammanställning som separata val.</span></li>
+          <li>Mac-appen<span>Skicka riktiga filer med ingest-nyckel och valt projekt.</span></li>
+        </ul>
+      </div>
+      <div class="ta-roadmap-col">
+        <strong>3. Nästa produktflöden</strong>
+        <ul class="ta-roadmap-list">
+          <li>Anslutna konton<span>Gmail och Slack kopplas globalt och används av projektägda källor.</span></li>
+          <li>Fler pipeline-mallar<span>Användaren kan välja flera rapporter och ändra schema, innehåll och leverans separat.</span></li>
+          <li>Källregler, körningar och original<span>Ger förhandsgranskning, historik, felsökning och omkörning.</span></li>
+          <li>Mail och bevakad mapp<span>Det tydligaste generella användarvärdet från Intel.</span></li>
+          <li>Granskningskö<span>Osäkert material avgörs innan det blir färdig kunskap.</span></li>
+          <li>Papperskorg och återimportsspärr<span>Radering blir återställbar och förutsägbar.</span></li>
+        </ul>
+      </div>
+      <div class="ta-roadmap-col">
+        <strong>4. Senare</strong>
+        <ul class="ta-roadmap-list">
+          <li>Vanlig YouTube-transkribering<span>En generell källa, inte Tactical Athletes specialanalys.</span></li>
+          <li>Färdiga källmallar<span>Nyhetsbrev, kundmail, forskning och projektdokument.</span></li>
+          <li>Delade projekt och roller<span>När ägande och rättigheter är ordentligt definierade.</span></li>
+          <li>Vertikala paket<span>Specialregler ovanpå kärnan, inte inuti den.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (() => {
+      const root = document.getElementById("trove-flow-architecture");
+      if (!root) return;
+
+      const details = {
+        capture: ["Drag and drop", "Den befintliga fångstytan är den manuella datakällan. Användaren ser alltid vilket projekt filen hamnar i. Filen sparas som original och går sedan genom samma behandling som automatiska källor."],
+        mail: ["Mailmapp", "Användaren ansluter sitt mailkonto en gång och väljer sedan mapp, urval och regler inne i projektet. Apple Mail kräver Mac-appen, medan Gmail kan köras i molnet."],
+        folder: ["Bevakad mapp", "Mac-appen ser nya lokala filer och skickar dem till projektets importadress. Den lokala sökvägen stannar på datorn; Trove tar emot själva filen och källinformationen."],
+        cloud: ["Webbkällor", "RSS, webbsidor och Slack körs i molnet. Varje anslutning översätter sin källa till samma format: projekt, källa, extern identitet, original och tidpunkt."],
+        ingest: ["Ta emot och spara original", "En enda importväg tar emot allt material. Originalet sparas separat från den bearbetade kunskapsposten så att ändringar, omkörningar och beviskedjan kan följas."],
+        select: ["Välj och kontrollera", "Billiga och tydliga kontroller körs först: dublett, filtyp, storlek, avsändare och fasta regler. AI används därefter för relevans och innehåll som inte kan avgöras med enkla regler."],
+        process: ["Bearbeta", "Text utvinns och normaliseras. Trove skapar titel, sammanfattning, ämnen, strukturerade fakta, sökbara textdelar och de index som behövs för frågor och rapporter."],
+        review: ["Granska vid behov", "Osäkra eller känsliga träffar hamnar i projektets granskningskö. Där syns originalet, varför Trove är osäker och vad som händer vid godkännande eller avvisning."],
+        library: ["Bibliotek", "Den färdiga kunskapsposten visar original, källa, bearbetad text, status och historik. Flytt, omkörning och rättning sker här utan att beviset försvinner."],
+        ask: ["Fråga Trove", "Frågor söker endast inom det aktiva projektet. Svar visar vilka kunskapsposter och vilka textstycken som stödjer varje viktig uppgift."],
+        pipelines: ["Pipelines och rapporter", "En pipeline läser kunskap som redan finns i projektets bibliotek och skapar ett återkommande resultat, till exempel en veckosammanfattning. Datakällor importerar material; pipelines gör något med materialet efteråt."]
+      };
+
+      const tabs = Array.from(root.querySelectorAll(".ta-tab"));
+      const panels = Array.from(root.querySelectorAll(".ta-view"));
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const view = tab.dataset.view;
+          tabs.forEach((candidate) => candidate.setAttribute("aria-selected", String(candidate === tab)));
+          panels.forEach((panel) => { panel.hidden = panel.dataset.panel !== view; });
+        });
+      });
+
+      const title = root.querySelector("#ta-detail-title");
+      const text = root.querySelector("#ta-detail-text");
+      const nodes = Array.from(root.querySelectorAll(".ta-node[data-node]"));
+      nodes.forEach((node) => {
+        node.addEventListener("click", () => {
+          const detail = details[node.dataset.node];
+          if (!detail || !title || !text) return;
+          nodes.forEach((candidate) => candidate.classList.toggle("is-active", candidate === node));
+          title.textContent = detail[0];
+          text.textContent = detail[1];
+        });
+      });
+
+      const wireDetails = {
+        project: ["Skapa projekt", "Användaren anger ett synligt namn och väljer projekttyp. Den valfria beskrivningen hjälper Trove föreslå relevanta datakällor och startregler, men styr aldrig projektets säkerhetsgräns."],
+        empty: ["Tomt projekt", "Startpunkten visar två likvärdiga vägar: lägg in material manuellt eller koppla en återkommande datakälla. Projektet är redan valt och synligt."],
+        capture: ["Drag and drop", "Den manuella importen visar målprojektet före uppladdning. Filen sparas som original, får en importstatus och går sedan genom samma behandling som automatiska datakällor."],
+        choose: ["Välj datakälla", "Källväljaren beskriver användarens mål, inte tekniken bakom. Mail och bevakad mapp markeras som de viktigaste nästa kärnflödena."],
+        mail: ["Mail-setup", "Guiden binder ett globalt anslutet konto till en projektägd mailmapp och en regel. Den fria instruktionen sparas tillsammans med fasta val för mapp, schema och osäkerhet."],
+        preview: ["Provkörning", "Innan aktivering testar Trove regeln på ett begränsat urval och visar vad som skulle sparas, granskas och hoppas över. Detta är kontrollen mot dåliga AI-regler."],
+        sources: ["Källöversikt", "Projektet visar varje källas hälsa, körplats, senaste synk och antal poster. Lokala källor visar även om Mac-appen är tillgänglig."],
+        pipelines: ["Pipelines", "Listan visar projektets återkommande uppdrag, schema, leverans och om de är aktiva eller pausade. Pipelines läser biblioteket men importerar aldrig nytt material."],
+        pipelinetemplates: ["Pipeline-mallar", "Användaren börjar med ett begripligt resultat i stället för en tom instruktion. Flera mallar kan aktiveras i samma projekt, till exempel en morgonbrief varje vardag och en veckosammanställning på fredag."],
+        newpipeline: ["Skapa pipeline", "Användaren beskriver önskat återkommande resultat med vanligt språk. Trove visar alltid vilket material som läses, när körningen sker och var resultatet sparas eller skickas."],
+        pipelinedetail: ["Pipeline-detalj", "Detaljsidan visar den aktiva instruktionen, schema, leverans, status och full körhistorik. En misslyckad leverans får inte radera det redan skapade rapportresultatet."],
+        report: ["Rapportresultat", "När e-post är vald skickas rapporten till mottagaren på schemalagd tid. Samma resultat sparas i Trove som historik med källhänvisningar och kan öppnas eller skickas igen om leveransen misslyckades."],
+        review: ["Granskningskö", "Osäkert material blockeras före biblioteket. Användarens beslut sparas och kan senare användas för att förbättra projektets regel."],
+        library: ["Bibliotek", "Godkänt material från manuella och automatiska källor blandas i samma bibliotek men behåller tydlig källa, datum, status och original."],
+        item: ["Postdetalj och radera", "Alla åtgärder för en post finns på samma plats. Radera flyttar först posten till projektets papperskorg och påverkar aldrig originalfilen i en bevakad lokal mapp."],
+        trash: ["Projektets papperskorg", "Raderade poster kan återställas under en bestämd tid. Permanent radering tar bort Troves originalkopia, bearbetad text, metadata, textdelar och sökindex."],
+        deletesource: ["Ta bort datakälla", "Standardvalet stoppar framtida import men behåller befintliga poster. Användaren kan i stället flytta allt material från källan till papperskorgen med ett uttryckligt val."],
+        ask: ["Ask", "Frågan körs endast mot det aktiva projektet. Svaret skiljer mellan vad källorna faktiskt stödjer och vad som är osäkert, och varje viktig uppgift länkar till rätt original och textstycke."],
+        usermenu: ["Användarmeny och logga ut", "Kontomenyn ligger globalt längst ned i sidomenyn. Den ändras inte när användaren byter projekt och innehåller profil, globala inställningar och en tydlig logga ut-åtgärd."],
+        profile: ["Profil", "Profilen tillhör användarkontot och innehåller namn, primär e-post, språk och tidszon. Den påverkar alla projekt men innehåller inget projektmaterial."],
+        connections: ["Globala anslutningar", "Gmail, Slack och den lokala Mac-appen ansluts en gång till kontot. Inne i varje projekt väljer användaren därefter exakt mapp eller kanal och skapar projektets egna importregler."],
+        security: ["Säkerhet", "Första versionen visar bara inloggning och aktiva enheter. Privata filer, projektgränser och säkra nycklar är tekniska grundregler och presenteras inte som valbara inställningar."],
+        projectsettings: ["Projektinställningar", "Namn, synlighet, granskningspolicy, medlemmar, export och projektets livscykel hör till projektet. Kontots Gmail-behörighet visas inte här; här finns bara projektets valda mailkälla."],
+        health: ["Källdetalj", "Varje körning får status, räknare och felorsak. Användaren kan köra om ett fel utan att skapa dubletter eller importera allt på nytt."]
+      };
+      const wireButtons = Array.from(root.querySelectorAll(".ta-wire-button"));
+      const wirePanels = Array.from(root.querySelectorAll(".ta-wire-screen"));
+      const wireTitle = root.querySelector("#ta-wire-title");
+      const wireText = root.querySelector("#ta-wire-text");
+      wireButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const view = button.dataset.wire;
+          wireButtons.forEach((candidate) => candidate.setAttribute("aria-pressed", String(candidate === button)));
+          wirePanels.forEach((panel) => { panel.hidden = panel.dataset.wirePanel !== view; });
+          const detail = wireDetails[view];
+          if (detail && wireTitle && wireText) {
+            wireTitle.textContent = detail[0];
+            wireText.textContent = detail[1];
+          }
+        });
+      });
+
+      const wireStage = root.querySelector("#ta-wire-stage");
+      const deviceButtons = Array.from(root.querySelectorAll(".ta-device-button"));
+      deviceButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          deviceButtons.forEach((candidate) => candidate.setAttribute("aria-pressed", String(candidate === button)));
+          if (wireStage) wireStage.classList.toggle("is-mobile", button.dataset.device === "mobile");
+        });
+      });
+
+      root.querySelectorAll(".ta-wire-screen").forEach((screen) => {
+        const side = screen.querySelector(".ta-wf-side");
+        if (!side || !side.querySelector(".ta-wf-project") || side.querySelector(".ta-wf-side-account")) return;
+        const account = document.createElement("div");
+        account.className = "ta-wf-side-account";
+        const settings = document.createElement("span");
+        settings.textContent = "Settings";
+        const user = document.createElement("span");
+        user.textContent = "HH  Henrik";
+        account.append(settings, user);
+        side.append(account);
+      });
+    })();
+  </script>
+</div>
