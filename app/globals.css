@@ -1,20 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --canvas: #EDECEB;
-  --canvas-deep: #E5E3DF;
+  /* Pinned from Henrik's Figma sketches, 2026-07-20. Clean Geist direction. */
+  --canvas: #FCFCFC;
+  --canvas-deep: #F4F4F3;
   --paper: #FFFFFF;
-  --ink: #1A1A1A;
-  --ink-dim: #5C5A56;
-  --ink-faint: #9A9692;
-  --ink-ghost: #C7C3BD;
-  --silver: #2A2A2A;
-  --ember: #C99A82;
-  --line: rgba(0, 0, 0, 0.06);
-  --line-strong: rgba(0, 0, 0, 0.12);
-  --pastel-sage: #DBE6D9;
-  --pastel-peach: #F0DCC8;
-  --pastel-lilac: #E5D7E8;
+  --ink: #111111;
+  --ink-dim: #444444;
+  --ink-faint: #666666;
+  --ink-ghost: #A3A3A3;
+  --silver: #666666;
+  --brand: #E4130E;        /* warm red: logo, active project, alert counts */
+  --capture: #477E23;      /* forest green: capture / drop accent only */
+  --ember: #E4130E;        /* alias kept for existing call sites, now brand red */
+  --line: rgba(0, 0, 0, 0.08);
+  --line-strong: rgba(0, 0, 0, 0.14);
 }
 
 @theme inline {
@@ -28,15 +28,14 @@
   --color-ink-faint: var(--ink-faint);
   --color-ink-ghost: var(--ink-ghost);
   --color-silver: var(--silver);
+  --color-brand: var(--brand);
+  --color-capture: var(--capture);
   --color-ember: var(--ember);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
-  --color-pastel-sage: var(--pastel-sage);
-  --color-pastel-peach: var(--pastel-peach);
-  --color-pastel-lilac: var(--pastel-lilac);
-  --font-display: "Public Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 html,
@@ -50,20 +49,8 @@ body {
   letter-spacing: -0.005em;
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse 70vw 55vh at 18% 0%, rgba(248, 218, 218, 0.65), transparent 62%),
-    radial-gradient(ellipse 75vw 55vh at 92% 12%, rgba(249, 212, 188, 0.6), transparent 60%),
-    radial-gradient(ellipse 90vw 60vh at 60% 90%, rgba(250, 232, 198, 0.5), transparent 60%);
-}
-
 ::selection {
-  background: rgba(26, 26, 26, 0.16);
+  background: rgba(228, 19, 14, 0.14);
   color: var(--ink);
 }
 

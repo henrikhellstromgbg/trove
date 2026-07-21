@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",
+    "@carbon/icons-react": "^11.84.0",
     "@clerk/nextjs": "^7.3.5",
     "@google/genai": "^2.3.0",
     "@mozilla/readability": "^0.6.0",

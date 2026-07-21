@@ -1,9 +1,9 @@
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { getProjectBySlug, listProjects } from "@/lib/projects";
+import { getProjectBySlug, listProjects, getProjectCounts } from "@/lib/projects";
 import { ProjectProvider } from "@/app/project-context";
 import { Sidebar } from "@/app/sidebar";
-import { AskOverlay } from "@/app/ask-overlay";
+import { CaptureOverlay } from "@/app/capture-overlay";
 
 export default async function ProjectLayout({
   children,
@@ -19,13 +19,16 @@ export default async function ProjectLayout({
   const project = await getProjectBySlug(userId, slug);
   if (!project) notFound();
 
-  const projects = await listProjects(userId);
+  const [projects, counts] = await Promise.all([
+    listProjects(userId),
+    getProjectCounts(userId, project.id),
+  ]);
 
   return (
-    <ProjectProvider project={project} projects={projects}>
+    <ProjectProvider project={project} projects={projects} counts={counts}>
       <Sidebar />
-      <AskOverlay projectId={project.id} />
-      <main className="ml-60 min-h-screen">{children}</main>
+      <CaptureOverlay />
+      <main className="ml-[280px] min-h-screen">{children}</main>
     </ProjectProvider>
   );
 }

@@ -4,21 +4,66 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
+import { useUser, useClerk } from "@clerk/nextjs";
+import {
+  Catalog,
+  Wikis,
+  DataShare,
+  FlowConnection,
+  Download,
+  Settings,
+  ChevronDown,
+  type CarbonIconType,
+} from "@carbon/icons-react";
 import { useProject } from "./project-context";
-import { UserMenu } from "./user-menu";
+import type { ProjectCounts } from "@/lib/projects";
 
-const NAV = [
-  { seg: "", label: "capture" },
-  { seg: "wiki", label: "wiki" },
-  { seg: "sources", label: "sources" },
-  { seg: "pipelines", label: "pipelines" },
-  { seg: "digest", label: "digest" },
+// Numbers render with a space thousands separator, matching the sketch
+// ("16 789"). sv-SE locale gives exactly that.
+function fmt(n: number): string {
+  return n.toLocaleString("sv-SE");
+}
+
+type Destination = {
+  seg: string;
+  label: string;
+  Icon: CarbonIconType;
+};
+
+const DESTINATIONS: Destination[] = [
+  { seg: "library", label: "Library", Icon: Catalog },
+  { seg: "wiki", label: "Wiki", Icon: Wikis },
+  { seg: "sources", label: "Sources", Icon: DataShare },
+  { seg: "pipelines", label: "Pipelines", Icon: FlowConnection },
 ];
 
+function CountFor({ seg, counts }: { seg: string; counts: ProjectCounts }) {
+  const cls = "font-mono text-xs text-ink-faint";
+  if (seg === "library") return counts.items ? <span className={cls}>{fmt(counts.items)}</span> : null;
+  if (seg === "wiki") return counts.topics ? <span className={cls}>{fmt(counts.topics)}</span> : null;
+  if (seg === "pipelines")
+    return counts.pipelinesActive ? (
+      <span className={cls}>{counts.pipelinesActive} active</span>
+    ) : null;
+  if (seg === "sources")
+    return (
+      <span className={cls}>
+        {counts.sources > 0 ? fmt(counts.sources) : null}
+        {counts.sourceErrors > 0 ? (
+          <span className="ml-1.5 text-brand">({counts.sourceErrors})</span>
+        ) : null}
+      </span>
+    );
+  return null;
+}
+
 export function Sidebar() {
-  const { project, projects } = useProject();
+  const { project, projects, counts } = useProject();
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useUser();
+  const { signOut, openUserProfile } = useClerk();
+
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
@@ -27,13 +72,8 @@ export function Sidebar() {
 
   const base = `/p/${project.slug}`;
 
-  function hrefFor(seg: string) {
-    return seg ? `${base}/${seg}` : base;
-  }
-
   function isActive(seg: string) {
-    const href = hrefFor(seg);
-    return seg ? pathname.startsWith(href) : pathname === base;
+    return pathname.startsWith(`${base}/${seg}`);
   }
 
   async function create() {
@@ -55,26 +95,32 @@ export function Sidebar() {
     }
   }
 
+  function openCapture() {
+    window.dispatchEvent(new CustomEvent("trove:open-capture"));
+  }
+
   return (
-    <aside className="fixed left-0 top-0 z-30 flex h-screen w-60 flex-col border-r border-line px-4 py-5">
-      <Link href={base} className="mb-6 flex items-center px-2">
-        <img src="/logo.svg" alt="Trove" className="h-6 w-auto" />
+    <aside className="fixed left-0 top-0 z-30 flex h-screen w-[280px] flex-col border-r border-line bg-canvas px-5 py-6">
+      {/* logo, links home / dashboard */}
+      <Link href={base} className="mb-6 flex items-center px-1">
+        <img src="/logo.svg" alt="Trove" className="h-5 w-auto" />
       </Link>
 
       {/* project switcher */}
       <div className="relative mb-6">
         <button
           onClick={() => setSwitcherOpen((o) => !o)}
-          className="flex w-full items-center justify-between rounded-xl border border-line px-3 py-2 text-left transition-colors hover:border-line-strong"
+          className="flex w-full flex-col gap-0.5 rounded-lg border border-line px-3 py-2 text-left transition-colors hover:border-line-strong"
         >
-          <span className="flex items-center gap-2 truncate">
-            <span
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ background: project.color ?? "var(--color-ink-faint, #999)" }}
-            />
-            <span className="truncate text-sm text-ink">{project.name}</span>
+          <span className="flex items-center justify-between">
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
+              Project
+            </span>
+            <ChevronDown size={16} className="text-ink-faint" />
           </span>
-          <span className="font-mono text-[10px] text-ink-faint">▾</span>
+          <span className="truncate text-[15px] font-medium text-brand">
+            {project.name}
+          </span>
         </button>
 
         <AnimatePresence>
@@ -84,7 +130,7 @@ export function Sidebar() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.18 }}
-              className="absolute left-0 right-0 top-full z-40 mt-1 rounded-xl border border-line bg-canvas p-1 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.18)]"
+              className="absolute left-0 right-0 top-full z-40 mt-1 rounded-lg border border-line bg-paper p-1 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.18)]"
             >
               <ul className="flex flex-col">
                 {projects.map((p) => (
@@ -92,18 +138,15 @@ export function Sidebar() {
                     <Link
                       href={`/p/${p.slug}`}
                       onClick={() => setSwitcherOpen(false)}
-                      className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-ink/[0.04] ${
-                        p.id === project.id ? "text-ink" : "text-ink-dim"
+                      className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-ink/[0.04] ${
+                        p.id === project.id ? "text-brand" : "text-ink-dim"
                       }`}
                     >
                       <span
                         className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ background: p.color ?? "var(--color-ink-faint, #999)" }}
+                        style={{ background: p.color ?? "var(--color-ink-ghost)" }}
                       />
                       <span className="truncate">{p.name}</span>
-                      {p.id === project.id ? (
-                        <span className="ml-auto font-mono text-[10px] text-ink-faint">·</span>
-                      ) : null}
                     </Link>
                   </li>
                 ))}
@@ -146,7 +189,7 @@ export function Sidebar() {
                 ) : (
                   <button
                     onClick={() => setCreating(true)}
-                    className="w-full rounded-lg px-2 py-1.5 text-left text-sm text-ink-dim transition-colors hover:bg-ink/[0.04] hover:text-ink"
+                    className="w-full rounded-md px-2 py-1.5 text-left text-sm text-ink-dim transition-colors hover:bg-ink/[0.04] hover:text-ink"
                   >
                     + new project
                   </button>
@@ -157,25 +200,62 @@ export function Sidebar() {
         </AnimatePresence>
       </div>
 
-      {/* nav */}
+      {/* destinations */}
       <nav className="flex flex-col gap-0.5">
-        {NAV.map((n) => (
+        {DESTINATIONS.map(({ seg, label, Icon }) => (
           <Link
-            key={n.seg}
-            href={hrefFor(n.seg)}
-            className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-              isActive(n.seg)
-                ? "bg-ink/[0.05] text-ink"
-                : "text-ink-faint hover:text-ink-dim"
+            key={seg}
+            href={`${base}/${seg}`}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
+              isActive(seg) ? "bg-ink/[0.05] text-ink" : "text-ink hover:bg-ink/[0.03]"
             }`}
           >
-            {n.label}
+            <Icon size={18} className="shrink-0 text-ink-dim" />
+            <span>{label}</span>
+            <span className="ml-auto">
+              <CountFor seg={seg} counts={counts} />
+            </span>
           </Link>
         ))}
       </nav>
 
-      <div className="mt-auto flex items-center px-2">
-        <UserMenu />
+      {/* actions */}
+      <div className="mt-6 flex flex-col gap-0.5 border-t border-line pt-6">
+        <button
+          onClick={openCapture}
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] text-ink transition-colors hover:bg-ink/[0.03]"
+        >
+          <Download size={18} className="shrink-0 text-ink-dim" />
+          <span>Capture</span>
+        </button>
+        <button
+          onClick={() => openUserProfile()}
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] text-ink transition-colors hover:bg-ink/[0.03]"
+        >
+          <Settings size={18} className="shrink-0 text-ink-dim" />
+          <span>Settings</span>
+        </button>
+      </div>
+
+      {/* user */}
+      <div className="mt-auto flex items-start gap-3 px-3 pt-6">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line-strong text-ink-dim">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="8" r="3.5" />
+            <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" />
+          </svg>
+        </div>
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate text-sm text-ink">
+            {user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? "Account"}
+          </span>
+          <button
+            onClick={() => signOut()}
+            className="self-start text-xs text-ink-dim underline underline-offset-2 transition-colors hover:text-ink"
+          >
+            Log out
+          </button>
+        </div>
       </div>
     </aside>
   );

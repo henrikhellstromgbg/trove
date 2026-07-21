@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, count, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { Project } from "@/lib/db/schema";
 import { nextRunFromCron } from "@/lib/pipelines/cron";
@@ -100,6 +100,84 @@ export async function getProjectBySlug(
     .where(and(eq(schema.project.userId, userId), eq(schema.project.slug, slug)))
     .limit(1);
   return rows[0] ?? null;
+}
+
+// Sidebar/dashboard badge counts, all scoped to one project. Cheap count
+// queries run in parallel. "processing" is the in-flight ingestion queue
+// (anything not yet ready or failed), surfaced as the Processing panel.
+export type ProjectCounts = {
+  items: number; // Library
+  topics: number; // Wiki
+  sources: number; // Sources total
+  sourceErrors: number; // red alert on Sources
+  pipelinesActive: number; // "N active"
+  processing: number; // in-flight ingestions
+};
+
+export async function getProjectCounts(
+  userId: string,
+  projectId: string
+): Promise<ProjectCounts> {
+  const [
+    itemsRow,
+    topicsRow,
+    sourcesRow,
+    sourceErrorsRow,
+    pipelinesRow,
+    processingRow,
+  ] = await Promise.all([
+    db
+      .select({ c: count() })
+      .from(schema.item)
+      .where(and(eq(schema.item.userId, userId), eq(schema.item.projectId, projectId))),
+    db
+      .select({ c: count() })
+      .from(schema.topic)
+      .where(and(eq(schema.topic.userId, userId), eq(schema.topic.projectId, projectId))),
+    db
+      .select({ c: count() })
+      .from(schema.source)
+      .where(and(eq(schema.source.userId, userId), eq(schema.source.projectId, projectId))),
+    db
+      .select({ c: count() })
+      .from(schema.source)
+      .where(
+        and(
+          eq(schema.source.userId, userId),
+          eq(schema.source.projectId, projectId),
+          eq(schema.source.lastStatus, "error")
+        )
+      ),
+    db
+      .select({ c: count() })
+      .from(schema.pipeline)
+      .where(
+        and(
+          eq(schema.pipeline.userId, userId),
+          eq(schema.pipeline.projectId, projectId),
+          eq(schema.pipeline.enabled, true)
+        )
+      ),
+    db
+      .select({ c: count() })
+      .from(schema.item)
+      .where(
+        and(
+          eq(schema.item.userId, userId),
+          eq(schema.item.projectId, projectId),
+          inArray(schema.item.status, ["pending", "processing"])
+        )
+      ),
+  ]);
+
+  return {
+    items: itemsRow[0]?.c ?? 0,
+    topics: topicsRow[0]?.c ?? 0,
+    sources: sourcesRow[0]?.c ?? 0,
+    sourceErrors: sourceErrorsRow[0]?.c ?? 0,
+    pipelinesActive: pipelinesRow[0]?.c ?? 0,
+    processing: processingRow[0]?.c ?? 0,
+  };
 }
 
 export function slugify(name: string): string {

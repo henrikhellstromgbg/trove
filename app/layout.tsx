@@ -1,18 +1,16 @@
 import type { Metadata } from "next";
-import { Public_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
-const sans = Public_Sans({
-  variable: "--font-public-sans",
+const sans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
-  weight: ["200", "300", "400", "500", "600"],
 });
 
-const mono = IBM_Plex_Mono({
-  variable: "--font-ibm-plex-mono",
+const mono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
-  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -30,10 +28,9 @@ export default function RootLayout({
       <html
         lang="en"
         className={`${sans.variable} ${mono.variable} h-full antialiased`}
-        style={{ fontFamily: "var(--font-public-sans)" }}
+        style={{ fontFamily: "var(--font-geist-sans)" }}
       >
         <body className="min-h-full overflow-x-hidden bg-canvas text-ink">
-          <div className="grain" />
           {children}
         </body>
       </html>

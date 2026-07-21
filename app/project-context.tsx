@@ -2,10 +2,12 @@
 
 import { createContext, useContext } from "react";
 import type { Project } from "@/lib/db/schema";
+import type { ProjectCounts } from "@/lib/projects";
 
 type ProjectContextValue = {
   project: Project;
   projects: Project[];
+  counts: ProjectCounts;
 };
 
 const ProjectContext = createContext<ProjectContextValue | null>(null);
@@ -13,10 +15,11 @@ const ProjectContext = createContext<ProjectContextValue | null>(null);
 export function ProjectProvider({
   project,
   projects,
+  counts,
   children,
 }: ProjectContextValue & { children: React.ReactNode }) {
   return (
-    <ProjectContext.Provider value={{ project, projects }}>
+    <ProjectContext.Provider value={{ project, projects, counts }}>
       {children}
     </ProjectContext.Provider>
   );

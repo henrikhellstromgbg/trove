@@ -1,10 +1,27 @@
-allowBuilds:
-  '@clerk/shared': true
-  '@google/genai': true
-  esbuild: true
-  protobufjs: true
-  sharp: true
-  unrs-resolver: true
-ignoredBuiltDependencies:
+# Local convenience: don't run an implicit install-check before `pnpm run`
+# scripts. The ignored-builds notice below otherwise makes that pre-check
+# exit non-zero and abort `pnpm build`/`pnpm dev`.
+verifyDepsBeforeRun: false
+
+# Build-script disposition for pnpm 11. Legit native/build deps are allowed;
+# @carbon/* is denied on purpose — its only postinstall is IBM telemetry and
+# the package ships prebuilt, so we keep telemetry off.
+onlyBuiltDependencies:
+  - '@clerk/shared'
+  - '@google/genai'
+  - esbuild
+  - protobufjs
   - sharp
   - unrs-resolver
+ignoredBuiltDependencies:
+  - '@carbon/icon-helpers'
+  - '@carbon/icons-react'
+allowBuilds:
+  '@carbon/icon-helpers': set this to true or false
+  '@carbon/icons-react': set this to true or false
+  '@clerk/shared': set this to true or false
+  '@google/genai': set this to true or false
+  esbuild: set this to true or false
+  protobufjs: set this to true or false
+  sharp: set this to true or false
+  unrs-resolver: set this to true or false
