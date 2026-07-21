@@ -3,26 +3,49 @@ import { auth } from "@clerk/nextjs/server";
 import { get } from "@vercel/blob";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { InvalidProjectError, requireProjectId } from "@/lib/projects";
 
 // Legacy items live in the old public store (plain fetch works). New
 // uploads go to the private store and need an authenticated get().
 const PRIVATE_HOST_MARKER = ".private.blob.vercel-storage.com";
 
+export const itemBlobDeps = { auth, db, requireProjectId };
+
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const { userId } = await auth();
+  const { userId } = await itemBlobDeps.auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await ctx.params;
+  const providedProjectId = req.nextUrl.searchParams.get("projectId");
+  if (!providedProjectId) {
+    return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+  }
 
-  const [item] = await db
+  let projectId: string;
+  try {
+    projectId = await itemBlobDeps.requireProjectId(userId, providedProjectId);
+  } catch (error) {
+    if (error instanceof InvalidProjectError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  }
+
+  const [item] = await itemBlobDeps.db
     .select({ blobUrl: schema.item.blobUrl, source: schema.item.source })
     .from(schema.item)
-    .where(and(eq(schema.item.id, id), eq(schema.item.userId, userId)))
+    .where(
+      and(
+        eq(schema.item.id, id),
+        eq(schema.item.userId, userId),
+        eq(schema.item.projectId, projectId)
+      )
+    )
     .limit(1);
 
   if (!item || !item.blobUrl) {

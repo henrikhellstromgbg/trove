@@ -1,38 +1,90 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { and, eq } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
+import { InvalidProjectError } from "@/lib/projects";
+import {
+  InvalidSourceError,
+  SourceHasDeletionMarkersError,
+} from "@/lib/sources/contracts";
+import { sourceDetailDeps } from "./deps";
 
-export async function DELETE(
-  _req: NextRequest,
+async function resolveProjectId(
+  userId: string,
+  provided: unknown
+): Promise<string> {
+  if (typeof provided !== "string" || provided === "") {
+    throw new InvalidProjectError("projectId is required");
+  }
+  return sourceDetailDeps.requireProjectId(userId, provided);
+}
+
+export async function GET(
+  req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const { userId } = await auth();
+  const { userId } = await sourceDetailDeps.auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await ctx.params;
+  const projectIdParam = req.nextUrl.searchParams.get("projectId");
 
-  await db
-    .delete(schema.source)
-    .where(and(eq(schema.source.id, id), eq(schema.source.userId, userId)));
+  try {
+    const detail = await sourceDetailDeps.getSourceDetail(
+      userId,
+      id,
+      await resolveProjectId(userId, projectIdParam)
+    );
+    return NextResponse.json(detail);
+  } catch (error) {
+    if (error instanceof InvalidProjectError || error instanceof InvalidSourceError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  }
+}
 
-  return NextResponse.json({ ok: true });
+export async function DELETE(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  const { userId } = await sourceDetailDeps.auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await ctx.params;
+  const projectIdParam = req.nextUrl.searchParams.get("projectId");
+
+  try {
+    await sourceDetailDeps.deleteSource(
+      userId,
+      id,
+      await resolveProjectId(userId, projectIdParam)
+    );
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (error instanceof SourceHasDeletionMarkersError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    if (error instanceof InvalidProjectError || error instanceof InvalidSourceError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  }
 }
 
 export async function PATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const { userId } = await auth();
+  const { userId } = await sourceDetailDeps.auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await ctx.params;
 
-  let body: { enabled?: unknown };
+  let body: { enabled?: unknown; projectId?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -46,10 +98,21 @@ export async function PATCH(
     );
   }
 
-  await db
-    .update(schema.source)
-    .set({ enabled: body.enabled })
-    .where(and(eq(schema.source.id, id), eq(schema.source.userId, userId)));
-
-  return NextResponse.json({ ok: true });
+  try {
+    const source = await sourceDetailDeps.setSourceEnabled(
+      userId,
+      id,
+      await resolveProjectId(
+        userId,
+        body.projectId
+      ),
+      body.enabled
+    );
+    return NextResponse.json({ source });
+  } catch (error) {
+    if (error instanceof InvalidProjectError || error instanceof InvalidSourceError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  }
 }

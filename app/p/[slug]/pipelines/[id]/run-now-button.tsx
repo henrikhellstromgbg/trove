@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useProject } from "@/app/project-context";
 
 export function RunNowButton({ id }: { id: string }) {
   const router = useRouter();
+  const { project } = useProject();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>("");
 
@@ -13,7 +15,11 @@ export function RunNowButton({ id }: { id: string }) {
     setBusy(true);
     setError("");
 
-    const res = await fetch(`/api/pipelines/${id}/run`, { method: "POST" });
+    const res = await fetch(`/api/pipelines/${id}/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: project.id }),
+    });
     if (res.ok) {
       router.refresh();
     } else {

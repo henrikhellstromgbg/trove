@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { Pool, neonConfig } from "@neondatabase/serverless";
 import { SQL, getTableName, is } from "drizzle-orm";
@@ -223,6 +223,11 @@ function assertSnapshotMatchesSchema(snapshot: Snapshot) {
 
 async function main() {
   neonConfig.webSocketConstructor = ws;
+  if (process.env.VERIFY_WS_PROXY) {
+    neonConfig.wsProxy = () => process.env.VERIFY_WS_PROXY!;
+    neonConfig.useSecureWebSocket = false;
+    neonConfig.pipelineConnect = false;
+  }
   const pool = new Pool({ connectionString: verificationUrl() });
 
   try {
@@ -241,8 +246,13 @@ async function main() {
       migrationsFolder: resolve("lib/db/migrations"),
     });
 
+    const snapshotFiles = (await readdir(resolve("lib/db/migrations/meta")))
+      .filter((file) => /^\d+_snapshot\.json$/.test(file))
+      .sort();
+    const latestSnapshot = snapshotFiles.at(-1);
+    if (!latestSnapshot) fail("no generated migration snapshot found");
     const snapshot = JSON.parse(
-      await readFile(resolve("lib/db/migrations/meta/0001_snapshot.json"), "utf8")
+      await readFile(resolve("lib/db/migrations/meta", latestSnapshot), "utf8")
     ) as Snapshot;
     assertSnapshotMatchesSchema(snapshot);
     const expectedTables = Object.values(snapshot.tables).sort((a, b) =>

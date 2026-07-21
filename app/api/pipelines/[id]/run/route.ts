@@ -1,31 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
-import { runPipelineSpec } from "@/lib/pipelines/run";
+import { schema } from "@/lib/db";
+import { InvalidProjectError } from "@/lib/projects";
 import { nextRunFromCron } from "@/lib/pipelines/cron";
 import { PipelineSpecSchema } from "@/lib/pipelines/types";
+import {
+  loadOwnedPipeline,
+  pipelineApiDeps,
+  requireOwnedProjectId,
+} from "@/lib/pipelines/api";
 
 export const maxDuration = 60;
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const { userId } = await auth();
+  const { userId } = await pipelineApiDeps.auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await ctx.params;
 
-  const [pipeline] = await db
-    .select()
-    .from(schema.pipeline)
-    .where(
-      and(eq(schema.pipeline.id, id), eq(schema.pipeline.userId, userId))
-    )
-    .limit(1);
+  let requestBody: { projectId?: unknown } | null = null;
+  if (req.headers.get("content-type")?.includes("application/json")) {
+    try {
+      requestBody = (await req.json()) as { projectId?: unknown };
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
+  }
+
+  let projectId: string;
+  try {
+    projectId = await requireOwnedProjectId(
+      userId,
+      req.nextUrl.searchParams.get("projectId") ?? requestBody?.projectId,
+      pipelineApiDeps.requireProjectId
+    );
+  } catch (error) {
+    if (error instanceof InvalidProjectError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  }
+
+  const pipeline = await loadOwnedPipeline(
+    id,
+    userId,
+    projectId,
+    pipelineApiDeps.db
+  );
 
   if (!pipeline) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -38,32 +64,43 @@ export async function POST(
   const spec = parsed.data;
 
   try {
-    const output = await runPipelineSpec(userId, pipeline.projectId, spec);
+    const output = await pipelineApiDeps.runPipelineSpec(
+      userId,
+      pipeline.projectId,
+      spec
+    );
 
-    await db.insert(schema.pipelineRun).values({
+    await pipelineApiDeps.db.insert(schema.pipelineRun).values({
       pipelineId: pipeline.id,
       userId,
       status: "completed",
       output,
-      completedAt: new Date(),
+      completedAt: pipelineApiDeps.now(),
     });
 
-    await db
+    const now = pipelineApiDeps.now();
+    await pipelineApiDeps.db
       .update(schema.pipeline)
       .set({
-        lastRunAt: new Date(),
-        nextRunAt: nextRunFromCron(spec.cron, new Date()),
+        lastRunAt: now,
+        nextRunAt: nextRunFromCron(spec.cron, now),
       })
-      .where(eq(schema.pipeline.id, pipeline.id));
+      .where(
+        and(
+          eq(schema.pipeline.id, pipeline.id),
+          eq(schema.pipeline.userId, userId),
+          eq(schema.pipeline.projectId, projectId)
+        )
+      );
 
     return NextResponse.json({ ok: true, output });
   } catch (err) {
-    await db.insert(schema.pipelineRun).values({
+    await pipelineApiDeps.db.insert(schema.pipelineRun).values({
       pipelineId: pipeline.id,
       userId,
       status: "failed",
       output: { error: err instanceof Error ? err.message : "unknown" },
-      completedAt: new Date(),
+      completedAt: pipelineApiDeps.now(),
     });
     return NextResponse.json(
       {

@@ -1,207 +1,608 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import type { Source } from "@/lib/db/schema";
 import { inngest } from "@/lib/inngest/client";
 import { nextRunFromCron } from "@/lib/pipelines/cron";
-import type { Source } from "@/lib/db/schema";
+import { loadDeletedExternalIds } from "@/lib/review-or-deletion/import-guard";
 import { fetchRssEntries } from "./rss";
-import { fetchWebScrapeEntries } from "./web-scrape";
 import { fetchSlackMessages } from "./slack";
+import { fetchWebScrapeEntries } from "./web-scrape";
 
 export type SyncResult = {
   ok: boolean;
   newItems: number;
+  newOriginals: number;
   error?: string;
   cursor?: unknown;
+  code?: "already_running";
+};
+
+export type SourceRunTrigger = "manual" | "cron";
+
+const ACTIVE_SOURCE_RUN_CONSTRAINT = "source_run_active_source_idx";
+const ALREADY_RUNNING_ERROR = "source sync already running";
+
+type SourceRunStartResult =
+  | { started: true; sourceRunId: string }
+  | { started: false; result: SyncResult };
+
+type SyncDbClient = Pick<typeof db, "select" | "insert" | "update">;
+
+type PendingItemInput = {
+  externalId: string;
+  type: "url" | "text";
+  source: string | null;
+  rawText?: string | null;
+  capturedAt?: Date | null;
+};
+
+type OriginalRecordInput = {
+  externalId: string;
+  itemId: string | null;
+  contentType: string;
+  sourceLabel: string | null;
+  payload: Record<string, unknown>;
+  capturedAt?: Date | null;
+};
+
+type PersistedSyncBatch = {
+  newItems: number;
+  newOriginals: number;
+  insertedItemIds: string[];
 };
 
 // Only the fields sync actually reads. Kept narrow so callers can pass a row
 // whose Date columns have been JSON-serialized to strings across an Inngest
 // step boundary without a type mismatch.
-type SyncableSource = Pick<
+export type SyncableSource = Pick<
   Source,
-  "id" | "userId" | "projectId" | "kind" | "config" | "cursor"
+  "id" | "userId" | "projectId" | "kind" | "config" | "cursor" | "cron"
 >;
 
-async function syncRss(source: SyncableSource): Promise<SyncResult> {
-  const config = source.config as { feedUrl?: string };
-  if (!config.feedUrl) {
-    return { ok: false, newItems: 0, error: "missing feedUrl in source config" };
-  }
+export const sourceSyncDeps = {
+  db,
+  fetchRssEntries,
+  fetchSlackMessages,
+  fetchWebScrapeEntries,
+  nextRunFromCron,
+  sendItemCaptured: async (itemId: string) => {
+    await inngest.send({ name: "item/captured", data: { itemId } });
+  },
+};
 
-  const entries = await fetchRssEntries(config.feedUrl);
-  if (entries.length === 0) return { ok: true, newItems: 0 };
-
-  const existing = await db
-    .select({ externalId: schema.item.externalId })
-    .from(schema.item)
-    .where(
-      and(
-        eq(schema.item.sourceId, source.id),
-        inArray(
-          schema.item.externalId,
-          entries.map((e) => e.externalId)
-        )
-      )
+export function planOriginalRecordVersions(
+  existing: Array<{ externalId: string; version: number }>,
+  externalIds: string[]
+): number[] {
+  const nextVersionByExternalId = new Map<string, number>();
+  for (const row of existing) {
+    nextVersionByExternalId.set(
+      row.externalId,
+      Math.max(nextVersionByExternalId.get(row.externalId) ?? 0, row.version)
     );
-  const seen = new Set(existing.map((r) => r.externalId));
-
-  const fresh = entries.filter((e) => !seen.has(e.externalId));
-  if (fresh.length === 0) return { ok: true, newItems: 0 };
-
-  const inserted = await db
-    .insert(schema.item)
-    .values(
-      fresh.map((e) => ({
-        userId: source.userId,
-        projectId: source.projectId as string,
-        sourceId: source.id,
-        externalId: e.externalId,
-        type: "url",
-        source: e.url,
-        status: "pending",
-        ...(e.publishedAt ? { capturedAt: e.publishedAt } : {}),
-      }))
-    )
-    .onConflictDoNothing()
-    .returning({ id: schema.item.id });
-
-  for (const row of inserted) {
-    await inngest.send({ name: "item/captured", data: { itemId: row.id } });
   }
 
-  return { ok: true, newItems: inserted.length };
+  return externalIds.map((externalId) => {
+    const nextVersion = (nextVersionByExternalId.get(externalId) ?? 0) + 1;
+    nextVersionByExternalId.set(externalId, nextVersion);
+    return nextVersion;
+  });
 }
 
-async function syncWebScrape(source: SyncableSource): Promise<SyncResult> {
-  const config = source.config as { url?: string; selector?: string; followLinks?: boolean };
-  if (!config.url) {
-    return { ok: false, newItems: 0, error: "missing url in source config" };
+async function insertOriginalVersions(
+  dbClient: SyncDbClient,
+  source: SyncableSource,
+  sourceRunId: string,
+  originals: OriginalRecordInput[]
+): Promise<number> {
+  if (originals.length === 0) return 0;
+
+  const externalIds = Array.from(new Set(originals.map((original) => original.externalId)));
+  const existing = await dbClient
+    .select({
+      externalId: schema.originalRecord.externalId,
+      version: schema.originalRecord.version,
+    })
+    .from(schema.originalRecord)
+    .where(
+      and(
+        eq(schema.originalRecord.sourceId, source.id),
+        inArray(schema.originalRecord.externalId, externalIds)
+      )
+    );
+
+  const versions = planOriginalRecordVersions(
+    existing,
+    originals.map((original) => original.externalId)
+  );
+
+  const inserted = await dbClient
+    .insert(schema.originalRecord)
+    .values(
+      originals.map((original, index) => ({
+        userId: source.userId,
+        projectId: source.projectId,
+        sourceId: source.id,
+        sourceRunId,
+        itemId: original.itemId,
+        externalId: original.externalId,
+        version: versions[index],
+        contentType: original.contentType,
+        sourceLabel: original.sourceLabel,
+        payload: original.payload,
+        ...(original.capturedAt ? { capturedAt: original.capturedAt } : {}),
+      }))
+    )
+    .returning({ id: schema.originalRecord.id });
+
+  return inserted.length;
+}
+
+async function loadItemIdByExternalId(
+  dbClient: SyncDbClient,
+  sourceId: string,
+  externalIds: string[]
+): Promise<Map<string, string>> {
+  if (externalIds.length === 0) return new Map();
+
+  const existing = await dbClient
+    .select({ id: schema.item.id, externalId: schema.item.externalId })
+    .from(schema.item)
+    .where(
+      and(eq(schema.item.sourceId, sourceId), inArray(schema.item.externalId, externalIds))
+    );
+
+  return new Map(
+    existing
+      .filter((row): row is { id: string; externalId: string } => row.externalId != null)
+      .map((row) => [row.externalId, row.id])
+  );
+}
+
+async function persistSyncBatch(
+  source: SyncableSource,
+  sourceRunId: string,
+  items: PendingItemInput[],
+  originals: Omit<OriginalRecordInput, "itemId">[]
+): Promise<PersistedSyncBatch> {
+  if (originals.length === 0) {
+    return { newItems: 0, newOriginals: 0, insertedItemIds: [] };
   }
 
-  const entries = await fetchWebScrapeEntries(config.url, {
+  return sourceSyncDeps.db.transaction(async (tx) => {
+    const originalExternalIds = Array.from(
+      new Set(originals.map((original) => original.externalId))
+    );
+    const deletedExternalIds = await loadDeletedExternalIds(
+      tx,
+      source.projectId,
+      source.id,
+      originalExternalIds
+    );
+    const allowedOriginals = originals.filter(
+      (original) => !deletedExternalIds.has(original.externalId)
+    );
+    const allowedItems = items.filter((item) => !deletedExternalIds.has(item.externalId));
+
+    if (allowedOriginals.length === 0) {
+      return { newItems: 0, newOriginals: 0, insertedItemIds: [] };
+    }
+
+    const externalIds = Array.from(
+      new Set(allowedOriginals.map((original) => original.externalId))
+    );
+    const itemIdByExternalId = await loadItemIdByExternalId(tx, source.id, externalIds);
+
+    const freshItems = allowedItems.filter((item) => !itemIdByExternalId.has(item.externalId));
+    const inserted =
+      freshItems.length > 0
+        ? await tx
+            .insert(schema.item)
+            .values(
+              freshItems.map((item) => ({
+                userId: source.userId,
+                projectId: source.projectId,
+                sourceId: source.id,
+                externalId: item.externalId,
+                type: item.type,
+                source: item.source,
+                ...(item.rawText != null ? { rawText: item.rawText } : {}),
+                status: "pending",
+                ...(item.capturedAt ? { capturedAt: item.capturedAt } : {}),
+              }))
+            )
+            .onConflictDoNothing()
+            .returning({
+              id: schema.item.id,
+              externalId: schema.item.externalId,
+            })
+        : [];
+
+    for (const row of inserted) {
+      if (row.externalId) itemIdByExternalId.set(row.externalId, row.id);
+    }
+
+    const missingExternalIds = externalIds.filter(
+      (externalId) => !itemIdByExternalId.has(externalId)
+    );
+    if (missingExternalIds.length > 0) {
+      const reloaded = await loadItemIdByExternalId(tx, source.id, missingExternalIds);
+      for (const [externalId, itemId] of reloaded) {
+        itemIdByExternalId.set(externalId, itemId);
+      }
+    }
+
+    const newOriginals = await insertOriginalVersions(
+      tx,
+      source,
+      sourceRunId,
+      allowedOriginals.map((original) => ({
+        ...original,
+        itemId: itemIdByExternalId.get(original.externalId) ?? null,
+      }))
+    );
+
+    const pendingItems = await tx
+      .select({ id: schema.item.id })
+      .from(schema.item)
+      .where(
+        and(
+          eq(schema.item.sourceId, source.id),
+          inArray(schema.item.externalId, externalIds),
+          eq(schema.item.status, "pending")
+        )
+      );
+
+    return {
+      newItems: inserted.length,
+      newOriginals,
+      insertedItemIds: pendingItems.map((row) => row.id),
+    };
+  });
+}
+
+async function emitCapturedItems(itemIds: string[]): Promise<string | undefined> {
+  try {
+    for (const itemId of itemIds) {
+      await sourceSyncDeps.sendItemCaptured(itemId);
+    }
+    return undefined;
+  } catch (error) {
+    return error instanceof Error ? error.message : "unknown item/captured send error";
+  }
+}
+
+function alreadyRunningResult(): SyncResult {
+  return {
+    ok: false,
+    newItems: 0,
+    newOriginals: 0,
+    error: ALREADY_RUNNING_ERROR,
+    code: "already_running",
+  };
+}
+
+function isActiveSourceRunConflict(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+
+  const maybeError = error as {
+    code?: string;
+    constraint?: string;
+    message?: string;
+    cause?: unknown;
+  };
+
+  if (
+    maybeError.code === "23505" &&
+    (maybeError.constraint === ACTIVE_SOURCE_RUN_CONSTRAINT ||
+      maybeError.message?.includes(ACTIVE_SOURCE_RUN_CONSTRAINT))
+  ) {
+    return true;
+  }
+
+  return isActiveSourceRunConflict(maybeError.cause);
+}
+
+async function syncRss(
+  source: SyncableSource,
+  sourceRunId: string
+): Promise<SyncResult> {
+  const config = source.config as { feedUrl?: string };
+  if (!config.feedUrl) {
+    return {
+      ok: false,
+      newItems: 0,
+      newOriginals: 0,
+      error: "missing feedUrl in source config",
+    };
+  }
+
+  const entries = await sourceSyncDeps.fetchRssEntries(config.feedUrl);
+  if (entries.length === 0) return { ok: true, newItems: 0, newOriginals: 0 };
+
+  const persisted = await persistSyncBatch(
+    source,
+    sourceRunId,
+    entries.map((entry) => ({
+      externalId: entry.externalId,
+      type: "url",
+      source: entry.url,
+      capturedAt: entry.publishedAt,
+    })),
+    entries.map((entry) => ({
+      externalId: entry.externalId,
+      contentType: "application/rss+json",
+      sourceLabel: entry.url,
+      payload: {
+        kind: "rss",
+        title: entry.title,
+        url: entry.url,
+        publishedAt: entry.publishedAt?.toISOString() ?? null,
+      },
+      capturedAt: entry.publishedAt,
+    }))
+  );
+
+  const eventError = await emitCapturedItems(persisted.insertedItemIds);
+  if (eventError) {
+    return {
+      ok: false,
+      newItems: persisted.newItems,
+      newOriginals: persisted.newOriginals,
+      error: eventError,
+    };
+  }
+
+  return {
+    ok: true,
+    newItems: persisted.newItems,
+    newOriginals: persisted.newOriginals,
+  };
+}
+
+async function syncWebScrape(
+  source: SyncableSource,
+  sourceRunId: string
+): Promise<SyncResult> {
+  const config = source.config as {
+    url?: string;
+    selector?: string;
+    followLinks?: boolean;
+  };
+  if (!config.url) {
+    return {
+      ok: false,
+      newItems: 0,
+      newOriginals: 0,
+      error: "missing url in source config",
+    };
+  }
+
+  const entries = await sourceSyncDeps.fetchWebScrapeEntries(config.url, {
     selector: config.selector,
     followLinks: config.followLinks,
   });
-  if (entries.length === 0) return { ok: true, newItems: 0 };
+  if (entries.length === 0) return { ok: true, newItems: 0, newOriginals: 0 };
 
-  const existing = await db
-    .select({ externalId: schema.item.externalId })
-    .from(schema.item)
-    .where(
-      and(
-        eq(schema.item.sourceId, source.id),
-        inArray(
-          schema.item.externalId,
-          entries.map((e) => e.externalId)
-        )
-      )
-    );
-  const seen = new Set(existing.map((r) => r.externalId));
+  const persisted = await persistSyncBatch(
+    source,
+    sourceRunId,
+    entries.map((entry) => ({
+      externalId: entry.externalId,
+      type: "url",
+      source: entry.url,
+    })),
+    entries.map((entry) => ({
+      externalId: entry.externalId,
+      contentType: "application/json",
+      sourceLabel: entry.url,
+      payload: {
+        kind: "web_scrape",
+        title: entry.title,
+        url: entry.url,
+      },
+    }))
+  );
 
-  const fresh = entries.filter((e) => !seen.has(e.externalId));
-  if (fresh.length === 0) return { ok: true, newItems: 0 };
-
-  const inserted = await db
-    .insert(schema.item)
-    .values(
-      fresh.map((e) => ({
-        userId: source.userId,
-        projectId: source.projectId as string,
-        sourceId: source.id,
-        externalId: e.externalId,
-        type: "url",
-        source: e.url,
-        status: "pending",
-      }))
-    )
-    .onConflictDoNothing()
-    .returning({ id: schema.item.id });
-
-  for (const row of inserted) {
-    await inngest.send({ name: "item/captured", data: { itemId: row.id } });
+  const eventError = await emitCapturedItems(persisted.insertedItemIds);
+  if (eventError) {
+    return {
+      ok: false,
+      newItems: persisted.newItems,
+      newOriginals: persisted.newOriginals,
+      error: eventError,
+    };
   }
 
-  return { ok: true, newItems: inserted.length };
+  return {
+    ok: true,
+    newItems: persisted.newItems,
+    newOriginals: persisted.newOriginals,
+  };
 }
 
-async function syncSlack(source: SyncableSource): Promise<SyncResult> {
+async function syncSlack(
+  source: SyncableSource,
+  sourceRunId: string
+): Promise<SyncResult> {
   const config = source.config as { channelId?: string };
   if (!config.channelId) {
-    return { ok: false, newItems: 0, error: "missing channelId in source config" };
+    return {
+      ok: false,
+      newItems: 0,
+      newOriginals: 0,
+      error: "missing channelId in source config",
+    };
   }
 
   const cursor = source.cursor as { latestTs?: string } | null;
 
   let result;
   try {
-    result = await fetchSlackMessages(config.channelId, cursor?.latestTs);
-  } catch (err) {
+    result = await sourceSyncDeps.fetchSlackMessages(config.channelId, cursor?.latestTs);
+  } catch (error) {
     return {
       ok: false,
       newItems: 0,
-      error: err instanceof Error ? err.message : "unknown Slack API error",
+      newOriginals: 0,
+      error: error instanceof Error ? error.message : "unknown Slack API error",
     };
   }
 
   const nextCursor = result.latestTs ? { latestTs: result.latestTs } : cursor ?? undefined;
-
   if (result.messages.length === 0) {
-    return { ok: true, newItems: 0, cursor: nextCursor };
+    return { ok: true, newItems: 0, newOriginals: 0, cursor: nextCursor };
   }
 
-  const inserted = await db
-    .insert(schema.item)
-    .values(
-      result.messages.map((m) => ({
-        userId: source.userId,
-        projectId: source.projectId as string,
-        sourceId: source.id,
-        externalId: m.externalId,
-        type: "text",
-        rawText: m.text,
-        status: "pending",
-        capturedAt: m.postedAt,
-      }))
-    )
-    .onConflictDoNothing()
-    .returning({ id: schema.item.id });
+  const persisted = await persistSyncBatch(
+    source,
+    sourceRunId,
+    result.messages.map((message) => ({
+      externalId: message.externalId,
+      type: "text",
+      source: null,
+      rawText: message.text,
+      capturedAt: message.postedAt,
+    })),
+    result.messages.map((message) => ({
+      externalId: message.externalId,
+      contentType: "application/json",
+      sourceLabel: config.channelId ?? null,
+      payload: {
+        kind: "slack_channel",
+        channelId: config.channelId,
+        text: message.text,
+        postedAt: message.postedAt.toISOString(),
+      },
+      capturedAt: message.postedAt,
+    }))
+  );
 
-  for (const row of inserted) {
-    await inngest.send({ name: "item/captured", data: { itemId: row.id } });
+  const eventError = await emitCapturedItems(persisted.insertedItemIds);
+  if (eventError) {
+    return {
+      ok: false,
+      newItems: persisted.newItems,
+      newOriginals: persisted.newOriginals,
+      error: eventError,
+    };
   }
 
-  return { ok: true, newItems: inserted.length, cursor: nextCursor };
+  return {
+    ok: true,
+    newItems: persisted.newItems,
+    newOriginals: persisted.newOriginals,
+    cursor: nextCursor,
+  };
 }
 
 // Dispatches by source kind. youtube_channel still needs an API key (see
 // docs/architecture-v2.md) before it can be added here.
-export async function syncSource(source: SyncableSource): Promise<SyncResult> {
-  if (!source.projectId) {
-    return { ok: false, newItems: 0, error: "source has no project_id" };
-  }
-  if (source.kind === "rss") return syncRss(source);
-  if (source.kind === "web_scrape") return syncWebScrape(source);
-  if (source.kind === "slack_channel") return syncSlack(source);
+export async function syncSource(
+  source: SyncableSource,
+  sourceRunId: string
+): Promise<SyncResult> {
+  if (source.kind === "rss") return syncRss(source, sourceRunId);
+  if (source.kind === "web_scrape") return syncWebScrape(source, sourceRunId);
+  if (source.kind === "slack_channel") return syncSlack(source, sourceRunId);
   return {
     ok: false,
     newItems: 0,
+    newOriginals: 0,
     error: `sync not implemented for kind "${source.kind}"`,
   };
 }
 
+export async function startSourceRun(
+  source: SyncableSource,
+  trigger: SourceRunTrigger
+): Promise<SourceRunStartResult> {
+  try {
+    return await sourceSyncDeps.db.transaction(async (tx) => {
+      const [run] = await tx
+        .insert(schema.sourceRun)
+        .values({
+          userId: source.userId,
+          projectId: source.projectId,
+          sourceId: source.id,
+          trigger,
+          status: "running",
+          cursorBefore: source.cursor ?? null,
+        })
+        .returning({ id: schema.sourceRun.id });
+
+      await tx
+        .update(schema.source)
+        .set({
+          lastStatus: "running",
+          lastError: null,
+        })
+        .where(eq(schema.source.id, source.id));
+
+      return { started: true, sourceRunId: run.id };
+    });
+  } catch (error) {
+    if (isActiveSourceRunConflict(error)) {
+      return { started: false, result: alreadyRunningResult() };
+    }
+    throw error;
+  }
+}
+
 export async function recordSyncResult(
-  sourceId: string,
-  result: SyncResult,
-  cron: string | null
+  source: SyncableSource,
+  sourceRunId: string,
+  result: SyncResult
 ) {
-  await db
-    .update(schema.source)
-    .set({
-      lastSyncAt: new Date(),
-      lastStatus: result.ok ? "ok" : "error",
-      lastError: result.ok ? null : result.error ?? "unknown error",
-      nextRunAt: cron ? nextRunFromCron(cron, new Date()) : null,
-      ...(result.cursor !== undefined ? { cursor: result.cursor } : {}),
-    })
-    .where(eq(schema.source.id, sourceId));
+  const completedAt = new Date();
+
+  await sourceSyncDeps.db.transaction(async (tx) => {
+    await tx
+      .update(schema.sourceRun)
+      .set({
+        status: result.ok ? "ok" : "error",
+        cursorAfter: result.cursor ?? source.cursor ?? null,
+        itemCount: result.newItems,
+        originalCount: result.newOriginals,
+        error: result.ok ? null : result.error ?? "unknown error",
+        completedAt,
+      })
+      .where(eq(schema.sourceRun.id, sourceRunId));
+
+    await tx
+      .update(schema.source)
+      .set({
+        lastSyncAt: completedAt,
+        lastStatus: result.ok ? "ok" : "error",
+        lastError: result.ok ? null : result.error ?? "unknown error",
+        nextRunAt: source.cron ? sourceSyncDeps.nextRunFromCron(source.cron, completedAt) : null,
+        ...(result.cursor !== undefined ? { cursor: result.cursor } : {}),
+      })
+      .where(eq(schema.source.id, source.id));
+  });
+}
+
+export async function runSourceSync(
+  source: SyncableSource,
+  trigger: SourceRunTrigger
+): Promise<SyncResult> {
+  const started = await startSourceRun(source, trigger);
+  if (!started.started) return started.result;
+
+  const sourceRunId = started.sourceRunId;
+
+  let result: SyncResult;
+  try {
+    result = await syncSource(source, sourceRunId);
+  } catch (error) {
+    result = {
+      ok: false,
+      newItems: 0,
+      newOriginals: 0,
+      error: error instanceof Error ? error.message : "unknown sync error",
+    };
+  }
+
+  await recordSyncResult(source, sourceRunId, result);
+  return result;
 }

@@ -10,6 +10,10 @@ import {
 } from "@/lib/ingest-validation";
 import { IngestAuth } from "@/lib/ingest-auth";
 import { MAX_FILE_BYTES, classifyFile, contentTypeFor, isUrl } from "@/lib/capture";
+import {
+  DeletedExternalItemError,
+  assertExternalItemNotDeleted,
+} from "@/lib/review-or-deletion/import-guard";
 import { ingestDeps } from "./deps";
 
 // The capture seam: one endpoint, two auth modes (Clerk session for the
@@ -30,6 +34,9 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     if (error instanceof LockedProjectError) {
       return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    if (error instanceof DeletedExternalItemError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
     }
     if (error instanceof InvalidProjectError || error instanceof InvalidSourceError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
@@ -132,6 +139,7 @@ async function handleJson(req: NextRequest, ingestAuth: IngestAuth) {
     body.sourceId
   );
   const externalId = body.externalId ?? null;
+  await assertExternalItemNotDeleted(ingestDeps.db, projectId, sourceId, externalId);
 
   const duplicate = await findDuplicate(ingestAuth.userId, sourceId, externalId);
   if (duplicate) {
@@ -199,6 +207,7 @@ async function handleFile(req: NextRequest, ingestAuth: IngestAuth) {
   );
   const externalId =
     typeof externalIdField === "string" && externalIdField ? externalIdField : null;
+  await assertExternalItemNotDeleted(ingestDeps.db, projectId, sourceId, externalId);
 
   const duplicate = await findDuplicate(ingestAuth.userId, sourceId, externalId);
   if (duplicate) {

@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useProject } from "@/app/project-context";
 
 export function SyncNowButton({ id }: { id: string }) {
   const router = useRouter();
+  const { project } = useProject();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>("");
 
@@ -13,7 +15,10 @@ export function SyncNowButton({ id }: { id: string }) {
     setBusy(true);
     setError("");
 
-    const res = await fetch(`/api/sources/${id}/sync`, { method: "POST" });
+    const res = await fetch(
+      `/api/sources/${id}/sync?projectId=${encodeURIComponent(project.id)}`,
+      { method: "POST" }
+    );
     if (res.ok) {
       router.refresh();
     } else {

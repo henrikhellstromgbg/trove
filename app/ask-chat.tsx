@@ -48,6 +48,7 @@ export function AskChat({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
   const transcriptRef = useRef<HTMLDivElement>(null);
   const autoSubmitted = useRef(false);
@@ -93,7 +94,7 @@ export function AskChat({
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, projectId }),
+        body: JSON.stringify({ question: q, projectId, conversationId }),
       });
 
       if (!res.ok || !res.body) {
@@ -118,8 +119,15 @@ export function AskChat({
             items?: Citation[];
             text?: string;
             error?: string;
+            id?: string;
           };
-          if (msg.type === "citations") {
+          if (msg.type === "conversation" && msg.id) {
+            setConversationId(msg.id);
+            const url = new URL(window.location.href);
+            url.searchParams.delete("q");
+            url.searchParams.set("conversation", msg.id);
+            window.history.replaceState(null, "", url);
+          } else if (msg.type === "citations") {
             patchMessage(index, { citations: msg.items ?? [] });
           } else if (msg.type === "text" && msg.text) {
             const text = msg.text;
@@ -155,16 +163,66 @@ export function AskChat({
         error: "Connection lost. Try again.",
       });
     }
-  }, [patchMessage, projectId]);
+  }, [conversationId, patchMessage, projectId]);
 
   // Auto-submit from the home launcher: read ?q= once on mount. Reading
   // window.location.search here avoids the useSearchParams Suspense rule.
   useEffect(() => {
     if (autoSubmitted.current) return;
     autoSubmitted.current = true;
-    const q = new URLSearchParams(window.location.search).get("q");
+    const params = new URLSearchParams(window.location.search);
+    const savedConversationId = params.get("conversation");
+    if (savedConversationId) {
+      fetch(
+        `/api/ask?projectId=${encodeURIComponent(projectId)}&conversationId=${encodeURIComponent(savedConversationId)}`
+      )
+        .then(async (res) => {
+          if (!res.ok) throw new Error("conversation load failed");
+          return res.json() as Promise<{
+            conversationId: string;
+            messages: Array<{
+              role: string;
+              content: string;
+              citations: Citation[] | null;
+            }>;
+          }>;
+        })
+        .then((data) => {
+          const restored: ChatMessage[] = [];
+          for (const message of data.messages) {
+            if (message.role === "user") {
+              restored.push({
+                question: message.content,
+                answer: "",
+                citations: [],
+                loading: false,
+                error: null,
+              });
+            } else if (message.role === "assistant" && restored.length > 0) {
+              const current = restored[restored.length - 1];
+              current.answer = message.content;
+              current.citations = message.citations ?? [];
+            }
+          }
+          setConversationId(data.conversationId);
+          setMessages(restored);
+        })
+        .catch(() => {
+          setMessages([
+            {
+              question: "Saved conversation",
+              answer: "",
+              citations: [],
+              loading: false,
+              error: "The saved conversation could not be loaded.",
+            },
+          ]);
+        });
+      return;
+    }
+    const q = params.get("q");
     if (q && q.trim()) submit(q);
-  }, [submit]);
+  }, [projectId, submit]);
 
   const canSend = input.trim().length > 0 && !isBusy;
 

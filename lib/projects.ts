@@ -2,35 +2,23 @@ import { and, asc, eq, count, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { Project } from "@/lib/db/schema";
 import { nextRunFromCron } from "@/lib/pipelines/cron";
-import type { PipelineSpec } from "@/lib/pipelines/types";
+import { buildStarterPipelineTemplate } from "@/lib/pipelines/templates";
 
-const WEEKLY_DIGEST_CRON = "0 9 * * 0";
-
-// Seed a per-project weekly digest pipeline, run through the standard
-// pipeline engine (lib/pipelines/run.ts) via the run-due-pipelines cron.
-// Name "weekly-digest" is relied on by app/p/[slug]/digest/page.tsx.
+// Seed the per-project Friday weekly digest pipeline through the standard
+// pipeline engine. Name "weekly-digest" is still relied on by the digest page.
 async function seedWeeklyDigestPipeline(userId: string, projectId: string) {
-  const spec: PipelineSpec = {
-    name: "weekly-digest",
-    cron: WEEKLY_DIGEST_CRON,
-    filter: { capturedWithinDays: 7 },
-    prompt:
-      "Below is a list of items you saved this past week, with titles and short summaries. Write a JSON object reflecting on what you saved.\n\n{items}",
-    outputShape: "summary_with_highlights",
-    deliverByEmail: true,
-    retrieval: false,
-    includeForgotten: true,
-  };
+  const template = buildStarterPipelineTemplate("weekly-summary");
 
   await db.insert(schema.pipeline).values({
     userId,
     projectId,
-    name: spec.name,
-    description: "weekly summary of what you saved, plus one forgotten item",
-    spec,
-    cron: spec.cron,
+    templateKey: template.id,
+    name: template.pipelineName,
+    description: template.description,
+    spec: template.spec,
+    cron: template.spec.cron,
     enabled: true,
-    nextRunAt: nextRunFromCron(spec.cron),
+    nextRunAt: nextRunFromCron(template.spec.cron),
   });
 }
 

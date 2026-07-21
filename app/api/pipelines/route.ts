@@ -5,8 +5,15 @@ import { compilePipelineDescription } from "@/lib/pipelines/compile";
 import { nextRunFromCron, isCronValid } from "@/lib/pipelines/cron";
 import { InvalidProjectError, requireProjectId } from "@/lib/projects";
 
+export const pipelineCreateDeps = {
+  auth,
+  db,
+  compilePipelineDescription,
+  requireProjectId,
+};
+
 export async function POST(req: NextRequest) {
-  const { userId } = await auth();
+  const { userId } = await pipelineCreateDeps.auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -27,9 +34,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let projectId: string;
+  try {
+    projectId = await pipelineCreateDeps.requireProjectId(userId, body.projectId);
+  } catch (error) {
+    if (error instanceof InvalidProjectError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  }
+
   let spec;
   try {
-    spec = await compilePipelineDescription(description);
+    spec = await pipelineCreateDeps.compilePipelineDescription(description);
   } catch (err) {
     return NextResponse.json(
       {
@@ -47,17 +64,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let projectId: string;
-  try {
-    projectId = await requireProjectId(userId, body.projectId);
-  } catch (error) {
-    if (error instanceof InvalidProjectError) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-    throw error;
-  }
-
-  const [row] = await db
+  const [row] = await pipelineCreateDeps.db
     .insert(schema.pipeline)
     .values({
       userId,

@@ -35,7 +35,9 @@ class MockDb {
     const rows = this.selectResults.shift() ?? [];
     const chain = {
       from: () => chain,
+      innerJoin: () => chain,
       where: () => chain,
+      orderBy: () => chain,
       limit: async () => rows,
     };
     return chain;
@@ -56,15 +58,18 @@ class MockDb {
 
 let putCalls = 0;
 let sendCalls = 0;
+let putInputs: unknown[][] = [];
 
 beforeEach(() => {
   putCalls = 0;
   sendCalls = 0;
+  putInputs = [];
 
   Object.assign(captureDeps as unknown as MutableDeps, originalCaptureDeps, {
     auth: async () => ({ userId: USER_ID }),
-    put: async () => {
+    put: async (...args: unknown[]) => {
       putCalls += 1;
+      putInputs.push(args);
       return { url: "https://blob.test/file" };
     },
     inngest: {
@@ -75,8 +80,9 @@ beforeEach(() => {
   });
   Object.assign(ingestDeps as unknown as MutableDeps, originalIngestDeps, {
     resolveIngestAuth: async () => ({ userId: USER_ID, lockedProjectId: null }),
-    put: async () => {
+    put: async (...args: unknown[]) => {
       putCalls += 1;
+      putInputs.push(args);
       return { url: "https://blob.test/file" };
     },
     inngest: {
@@ -126,6 +132,67 @@ function ingestRequest(
     )
   );
 }
+
+test("browser JSON capture uses the ingest contract", async () => {
+  const db = new MockDb();
+  Object.assign(ingestDeps as unknown as MutableDeps, {
+    db,
+    requireProjectId: async (_userId: string, projectId: unknown) => projectId,
+  });
+
+  const response = await ingestPost(
+    jsonRequest("/api/ingest", {
+      type: "text",
+      text: "A saved thought",
+      projectId: PROJECT_A,
+    })
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(db.insertValues[0], {
+    userId: USER_ID,
+    projectId: PROJECT_A,
+    sourceId: null,
+    externalId: null,
+    type: "text",
+    rawText: "A saved thought",
+    source: null,
+    status: "pending",
+  });
+  assert.equal(putCalls, 0);
+  assert.equal(sendCalls, 1);
+});
+
+test("browser file capture uses multipart bytes through ingest", async () => {
+  const db = new MockDb();
+  Object.assign(ingestDeps as unknown as MutableDeps, {
+    db,
+    requireProjectId: async (_userId: string, projectId: unknown) => projectId,
+  });
+
+  const response = await ingestPost(fileRequest("/api/ingest", {
+    projectId: PROJECT_A,
+  }));
+
+  assert.equal(response.status, 200);
+  assert.equal(putCalls, 1);
+  assert.equal(sendCalls, 1);
+  assert.equal(putInputs[0]?.[1] instanceof File, true);
+  const uploadedFile = putInputs[0]?.[1] as File;
+  assert.equal(uploadedFile.name, "note.txt");
+  assert.equal(uploadedFile.type, "text/plain");
+  assert.equal(await uploadedFile.text(), "hello");
+  assert.deepEqual(db.insertValues[0], {
+    userId: USER_ID,
+    projectId: PROJECT_A,
+    sourceId: null,
+    externalId: null,
+    type: "textfile",
+    blobUrl: "https://blob.test/file",
+    source: "note.txt",
+    status: "pending",
+  });
+});
 
 // Backed by the REAL ownership helper: the fetched row belongs to user-b, so
 // the rejection comes from verifyProjectOwnership's own comparisons, not from
@@ -335,6 +402,64 @@ test("ask requires projectId", async () => {
     jsonRequest("/api/ask", { question: "What did I save?" })
   );
   assert.equal(response.status, 400);
+});
+
+test("ask persists a new project conversation and its empty-corpus answer", async () => {
+  const db = new MockDb();
+  Object.assign(askDeps as unknown as MutableDeps, {
+    db,
+    requireProjectId: async (_userId: string, projectId: unknown) => projectId,
+    embedQuery: async () => Array.from({ length: 768 }, () => 0),
+  });
+
+  const response = await askPost(
+    jsonRequest("/api/ask", {
+      question: "What did I save?",
+      projectId: PROJECT_A,
+    })
+  );
+  const streamed = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(streamed, /"type":"conversation","id":"item-1"/);
+  assert.match(streamed, /I don't have anything saved on that yet\./);
+  assert.deepEqual(db.insertValues, [
+    {
+      userId: USER_ID,
+      projectId: PROJECT_A,
+      title: "What did I save?",
+    },
+    {
+      conversationId: "item-1",
+      role: "user",
+      content: "What did I save?",
+    },
+    {
+      conversationId: "item-1",
+      role: "assistant",
+      content: "I don't have anything saved on that yet.",
+      citations: [],
+    },
+  ]);
+});
+
+test("ask rejects a conversation outside the active project", async () => {
+  const db = new MockDb();
+  Object.assign(askDeps as unknown as MutableDeps, {
+    db,
+    requireProjectId: async () => PROJECT_A,
+  });
+
+  const response = await askPost(
+    jsonRequest("/api/ask", {
+      question: "Continue",
+      projectId: PROJECT_A,
+      conversationId: PROJECT_B,
+    })
+  );
+
+  assert.equal(response.status, 400);
+  assert.equal(db.insertCalls, 0);
 });
 
 for (const scenario of ["malformed", "another user's"] as const) {

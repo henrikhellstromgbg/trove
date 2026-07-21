@@ -15,7 +15,7 @@ import { enrich } from "@/lib/ai/enrich";
 import { runPipelineSpec } from "@/lib/pipelines/run";
 import { nextRunFromCron } from "@/lib/pipelines/cron";
 import { PipelineSpecSchema } from "@/lib/pipelines/types";
-import { syncSource, recordSyncResult } from "@/lib/sources/sync";
+import { runSourceSync } from "@/lib/sources/sync";
 
 export const ingestItem = inngest.createFunction(
   {
@@ -471,11 +471,7 @@ export const syncDueSources = inngest.createFunction(
 
     for (const s of due) {
       const result = await step.run(`sync-${s.id}`, async () => {
-        return await syncSource(s);
-      });
-
-      await step.run(`record-${s.id}`, async () => {
-        await recordSyncResult(s.id, result, s.cron);
+        return await runSourceSync(s, "cron");
       });
 
       results.push({

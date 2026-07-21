@@ -1,34 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { and, eq } from "drizzle-orm";
-import { db, schema } from "@/lib/db";
-import { syncSource, recordSyncResult } from "@/lib/sources/sync";
+import { InvalidProjectError } from "@/lib/projects";
+import { InvalidSourceError } from "@/lib/sources/contracts";
+import { sourceSyncDeps } from "./deps";
 
 export const maxDuration = 60;
 
+async function resolveProjectId(
+  userId: string,
+  provided: unknown
+): Promise<string> {
+  if (typeof provided !== "string" || provided === "") {
+    throw new InvalidProjectError("projectId is required");
+  }
+  return sourceSyncDeps.requireProjectId(userId, provided);
+}
+
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const { userId } = await auth();
+  const { userId } = await sourceSyncDeps.auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await ctx.params;
+  const projectIdParam = req.nextUrl.searchParams.get("projectId");
 
-  const [source] = await db
-    .select()
-    .from(schema.source)
-    .where(and(eq(schema.source.id, id), eq(schema.source.userId, userId)))
-    .limit(1);
-
-  if (!source) {
-    return NextResponse.json({ error: "not found" }, { status: 404 });
+  try {
+    const source = await sourceSyncDeps.getOwnedSource(
+      userId,
+      id,
+      await resolveProjectId(userId, projectIdParam)
+    );
+    const result = await sourceSyncDeps.runSourceSync(source, "manual");
+    return NextResponse.json(result);
+  } catch (error) {
+    if (error instanceof InvalidProjectError || error instanceof InvalidSourceError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
   }
-
-  const result = await syncSource(source);
-  await recordSyncResult(source.id, result, source.cron);
-
-  return NextResponse.json(result);
 }

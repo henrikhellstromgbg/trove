@@ -14,7 +14,10 @@ export function DeletePipelineButton({ id }: { id: string }) {
     if (busy) return;
     setBusy(true);
 
-    const res = await fetch(`/api/pipelines/${id}`, { method: "DELETE" });
+    const res = await fetch(
+      `/api/pipelines/${id}?projectId=${encodeURIComponent(project.id)}`,
+      { method: "DELETE" }
+    );
     if (res.ok) {
       router.push(`/p/${project.slug}/pipelines`);
       router.refresh();

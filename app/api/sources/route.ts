@@ -1,43 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { db, schema } from "@/lib/db";
-import { nextRunFromCron, isCronValid } from "@/lib/pipelines/cron";
-import { InvalidProjectError, requireProjectId } from "@/lib/projects";
+import { InvalidProjectError } from "@/lib/projects";
+import {
+  InvalidConnectedAccountError,
+  InvalidSourceRuleError,
+  buildSourceConfig,
+  isSupportedSourceKind,
+  isSupportedSourceRuleType,
+  readJsonObject,
+} from "@/lib/sources/contracts";
+import { isCronValid } from "@/lib/pipelines/cron";
+import { sourceDeps } from "./deps";
 
-const SUPPORTED_KINDS = ["rss", "web_scrape", "slack_channel"] as const;
-type SupportedKind = (typeof SUPPORTED_KINDS)[number];
-
-function buildConfig(
-  kind: SupportedKind,
-  body: Record<string, unknown>
-): { config: Record<string, unknown> } | { error: string } {
-  if (kind === "rss") {
-    const feedUrl = typeof body.feedUrl === "string" ? body.feedUrl.trim() : "";
-    if (!feedUrl) return { error: "feedUrl is required" };
-    return { config: { feedUrl } };
+export async function GET(req: NextRequest) {
+  const { userId } = await sourceDeps.auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (kind === "web_scrape") {
-    const url = typeof body.url === "string" ? body.url.trim() : "";
-    if (!url) return { error: "url is required" };
-    const selector = typeof body.selector === "string" ? body.selector.trim() : "";
-    const followLinks = body.followLinks === true;
-    return {
-      config: {
-        url,
-        followLinks,
-        ...(selector ? { selector } : {}),
-      },
-    };
+  const projectIdParam = req.nextUrl.searchParams.get("projectId") ?? undefined;
+  if (!projectIdParam) {
+    return NextResponse.json({ error: "projectId is required" }, { status: 400 });
   }
 
-  const channelId = typeof body.channelId === "string" ? body.channelId.trim() : "";
-  if (!channelId) return { error: "channelId is required" };
-  return { config: { channelId } };
+  try {
+    const projectId = await sourceDeps.requireProjectId(userId, projectIdParam);
+    const sources = await sourceDeps.listSources(userId, projectId);
+    return NextResponse.json({ sources });
+  } catch (error) {
+    if (error instanceof InvalidProjectError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth();
+  const { userId } = await sourceDeps.auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -49,20 +47,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const kind = typeof body.kind === "string" ? body.kind : "";
-  if (!SUPPORTED_KINDS.includes(kind as SupportedKind)) {
+  const kind = body.kind;
+  if (!isSupportedSourceKind(kind)) {
     return NextResponse.json(
-      { error: `unsupported source kind "${kind}"` },
+      { error: `unsupported source kind "${String(kind ?? "")}"` },
       { status: 400 }
     );
   }
 
   const name = typeof body.name === "string" ? body.name.trim() : "";
-  if (name.length === 0) {
+  if (!name) {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
 
-  const configResult = buildConfig(kind as SupportedKind, body);
+  if (typeof body.projectId !== "string" || !body.projectId) {
+    return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+  }
+
+  const configResult = buildSourceConfig(kind, body);
   if ("error" in configResult) {
     return NextResponse.json({ error: configResult.error }, { status: 400 });
   }
@@ -72,30 +74,70 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "cron is invalid" }, { status: 400 });
   }
 
-  let projectId: string;
-  try {
-    projectId = await requireProjectId(userId, body.projectId);
-  } catch (error) {
-    if (error instanceof InvalidProjectError) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+  let initialRule:
+    | {
+        ruleType: "selection" | "review";
+        config: Record<string, unknown>;
+        enabled?: boolean;
+      }
+    | undefined;
+
+  if (body.initialRule != null) {
+    let rawRule: Record<string, unknown>;
+    try {
+      rawRule = readJsonObject(body.initialRule, "initialRule must be an object");
+    } catch (error) {
+      if (error instanceof InvalidSourceRuleError) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      throw error;
     }
-    throw error;
+
+    const ruleType = rawRule.ruleType ?? "selection";
+    if (!isSupportedSourceRuleType(ruleType)) {
+      return NextResponse.json(
+        { error: `unsupported rule type "${String(ruleType)}"` },
+        { status: 400 }
+      );
+    }
+
+    let ruleConfig: Record<string, unknown>;
+    try {
+      ruleConfig = readJsonObject(rawRule.config, "initialRule.config must be an object");
+    } catch (error) {
+      if (error instanceof InvalidSourceRuleError) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      throw error;
+    }
+
+    initialRule = {
+      ruleType,
+      config: ruleConfig,
+      enabled: rawRule.enabled === false ? false : true,
+    };
   }
 
-  const [row] = await db
-    .insert(schema.source)
-    .values({
-      userId,
+  try {
+    const projectId = await sourceDeps.requireProjectId(userId, body.projectId);
+    const source = await sourceDeps.createSource(userId, {
       projectId,
       kind,
       name,
       config: configResult.config,
-      runtime: "cloud",
       cron,
-      enabled: true,
-      nextRunAt: nextRunFromCron(cron),
-    })
-    .returning({ id: schema.source.id });
-
-  return NextResponse.json({ id: row.id });
+      connectedAccountId:
+        typeof body.connectedAccountId === "string" ? body.connectedAccountId : null,
+      initialRule,
+    });
+    return NextResponse.json({ id: source.id, source });
+  } catch (error) {
+    if (
+      error instanceof InvalidProjectError ||
+      error instanceof InvalidConnectedAccountError
+    ) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  }
 }
