@@ -25,15 +25,15 @@ Decisions taken for this version:
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Projects and sidebar | Partial | Routes and tables exist; every API and relation is not yet strictly project-scoped. |
-| Capture, Library and Ask | Exists | Browser capture still uses `/api/capture`. Ask requires an owned `projectId` and rejects anything else with 400; no user-wide retrieval remains. |
-| Sources | Partial | RSS, web scrape and Slack poll exist. Mail, watched folder and connected accounts do not. |
-| Pipelines | Exists | List, plain-language creation, detail, pause, run-now, history and seeded weekly digest exist. |
-| One ingest API | Partial | `/api/ingest` exists, but browser capture and Tauri still use `/api/capture`. |
+| Projects and sidebar | Exists | Core content APIs validate an owned project explicitly. Project sharing is not built. |
+| Capture, Library and Ask | Exists | Browser capture uses `/api/ingest`. Ask is project-scoped and now persists conversations, messages and citations. |
+| Sources | Partial | RSS, web scrape and Slack poll exist. Phase-6 local source foundation now includes `mail_folder` and `folder_watch` contract validation plus shared mail-cleaning and folder checkpoint helpers, but no local daemon, UI flow or cloud fetcher is built yet. |
+| Pipelines | Exists | List, plain-language creation, detail, pause, run-now, history, starter template API for Morning brief and Friday weekly summary, and seeded Friday weekly digest exist. |
+| One ingest API | Exists | Browser capture and Tauri use `/api/ingest`; `/api/capture` remains temporarily as a compatibility route for older clients. |
 | Private blobs | Exists | New uploads are private and served through an authenticated route. |
-| Source runs and immutable originals | Planned | Current source rows only keep the latest status and cursor. |
-| Review, trash and deletion markers | Planned | Wireframes describe the target; schema and routes do not exist. |
-| Account connections and settings | Planned | Clerk handles identity; Trove-specific Gmail/Slack connections are not modelled. |
+| Source runs and immutable originals | Exists | Source sync records runs and immutable original versions; local and Gmail runtimes remain. |
+| Review, trash and deletion markers | Partial | Project-scoped routes support decisions, trash, restore and retryable permanent deletion. Deletion markers prevent same-source re-import. Source rules are stored but do not yet route items into review; product UI remains. |
+| Account connections and settings | Partial | Account metadata and ownership exist. OAuth, credential storage and settings UI are not built. |
 
 ## The one constraint that shapes everything
 
@@ -155,6 +155,7 @@ An immutable `original_record` stores the exact fetched payload and source metad
 
 - **Cloud sources** (`rss`, `web_scrape`, `slack_channel`, and later `youtube_channel`) are polled by the existing Inngest `sync-due-sources` function. It loads enabled cloud sources whose `next_run` is due, calls a per-kind fetcher, and emits `item/captured` for new external items.
 - **Local sources** (`mail_folder` and `folder_watch`) are driven by the local daemon on the Mac. The daemon reads the source config from Trove (or from a local mirror), reads the local files, and POSTs new items to the ingest API. The cloud never tries to touch local paths.
+- **Current phase-6 foundation status:** Trove now recognizes `mail_folder` and `folder_watch` as local source kinds, stores only approved path and filter metadata in `source.config`, and has reusable contracts for newsletter mail cleaning plus watched-folder file selection and checkpointing. Runtime polling, filesystem access and posting are still local-app work.
 
 Slack `events` mode is the exception to polling: a Slack app posts to a webhook route which creates items directly. `poll` mode uses `conversations.history` on the cron, simpler to stand up first.
 
@@ -239,9 +240,9 @@ The current pipeline engine stays: filter items, run one Haiku prompt, shape the
 3. **Richer triggers, later.** Cron now. Add "on new item matching filter" as an event trigger once sources are in, so a pipeline can react to arrivals, not just wake on a clock.
 4. **Answers model.** Keep Haiku for cheap digest and list shapes. Use a stronger model (Sonnet class) for the chat answer path and for retrieval-heavy pipelines. Reconcile model ids while here, see the config cleanup below.
 
-The weekly digest is already implemented as one seeded pipeline per project. It remains a normal pipeline rather than a separate subsystem. The current seed runs Sunday at 09:00, while the product templates specify Friday at 15:00, and the Digest page depends on the seeded name `weekly-digest`. Unify the schedule and remove the magic-name dependency when the template picker is built.
+The weekly digest is already implemented as one seeded pipeline per project. It remains a normal pipeline rather than a separate subsystem. The seed now runs Friday at 15:00 to match the starter template, while the Digest page still depends on the seeded name `weekly-digest`. Remove the magic-name dependency when the template picker is built.
 
-The first product templates are **Morning brief** on weekday mornings and **Weekly summary** on Friday afternoon. A project may install both. Each template creates an ordinary, independently editable pipeline with its own schedule, source scope, delivery and run history. When email is selected, the run sends the report and records recipient and delivery status; the same report remains stored in Trove. Plain-language custom creation remains available after the template picker.
+The first product templates are **Morning brief** at 08:00 UTC on weekdays and **Weekly summary** at 15:00 UTC on Friday. A project may install both. Each template creates an ordinary, independently editable pipeline with its own schedule, source scope, delivery and run history. When email is selected, the current runner attempts delivery but does not yet persist recipient or delivery status; the report remains stored in Trove. Plain-language custom creation remains available after the template picker. User-local scheduling requires a later timezone model.
 
 ## Inngest topology after v2
 
@@ -260,7 +261,7 @@ Slack `events` mode adds a plain route (`/api/slack/events`), outside Inngest, t
 - **Answers and pipeline compilation:** Claude Sonnet 4.6.
 - **Extraction, enrichment and ordinary pipeline runs:** Claude Haiku 4.5.
 
-The code, root `CLAUDE.md` and the generated 0001 migration agree on these choices. The fresh-database migration path has been executed and verified against a disposable empty database via `pnpm db:verify-fresh` (see `docs/review-fix-plan-2026-07-21.md`).
+The code, root `CLAUDE.md` and generated migrations `0000` through `0006` agree on these choices. The full fresh-database migration path has been executed and verified against a disposable empty database via `pnpm db:verify-fresh` (see `docs/review-fix-plan-2026-07-21.md`).
 
 ## Left sidebar shell, structure only
 
@@ -295,11 +296,11 @@ Phased by dependency rather than by source type:
 1. **Migration and isolation.** Generate real migrations for the current schema and 768-dimensional vectors. Backfill projects, make required project relations non-null, reject invalid project ids, validate source ownership and add isolation tests.
 2. **One ingest path.** Move browser capture and Tauri from `/api/capture` to `/api/ingest`. Tauri sends real files with ingest token and explicit project. Remove `/api/capture` after clients have moved.
 3. **Stabilise existing product.** Verify Capture, Library, Ask, RSS, web, Slack, Pipelines and Digest end to end. Add Morning brief and Friday weekly summary as starter templates on the existing pipeline engine. Keep private blob access and add focused ingestion and pipeline tests.
-4. **Source foundation.** Add connected accounts, versioned source rules, source runs and immutable originals. Expose setup preview, health and retry in the UI.
-5. **Review and deletion.** Add review decisions, project trash, permanent blob/artifact deletion and a minimal deletion marker that prevents unwanted re-import. Review must exist before mail can offer “add to review queue.”
+4. **Source foundation.** Backend complete: connected accounts, versioned source rules, source runs and immutable originals. Setup preview, health and retry UI remain.
+5. **Review and deletion.** Backend foundation complete: review decisions, project trash, restore, retryable permanent blob/artifact deletion and deletion markers. Applying review rules during ingest and product UI remain.
 6. **Mail and watched folders.** Build Gmail and local mailbox/folder flows on the shared source foundation, including its review-queue branch.
-7. **Persist Ask conversations.** Write Ask threads and messages to `conversation` and `message`, including citations and follow-up context, within the active project.
-8. **Later expansion.** Generic YouTube transcription, source and pipeline templates, shared projects and vertical packs.
+7. **Persist Ask conversations.** Complete: Ask writes project-scoped threads and messages, including citations and follow-up intent.
+8. **Later expansion.** Generic YouTube transcription, source templates, shared projects and vertical packs.
 
 ## Open questions, deferred
 
@@ -311,8 +312,7 @@ Phased by dependency rather than by source type:
 
 ## Avgränsat till senare
 
-- `source_rule`-tabellen är inte byggd; urvals- och granskningsregler ligger tills vidare i `source.config`.
 - UI för att skapa och återkalla ingest-tokens är inte byggt.
 - Slack-konfigurationen lagrar i dag bara `channelId`; `teamId` och `mode` saknas.
 - Uppladdningsprocenten i capture-wireframen saknar teknisk backing.
-- `[id]`-endpoints för item, source och pipeline är i dag endast user-scopade, inte projektscopade. Det räcker som isolering så länge projekt inte delas, men projektscope måste läggas till innan projektdelning byggs.
+- UI för review, trash, connected accounts och source rules är inte byggt trots att backendkontrakten finns.

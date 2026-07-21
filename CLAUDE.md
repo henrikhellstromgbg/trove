@@ -29,7 +29,7 @@ trove/
 │   └── globals.css
 ├── lib/
 │   └── db/
-│       ├── schema.ts          Drizzle schema, 10 tables
+│       ├── schema.ts          Drizzle schema, 16 tables
 │       ├── index.ts           Drizzle client (Neon serverless + ws polyfill)
 │       ├── migrate.ts         Migration runner, enables pgvector
 │       └── migrations/        Generated SQL
@@ -41,14 +41,20 @@ trove/
 
 ## Database schema
 
-Ten tables in `lib/db/schema.ts`. `project` is the hard knowledge boundary. Every query must validate `user_id` and scope to a verified `project_id`, directly or through an owning relation.
+Sixteen tables in `lib/db/schema.ts`. `project` is the hard knowledge boundary. Every query must validate `user_id` and scope to a verified `project_id`, directly or through an owning relation.
 
 | Table          | Purpose |
 |----------------|---------|
 | `project`      | Hard container for all knowledge, sources, conversations and pipelines. |
 | `source`       | Project-owned recurring input. RSS, web scrape and Slack poll are implemented. |
+| `connected_account` | User-owned connection metadata; OAuth and credential storage remain. |
+| `source_rule`  | Versioned selection and review rules for a source. |
+| `source_run`   | One source sync attempt with cursor and outcome. |
+| `original_record` | Immutable source payload versions linked to imported items. |
 | `ingest_token` | Revocable token for local and server callers of `/api/ingest`. |
 | `item`         | One captured thing (text, url, pdf or image). Status flows pending to processing to ready. |
+| `review_decision` | Audit row for approve or reject decisions. |
+| `deletion_marker` | Prevents a permanently deleted source record from being imported again. |
 | `chunk`        | Text chunk of an item with `vector(768)` embedding. HNSW cosine index. Powers retrieval. |
 | `conversation` | Chat thread against the corpus. |
 | `message`      | One message in a conversation, with `citations` JSONB array of item ids. |
