@@ -2,7 +2,6 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
 import { useProject } from "./project-context";
 
 export function CaptureForm() {
@@ -108,9 +107,7 @@ export function CaptureForm() {
   const ready = !!file || value.trim().length > 0;
 
   return (
-    <motion.div
-      layout
-      transition={{ duration: 0.5, ease: [0.22, 0.61, 0.36, 1] }}
+    <div
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -118,20 +115,11 @@ export function CaptureForm() {
         isDragging ? "ring-1 ring-silver/60" : ""
       }`}
     >
-      <AnimatePresence>
-        {isDragging ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-canvas/50 backdrop-blur-sm"
-          >
-            <p className="text-lg text-ink-dim">
-              release to keep
-            </p>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {isDragging ? (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-canvas/50 backdrop-blur-sm">
+          <p className="text-lg text-ink-dim">release to keep</p>
+        </div>
+      ) : null}
 
       <textarea
         ref={textRef}
@@ -150,28 +138,21 @@ export function CaptureForm() {
         className="min-h-[160px] resize-none bg-transparent px-8 pb-2 pt-8 text-lg leading-snug text-ink placeholder:text-ink-faint disabled:opacity-40"
       />
 
-      <AnimatePresence>
-        {file ? (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            className="mx-8 mt-1 flex items-center justify-between rounded-2xl border border-line bg-canvas/40 px-4 py-3 font-mono text-[11px] text-ink-dim"
+      {file ? (
+        <div className="mx-8 mt-1 flex items-center justify-between rounded-2xl border border-line bg-canvas/40 px-4 py-3 font-mono text-[11px] text-ink-dim">
+          <span className="truncate">{file.name}</span>
+          <button
+            onClick={() => {
+              setFile(null);
+              setStatus("");
+            }}
+            className="ml-3 text-ink-faint hover:text-ink"
+            aria-label="remove file"
           >
-            <span className="truncate">{file.name}</span>
-            <button
-              onClick={() => {
-                setFile(null);
-                setStatus("");
-              }}
-              className="ml-3 text-ink-faint hover:text-ink"
-              aria-label="remove file"
-            >
-              remove
-            </button>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+            remove
+          </button>
+        </div>
+      ) : null}
 
       <div className="flex items-center justify-between gap-4 px-8 py-5">
         <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
@@ -201,15 +182,14 @@ export function CaptureForm() {
           >
             attach
           </button>
-          <motion.button
+          <button
             onClick={submit}
-            whileTap={{ scale: 0.97 }}
             className="rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
           >
             capture
-          </motion.button>
+          </button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

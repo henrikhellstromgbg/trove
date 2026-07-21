@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
 import { Close, Add } from "@carbon/icons-react";
 import { useProject } from "./project-context";
 import { CaptureForm } from "./capture-form";
@@ -99,70 +98,46 @@ export function CaptureOverlay() {
   return (
     <>
       {/* ambient drop hint */}
-      <AnimatePresence>
-        {dragging && !modalOpen ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="pointer-events-none fixed inset-3 z-50 flex items-center justify-center rounded-3xl border-2 border-dashed border-capture bg-canvas/70 backdrop-blur-sm"
-          >
-            <div className="flex flex-col items-center gap-3 text-capture">
-              <Add size={40} />
-              <p className="font-mono text-sm">drop to capture</p>
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {dragging && !modalOpen ? (
+        <div className="pointer-events-none fixed inset-3 z-50 flex items-center justify-center rounded-3xl border-2 border-dashed border-capture bg-canvas/70 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3 text-capture">
+            <Add size={40} />
+            <p className="font-mono text-sm">drop to capture</p>
+          </div>
+        </div>
+      ) : null}
 
       {/* capture confirmation flash */}
-      <AnimatePresence>
-        {flash ? (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12 }}
-            className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border border-line bg-paper px-5 py-2.5 font-mono text-xs text-ink shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)]"
-          >
-            {flash}
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {flash ? (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border border-line bg-paper px-5 py-2.5 font-mono text-xs text-ink shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)]">
+          {flash}
+        </div>
+      ) : null}
 
-      {/* dedicated capture modal (URL / text / attach) */}
-      <AnimatePresence>
-        {modalOpen ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setModalOpen(false)}
-            className="fixed inset-0 z-50 flex items-start justify-center bg-ink/20 px-6 pt-24 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ opacity: 0, y: -12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-2xl"
-            >
-              <div className="mb-3 flex items-center justify-between">
-                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-                  capture into {project.name}
-                </p>
-                <button
-                  onClick={() => setModalOpen(false)}
-                  className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink-dim transition-colors hover:border-ink hover:text-ink"
-                  aria-label="close"
-                >
-                  <Close size={16} />
-                </button>
-              </div>
-              <CaptureForm />
-            </motion.div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {/* dedicated capture modal (URL / text / attach) — plain, no motion:
+          nesting framer-motion here pegged the main thread. */}
+      {modalOpen ? (
+        <div
+          onClick={() => setModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-start justify-center bg-ink/20 px-6 pt-24 backdrop-blur-sm"
+        >
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
+                capture into {project.name}
+              </p>
+              <button
+                onClick={() => setModalOpen(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink-dim transition-colors hover:border-ink hover:text-ink"
+                aria-label="close"
+              >
+                <Close size={16} />
+              </button>
+            </div>
+            <CaptureForm />
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
