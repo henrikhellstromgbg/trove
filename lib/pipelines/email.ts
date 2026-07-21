@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import { clerkClient } from "@clerk/nextjs/server";
-import type { PipelineSpec, PipelineRunOutput } from "./types";
+import type { PipelineDelivery, PipelineSpec, PipelineRunOutput } from "./types";
 
 let resendClient: Resend | null = null;
 function getResend(): Resend {
@@ -15,33 +15,79 @@ function getResend(): Resend {
 
 const FROM = process.env.RESEND_FROM ?? "Trove <onboarding@resend.dev>";
 
+export type PipelineEmailMessage = {
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+};
+
+// Injectable so tests can drive every delivery outcome (sent, no recipient,
+// provider error, thrown error) without a live Clerk or Resend.
+export const pipelineEmailDeps = {
+  resolveRecipient: async (userId: string): Promise<string | null> => {
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
+    return user.primaryEmailAddress?.emailAddress ?? null;
+  },
+  deliver: async (message: PipelineEmailMessage): Promise<{ error?: string }> => {
+    const resend = getResend();
+    const result = await resend.emails.send(message);
+    return result.error ? { error: result.error.message } : {};
+  },
+  now: () => new Date(),
+};
+
+// Never throws. A failed send is returned as a delivery record so callers can
+// persist it and downgrade the run without losing the report.
 export async function sendPipelineEmail(
   userId: string,
   spec: PipelineSpec,
   output: PipelineRunOutput
-): Promise<void> {
-  const resend = getResend();
+): Promise<PipelineDelivery> {
+  const at = pipelineEmailDeps.now().toISOString();
+  let recipient: string | null = null;
 
-  const client = await clerkClient();
-  const user = await client.users.getUser(userId);
-  const email = user.primaryEmailAddress?.emailAddress;
-  if (!email) {
-    throw new Error("user has no primary email address");
-  }
+  try {
+    recipient = await pipelineEmailDeps.resolveRecipient(userId);
+    if (!recipient) {
+      return {
+        attempted: true,
+        status: "failed",
+        recipient: null,
+        error: "user has no primary email address",
+        at,
+      };
+    }
 
-  const html = renderHtml(spec, output);
-  const text = renderText(spec, output);
+    const result = await pipelineEmailDeps.deliver({
+      from: FROM,
+      to: recipient,
+      subject: spec.name,
+      html: renderHtml(spec, output),
+      text: renderText(spec, output),
+    });
 
-  const result = await resend.emails.send({
-    from: FROM,
-    to: email,
-    subject: spec.name,
-    html,
-    text,
-  });
+    if (result.error) {
+      return {
+        attempted: true,
+        status: "failed",
+        recipient,
+        error: `resend: ${result.error}`,
+        at,
+      };
+    }
 
-  if (result.error) {
-    throw new Error(`resend: ${result.error.message}`);
+    return { attempted: true, status: "sent", recipient, at };
+  } catch (err) {
+    return {
+      attempted: true,
+      status: "failed",
+      recipient,
+      error: err instanceof Error ? err.message : "unknown email error",
+      at,
+    };
   }
 }
 

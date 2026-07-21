@@ -2,8 +2,19 @@ import { and, eq, inArray, gte, ilike, or, desc, sql, lt, cosineDistance } from 
 import Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "@/lib/db";
 import { embedQuery } from "@/lib/ai/embed";
-import { PipelineSpec, PipelineRunOutput, PipelineForgotten } from "./types";
+import {
+  PipelineSpec,
+  PipelineRunOutput,
+  PipelineForgotten,
+  PipelineDelivery,
+} from "./types";
 import { sendPipelineEmail } from "./email";
+
+const SKIPPED_DELIVERY: PipelineDelivery = {
+  attempted: false,
+  status: "skipped",
+  recipient: null,
+};
 
 const anthropic = new Anthropic();
 
@@ -22,7 +33,9 @@ export async function runPipelineSpec(
     : null;
 
   if (items.length === 0) {
-    return { ...emptyOutput(spec), forgotten };
+    // No report body means nothing is delivered; the empty result is still
+    // stored so the run is visible.
+    return { ...emptyOutput(spec), forgotten, delivery: SKIPPED_DELIVERY };
   }
 
   const itemsContext = spec.retrieval
@@ -59,15 +72,13 @@ export async function runPipelineSpec(
 
   const output: PipelineRunOutput = { ...parseOutput(spec.outputShape, raw), forgotten };
 
-  if (spec.deliverByEmail) {
-    try {
-      await sendPipelineEmail(userId, spec, output);
-    } catch (err) {
-      console.error("pipeline email delivery failed:", err);
-    }
-  }
+  // Delivery never throws: a failed send is recorded on the output so the run
+  // is downgraded, not lost, and the report stays stored either way.
+  const delivery = spec.deliverByEmail
+    ? await sendPipelineEmail(userId, spec, output)
+    : SKIPPED_DELIVERY;
 
-  return output;
+  return { ...output, delivery };
 }
 
 function buildSummaryContext(items: { title: string | null; summary: string | null; tags: string[] | null }[]): string {

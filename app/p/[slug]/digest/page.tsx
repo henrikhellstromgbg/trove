@@ -1,8 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug } from "@/lib/projects";
+import {
+  PIPELINE_RUN_COMPLETED,
+  PIPELINE_RUN_DELIVERY_ERROR,
+} from "@/lib/pipelines/types";
 
 type DigestOutput = {
   summary?: string;
@@ -44,7 +48,11 @@ export default async function DigestPage({
         eq(schema.pipeline.userId, userId),
         eq(schema.pipeline.projectId, project.id),
         eq(schema.pipeline.name, "weekly-digest"),
-        eq(schema.pipelineRun.status, "completed")
+        // A digest whose email failed is still a completed report and must show.
+        inArray(schema.pipelineRun.status, [
+          PIPELINE_RUN_COMPLETED,
+          PIPELINE_RUN_DELIVERY_ERROR,
+        ])
       )
     )
     .orderBy(desc(schema.pipelineRun.startedAt))

@@ -48,12 +48,47 @@ export type PipelineForgotten = {
   summary: string | null;
 } | null;
 
+// Email delivery outcome, persisted with the run output so a failed send is
+// recorded explicitly and never silently counted as a successful delivery.
+export type PipelineDelivery = {
+  attempted: boolean;
+  status: "sent" | "failed" | "skipped";
+  recipient: string | null;
+  error?: string;
+  at?: string;
+};
+
 export type PipelineRunOutput =
-  | { shape: "text"; text: string; forgotten?: PipelineForgotten }
+  | {
+      shape: "text";
+      text: string;
+      forgotten?: PipelineForgotten;
+      delivery?: PipelineDelivery;
+    }
   | {
       shape: "summary_with_highlights";
       summary: string;
       highlights: string[];
       forgotten?: PipelineForgotten;
+      delivery?: PipelineDelivery;
     }
-  | { shape: "list"; items: string[]; forgotten?: PipelineForgotten };
+  | {
+      shape: "list";
+      items: string[];
+      forgotten?: PipelineForgotten;
+      delivery?: PipelineDelivery;
+    };
+
+export const PIPELINE_RUN_COMPLETED = "completed";
+export const PIPELINE_RUN_DELIVERY_ERROR = "completed_with_delivery_error";
+
+// The report is always stored, so a run whose generation succeeded is
+// "completed"; a failed email downgrades it to a distinct, non-silent status
+// while keeping the report itself intact and visible.
+export function runStatusForOutput(output: {
+  delivery?: PipelineDelivery;
+}): string {
+  return output.delivery?.status === "failed"
+    ? PIPELINE_RUN_DELIVERY_ERROR
+    : PIPELINE_RUN_COMPLETED;
+}

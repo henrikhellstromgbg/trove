@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { schema } from "@/lib/db";
 import { InvalidProjectError } from "@/lib/projects";
 import { nextRunFromCron } from "@/lib/pipelines/cron";
-import { PipelineSpecSchema } from "@/lib/pipelines/types";
+import { PipelineSpecSchema, runStatusForOutput } from "@/lib/pipelines/types";
 import {
   loadOwnedPipeline,
   pipelineApiDeps,
@@ -73,7 +73,7 @@ export async function POST(
     await pipelineApiDeps.db.insert(schema.pipelineRun).values({
       pipelineId: pipeline.id,
       userId,
-      status: "completed",
+      status: runStatusForOutput(output),
       output,
       completedAt: pipelineApiDeps.now(),
     });

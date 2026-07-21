@@ -14,7 +14,7 @@ import { embedTexts } from "@/lib/ai/embed";
 import { enrich } from "@/lib/ai/enrich";
 import { runPipelineSpec } from "@/lib/pipelines/run";
 import { nextRunFromCron } from "@/lib/pipelines/cron";
-import { PipelineSpecSchema } from "@/lib/pipelines/types";
+import { PipelineSpecSchema, runStatusForOutput } from "@/lib/pipelines/types";
 import { runSourceSync } from "@/lib/sources/sync";
 
 export const ingestItem = inngest.createFunction(
@@ -396,7 +396,7 @@ export const runDuePipelines = inngest.createFunction(
           await db.insert(schema.pipelineRun).values({
             pipelineId: p.id,
             userId: p.userId,
-            status: "completed",
+            status: runStatusForOutput(output),
             output,
             completedAt: new Date(),
           });
