@@ -136,3 +136,9 @@ Already done in `drizzle.config.ts` and `lib/db/migrate.ts`.
 ## Reference architecture
 
 `https://github.com/AsyncFuncAI/deepwiki-open` (MIT). Same pipeline shape: corpus to embed to cluster to generate. Port pattern, not their Python.
+
+## Agent workflow
+
+Claude and Codex share build plans through one plan document per work round in `docs/` (see `docs/review-fix-plan-2026-07-21.md` for the format). One agent writes at a time; the status line says who. Commit at each completed and verified stage. Never mix unrelated work in one commit.
+
+Standing permission: delegate mechanical work (searches, test runs, log reading, bulk edits) to a low-effort model. Claude Code uses the `grunt` subagent. Codex primarily uses its native subagents; a headless `codex exec --profile cheap` (loading the separate `~/.codex/cheap.config.toml`) is the manual alternative. Reviews and security-sensitive code always stay on the strong models.
