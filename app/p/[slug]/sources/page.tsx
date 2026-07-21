@@ -55,9 +55,8 @@ export default async function SourcesPage({
       {sources.length === 0 ? (
         <p className="font-mono text-sm text-ink-faint">nothing feeding in yet.</p>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-line bg-paper shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-          <ul>
-            {sources.map((s) => (
+        <ul>
+          {sources.map((s) => (
               <li key={s.id} className="border-b border-line last:border-b-0">
                 <Link
                   href={`${base}/sources/${s.id}`}
@@ -92,10 +91,9 @@ export default async function SourcesPage({
                       : "paused"}
                   </span>
                 </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );

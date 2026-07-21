@@ -57,9 +57,8 @@ export default async function PipelinesPage({
           nothing on a schedule yet.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-line bg-paper shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-          <ul>
-            {pipelines.map((p) => (
+        <ul>
+          {pipelines.map((p) => (
               <li key={p.id} className="border-b border-line last:border-b-0">
                 <Link
                   href={`${base}/pipelines/${p.id}`}
@@ -84,10 +83,9 @@ export default async function PipelinesPage({
                     {p.enabled ? "active" : "paused"}
                   </span>
                 </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );

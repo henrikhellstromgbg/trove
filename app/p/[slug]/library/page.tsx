@@ -57,52 +57,50 @@ export default async function LibraryPage({
           nothing captured yet. drop something anywhere to begin.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-line bg-paper shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-          <div className="overflow-x-auto">
-            <div className="min-w-[640px]">
-              {/* header */}
-              <div className="grid grid-cols-[4.5rem_1fr_9rem_6rem] gap-4 border-b border-line px-6 py-3 text-sm font-medium text-ink">
-                <span>Type</span>
-                <span>Name</span>
-                <span>Captured</span>
-                <span>Status</span>
-              </div>
-              {/* rows */}
-              <ul>
-                {items.map((it) => (
-                  <li
-                    key={it.id}
-                    className="grid grid-cols-[4.5rem_1fr_9rem_6rem] items-baseline gap-4 border-b border-line px-6 py-3 font-mono text-[13px] last:border-b-0 hover:bg-ink/[0.015]"
-                  >
-                    <span className="uppercase text-ink-faint">{it.type}</span>
-                    <span className="min-w-0 truncate">
-                      {isUrl(it.source) ? (
-                        <a
-                          href={it.source}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-ink underline underline-offset-2 hover:text-brand"
-                        >
-                          {name(it)}
-                        </a>
-                      ) : (
-                        <span className="text-ink">{name(it)}</span>
-                      )}
-                    </span>
-                    <span className="text-ink-faint">
-                      {it.capturedAt.toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                    <span className={STATUS_CLASS[it.status] ?? "text-ink-dim"}>
-                      {it.status}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+        <div className="overflow-x-auto">
+          <div className="min-w-[640px]">
+            {/* header */}
+            <div className="grid grid-cols-[4.5rem_1fr_9rem_6rem] gap-4 border-b border-line px-6 py-3 text-sm font-medium text-ink">
+              <span>Type</span>
+              <span>Name</span>
+              <span>Captured</span>
+              <span>Status</span>
             </div>
+            {/* rows */}
+            <ul>
+              {items.map((it) => (
+                <li
+                  key={it.id}
+                  className="grid grid-cols-[4.5rem_1fr_9rem_6rem] items-baseline gap-4 border-b border-line px-6 py-3 font-mono text-[13px] last:border-b-0 hover:bg-ink/[0.015]"
+                >
+                  <span className="uppercase text-ink-faint">{it.type}</span>
+                  <span className="min-w-0 truncate">
+                    {isUrl(it.source) ? (
+                      <a
+                        href={it.source}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-ink underline underline-offset-2 hover:text-brand"
+                      >
+                        {name(it)}
+                      </a>
+                    ) : (
+                      <span className="text-ink">{name(it)}</span>
+                    )}
+                  </span>
+                  <span className="text-ink-faint">
+                    {it.capturedAt.toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                  <span className={STATUS_CLASS[it.status] ?? "text-ink-dim"}>
+                    {it.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}

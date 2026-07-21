@@ -27,11 +27,11 @@ export function RunNowButton({ id }: { id: string }) {
     <div className="flex items-center gap-4 font-mono text-[10px] uppercase tracking-[0.22em]">
       <button
         onClick={run}
-        className="rounded-full border border-line-strong bg-neutral-50 px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-ink transition-colors hover:bg-neutral-100 hover:border-ink"
+        className="rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
       >
         {busy ? "running" : "run now"}
       </button>
-      {error ? <span className="text-ember">{error}</span> : null}
+      {error ? <span className="text-brand">{error}</span> : null}
     </div>
   );
 }

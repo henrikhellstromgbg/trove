@@ -114,7 +114,7 @@ export function CaptureForm() {
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className={`glass relative flex w-full flex-col overflow-hidden rounded-[28px] transition-colors ${
+      className={`relative flex w-full flex-col overflow-hidden rounded-2xl border border-line bg-paper shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors ${
         isDragging ? "ring-1 ring-silver/60" : ""
       }`}
     >
@@ -124,9 +124,9 @@ export function CaptureForm() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-canvas-deep/50 backdrop-blur-sm"
+            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-canvas/50 backdrop-blur-sm"
           >
-            <p className="font-display text-3xl italic text-silver">
+            <p className="text-lg text-ink-dim">
               release to keep
             </p>
           </motion.div>
@@ -147,7 +147,7 @@ export function CaptureForm() {
         }
         disabled={!!file}
         rows={4}
-        className="min-h-[160px] resize-none bg-transparent px-8 pb-2 pt-8 font-display text-2xl leading-snug text-ink placeholder:text-ink-faint disabled:opacity-40 md:text-3xl"
+        className="min-h-[160px] resize-none bg-transparent px-8 pb-2 pt-8 text-lg leading-snug text-ink placeholder:text-ink-faint disabled:opacity-40"
       />
 
       <AnimatePresence>
@@ -156,7 +156,7 @@ export function CaptureForm() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
-            className="mx-8 mt-1 flex items-center justify-between rounded-2xl border border-line bg-canvas-deep/40 px-4 py-3 font-mono text-[11px] text-ink-dim"
+            className="mx-8 mt-1 flex items-center justify-between rounded-2xl border border-line bg-canvas/40 px-4 py-3 font-mono text-[11px] text-ink-dim"
           >
             <span className="truncate">{file.name}</span>
             <button
@@ -197,14 +197,14 @@ export function CaptureForm() {
           />
           <button
             onClick={() => inputRef.current?.click()}
-            className="rounded-full border border-line-strong px-4 py-2 text-xs font-medium uppercase tracking-wider text-ink-dim transition-colors hover:border-ink hover:text-ink"
+            className="rounded-lg border border-line-strong px-4 py-2 text-sm font-medium text-ink-dim transition-colors hover:border-ink hover:text-ink"
           >
             attach
           </button>
           <motion.button
             onClick={submit}
             whileTap={{ scale: 0.97 }}
-            className="rounded-full border border-line-strong bg-neutral-50 px-4 py-2 text-xs font-medium uppercase tracking-wider text-ink transition-colors hover:bg-neutral-100 hover:border-ink"
+            className="rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
           >
             capture
           </motion.button>

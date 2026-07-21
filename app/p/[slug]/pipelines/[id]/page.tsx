@@ -89,9 +89,8 @@ export default async function PipelineDetailPage({
               no runs yet. the pipeline will fire at the next scheduled time.
             </p>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-line bg-paper shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-              <ul>
-                {runs.map((run) => (
+            <ul>
+              {runs.map((run) => (
                   <li
                     key={run.id}
                     className="flex flex-col gap-3 border-b border-line px-6 py-5 last:border-b-0"
@@ -116,7 +115,6 @@ export default async function PipelineDetailPage({
                   </li>
                 ))}
               </ul>
-            </div>
           )}
 
           <div className="mt-2 flex items-center justify-between">
@@ -177,6 +175,11 @@ function RunOutput({ output }: { output: PipelineRunOutput | null }) {
   if (!output)
     return <p className="font-mono text-sm text-ink-faint">(no output)</p>;
 
+  // Failed runs store { error } instead of a shaped output.
+  const maybeError = (output as { error?: string }).error;
+  if (maybeError)
+    return <p className="font-mono text-sm text-brand">error: {maybeError}</p>;
+
   return (
     <div className="flex flex-col gap-3">
       <RunOutputBody output={output} />
@@ -220,11 +223,15 @@ function RunOutputBody({ output }: { output: PipelineRunOutput }) {
     );
   }
 
-  return (
-    <ul className="flex flex-col gap-1 text-sm text-ink-dim">
-      {output.items.map((it, i) => (
-        <li key={i}>{it}</li>
-      ))}
-    </ul>
-  );
+  if (output.shape === "list" && Array.isArray(output.items)) {
+    return (
+      <ul className="flex flex-col gap-1 text-sm text-ink-dim">
+        {output.items.map((it, i) => (
+          <li key={i}>{it}</li>
+        ))}
+      </ul>
+    );
+  }
+
+  return <p className="font-mono text-sm text-ink-faint">(no output)</p>;
 }
