@@ -1,6 +1,6 @@
 # Sources UI sweep - resumable plan (2026-07-22)
 
-**Status:** Ready for S1. No agent is currently writing.
+**Status:** S1 completed and verified. Ready for S2; no agent is currently writing.
 
 **Purpose:** Bring the complete Sources journey in line with the canonical wireframes while preserving Trove's current visual language and all existing behavior.
 
@@ -129,4 +129,5 @@
 | Date | Stage | Agent | Result |
 | --- | --- | --- | --- |
 | 2026-07-22 | Plan | Codex | Split Sources into four fresh-context stages; documented existing behavior, visual target, validation, and unsupported delete-to-Trash branch. Ready for S1. |
-
+| 2026-07-22 | S1 | Claude | Rewrote `app/p/[slug]/sources/page.tsx` to use `PageFrame` + `PageHeader` (title "Sources", "New source" link action), `DataList`/`DataRow` for a dense row list, and `StatusIndicator` for active/paused/error. Each row shows name, human kind label, Cloud/Desktop runtime, last-sync time, and imported-item count. Added an item-count aggregate query explicitly scoped by `eq(schema.item.userId, userId)` and `eq(schema.item.projectId, project.id)`, grouped by `sourceId`. Empty state uses `EmptyState` with "No sources yet." and no card; the header holds the sole "New source" link. Preserved auth, project lookup via `getProjectBySlug`, `orderBy(desc(createdAt))`, routes (`/p/[slug]/sources/new`, `/p/[slug]/sources/[id]`), and project/user scoping on both queries. Did not touch `sources/new` or `sources/[id]`. No new dependency, route, API, or schema change. **Validation gap:** headless permission mode denied `pnpm exec tsc --noEmit`, `pnpm exec eslint`, `pnpm test`, and `pnpm build` (all required approval that wasn't available in this session) — none were run. Manual read-through of the diff was done instead; Codex must run `pnpm exec tsc --noEmit`, focused lint, tests, and build before this stage can be marked green. Ready for Codex S1 review. |
+| 2026-07-22 | S1 review | Codex | Verified project-scoped counts and corrected two review findings: removed the duplicate empty-state action so the header contains the single `New source` action, and moved the non-interactive status out of `DataRow.trailing` so the stretched row link has no dead click/tap area. `pnpm exec tsc --noEmit`, focused ESLint, all 204 tests, and `pnpm build` pass. Browser-backed screenshot QA was unavailable and remains scheduled for S4. S1 is complete and ready to commit as its own checkpoint. |
