@@ -1,6 +1,12 @@
+import { put } from "@vercel/blob";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { Source } from "@/lib/db/schema";
+import {
+  classifyByNameAndType,
+  contentTypeForKind,
+  MAX_FILE_BYTES,
+} from "@/lib/capture";
 import { inngest } from "@/lib/inngest/client";
 import { nextRunFromCron } from "@/lib/pipelines/cron";
 import { loadDeletedExternalIds } from "@/lib/review-or-deletion/import-guard";
@@ -11,7 +17,7 @@ import {
   type ReviewRuleConfig,
 } from "./review-rules";
 import { fetchRssEntries } from "./rss";
-import { fetchSlackMessages } from "./slack";
+import { downloadSlackFile, fetchSlackMessages, type SlackFile } from "./slack";
 import { fetchWebScrapeEntries } from "./web-scrape";
 
 export type SyncResult = {
@@ -36,9 +42,10 @@ type SyncDbClient = Pick<typeof db, "select" | "insert" | "update">;
 
 type PendingItemInput = {
   externalId: string;
-  type: "url" | "text";
+  type: "url" | "text" | "pdf" | "image" | "docx" | "xlsx" | "textfile";
   source: string | null;
   rawText?: string | null;
+  blobUrl?: string | null;
   capturedAt?: Date | null;
 };
 
@@ -70,6 +77,8 @@ export const sourceSyncDeps = {
   fetchRssEntries,
   fetchSlackMessages,
   fetchWebScrapeEntries,
+  downloadSlackFile,
+  put,
   nextRunFromCron,
   sendItemCaptured: async (itemId: string) => {
     await inngest.send({ name: "item/captured", data: { itemId } });
@@ -250,6 +259,7 @@ async function persistSyncBatch(
                 type: item.type,
                 source: item.source,
                 ...(item.rawText != null ? { rawText: item.rawText } : {}),
+                ...(item.blobUrl != null ? { blobUrl: item.blobUrl } : {}),
                 status: importedItemStatus(reviewConfig, {
                   source: item.source,
                   text: item.rawText ?? null,
@@ -467,6 +477,93 @@ async function syncWebScrape(
   };
 }
 
+type SlackFileBatch = {
+  items: PendingItemInput[];
+  originals: Omit<OriginalRecordInput, "itemId">[];
+};
+
+// Download shared files and stage them as file items. Fresh files only (already
+// imported ids are pre-filtered so no orphan blob is uploaded at the cursor
+// boundary), classifiable kinds only, and within the size cap. A per-file
+// download/upload failure is logged and skipped so one bad file never fails the
+// whole sync.
+async function prepareSlackFileBatch(
+  source: SyncableSource,
+  files: SlackFile[],
+  provenance: Record<string, unknown>,
+  channelId: string
+): Promise<SlackFileBatch> {
+  const batch: SlackFileBatch = { items: [], originals: [] };
+  if (files.length === 0) return batch;
+
+  const alreadyImported = await loadItemIdByExternalId(
+    sourceSyncDeps.db,
+    source.id,
+    files.map((f) => f.externalId)
+  );
+
+  for (const file of files) {
+    if (alreadyImported.has(file.externalId)) continue;
+
+    if (file.size > MAX_FILE_BYTES) {
+      console.warn(
+        `slack file skipped (too large: ${file.size} bytes): ${file.name}`
+      );
+      continue;
+    }
+
+    const kind = classifyByNameAndType(file.name, file.mimeType);
+    if (!kind) {
+      console.warn(`slack file skipped (unsupported type): ${file.name}`);
+      continue;
+    }
+
+    let blobUrl: string;
+    try {
+      const bytes = await sourceSyncDeps.downloadSlackFile(file.urlPrivate);
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const blobKey = `${kind}/${source.userId}/${file.externalId}-${safeName}`;
+      const blob = await sourceSyncDeps.put(blobKey, bytes, {
+        access: "private",
+        contentType: contentTypeForKind(kind, file.mimeType),
+        token: process.env.PRIVATE_BLOB_READ_WRITE_TOKEN,
+      });
+      blobUrl = blob.url;
+    } catch (error) {
+      console.warn(
+        `slack file skipped (download/upload failed): ${file.name}: ${
+          error instanceof Error ? error.message : "unknown error"
+        }`
+      );
+      continue;
+    }
+
+    batch.items.push({
+      externalId: file.externalId,
+      type: kind,
+      source: file.name, // the extractor reads this as the filename
+      blobUrl,
+      capturedAt: file.postedAt,
+    });
+    batch.originals.push({
+      externalId: file.externalId,
+      contentType: contentTypeForKind(kind, file.mimeType),
+      sourceLabel: channelId,
+      payload: {
+        ...provenance,
+        kind: "slack_file",
+        fileId: file.externalId,
+        name: file.name,
+        size: file.size,
+        ...(file.threadTs ? { threadTs: file.threadTs } : {}),
+      },
+      capturedAt: file.postedAt,
+    });
+  }
+
+  return batch;
+}
+
 async function syncSlack(
   source: SyncableSource,
   sourceRunId: string
@@ -506,35 +603,53 @@ async function syncSlack(
   }
 
   const nextCursor = result.latestTs ? { latestTs: result.latestTs } : cursor ?? undefined;
-  if (result.messages.length === 0) {
+  const files = result.files ?? [];
+  if (result.messages.length === 0 && files.length === 0) {
     return { ok: true, newItems: 0, newOriginals: 0, cursor: nextCursor };
   }
+
+  const provenance: Record<string, unknown> = {
+    channelId: config.channelId,
+    mode,
+    ...(config.teamId ? { teamId: config.teamId } : {}),
+  };
+
+  const fileBatch = await prepareSlackFileBatch(
+    source,
+    files,
+    provenance,
+    config.channelId
+  );
 
   const persisted = await persistSyncBatch(
     source,
     sourceRunId,
-    result.messages.map((message) => ({
-      externalId: message.externalId,
-      type: "text",
-      source: null,
-      rawText: message.text,
-      capturedAt: message.postedAt,
-    })),
-    result.messages.map((message) => ({
-      externalId: message.externalId,
-      contentType: "application/json",
-      sourceLabel: config.channelId ?? null,
-      payload: {
-        kind: "slack_channel",
-        channelId: config.channelId,
-        mode,
-        ...(config.teamId ? { teamId: config.teamId } : {}),
-        ...(message.threadTs ? { threadTs: message.threadTs } : {}),
-        text: message.text,
-        postedAt: message.postedAt.toISOString(),
-      },
-      capturedAt: message.postedAt,
-    }))
+    [
+      ...result.messages.map((message) => ({
+        externalId: message.externalId,
+        type: "text" as const,
+        source: null,
+        rawText: message.text,
+        capturedAt: message.postedAt,
+      })),
+      ...fileBatch.items,
+    ],
+    [
+      ...result.messages.map((message) => ({
+        externalId: message.externalId,
+        contentType: "application/json",
+        sourceLabel: config.channelId ?? null,
+        payload: {
+          ...provenance,
+          kind: "slack_channel",
+          ...(message.threadTs ? { threadTs: message.threadTs } : {}),
+          text: message.text,
+          postedAt: message.postedAt.toISOString(),
+        },
+        capturedAt: message.postedAt,
+      })),
+      ...fileBatch.originals,
+    ]
   );
 
   const eventError = await emitCapturedItems(persisted.insertedItemIds);

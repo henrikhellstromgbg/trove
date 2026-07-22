@@ -593,3 +593,141 @@ test("runSourceSync skips external ids blocked by deletion markers", async () =>
   assert.equal(db.state.originals[0]?.externalId, "fresh-entry");
   assert.equal(db.log.includes("event:item-1"), true);
 });
+
+const SLACK_SOURCE: SyncableSource = {
+  ...SOURCE,
+  kind: "slack_channel",
+  config: { channelId: "channel-a", teamId: "T1", mode: "poll" },
+  cursor: null,
+};
+
+test("Slack sync downloads a shared file, uploads it, and stores a file item", async () => {
+  const db = new MockSyncDb({
+    sources: [{ id: SLACK_SOURCE.id, cursor: null, lastStatus: null, lastError: null }],
+  });
+  const putKeys: string[] = [];
+  const downloaded: string[] = [];
+
+  Object.assign(sourceSyncDeps as unknown as MutableDeps, {
+    db,
+    fetchSlackMessages: async () => ({
+      latestTs: "1721552400.000100",
+      messages: [],
+      files: [
+        {
+          externalId: "F1",
+          name: "report.pdf",
+          mimeType: "application/pdf",
+          urlPrivate: "https://files.slack.com/F1/report.pdf",
+          size: 1024,
+          postedAt: new Date("2026-07-21T09:00:00.000Z"),
+        },
+        // Unsupported type and oversized file are both skipped without upload.
+        {
+          externalId: "F2",
+          name: "clip.mp4",
+          mimeType: "video/mp4",
+          urlPrivate: "https://files.slack.com/F2/clip.mp4",
+          size: 2048,
+          postedAt: new Date("2026-07-21T09:00:00.000Z"),
+        },
+        {
+          externalId: "F3",
+          name: "huge.pdf",
+          mimeType: "application/pdf",
+          urlPrivate: "https://files.slack.com/F3/huge.pdf",
+          size: 999_999_999,
+          postedAt: new Date("2026-07-21T09:00:00.000Z"),
+        },
+      ],
+    }),
+    downloadSlackFile: async (url: string) => {
+      downloaded.push(url);
+      return Buffer.from("pdf-bytes");
+    },
+    put: async (key: string) => {
+      putKeys.push(key);
+      return { url: `https://store.private.blob.vercel-storage.com/${key}` };
+    },
+    sendItemCaptured: async (itemId: string) => {
+      db.log.push(`event:${itemId}`);
+    },
+  });
+
+  const result = await runSourceSync(SLACK_SOURCE, "manual");
+
+  assert.equal(result.ok, true);
+  // Only the supported, in-size file was downloaded and uploaded.
+  assert.deepEqual(downloaded, ["https://files.slack.com/F1/report.pdf"]);
+  assert.equal(putKeys.length, 1);
+  assert.match(putKeys[0]!, /^pdf\/user-a\/F1-report\.pdf$/);
+
+  assert.equal(db.state.items.length, 1);
+  const item = db.state.items[0]!;
+  assert.equal(item.type, "pdf");
+  assert.equal(item.externalId, "F1");
+  assert.equal(item.source, "report.pdf");
+  assert.equal(
+    item.blobUrl,
+    "https://store.private.blob.vercel-storage.com/pdf/user-a/F1-report.pdf"
+  );
+
+  const original = db.state.originals.find((o) => o.externalId === "F1")!;
+  const payload = original.payload as Record<string, unknown>;
+  assert.equal(payload.kind, "slack_file");
+  assert.equal(payload.name, "report.pdf");
+  assert.equal(payload.channelId, "channel-a");
+  assert.equal(payload.teamId, "T1");
+});
+
+test("Slack sync skips a file whose id was already imported (no re-upload)", async () => {
+  const db = new MockSyncDb({
+    sources: [{ id: SLACK_SOURCE.id, cursor: null, lastStatus: null, lastError: null }],
+    items: [
+      {
+        id: "item-existing",
+        sourceId: SLACK_SOURCE.id,
+        externalId: "F1",
+        type: "pdf",
+        status: "ready",
+      },
+    ],
+  });
+  let downloads = 0;
+  let puts = 0;
+
+  Object.assign(sourceSyncDeps as unknown as MutableDeps, {
+    db,
+    fetchSlackMessages: async () => ({
+      latestTs: "1721552400.000100",
+      messages: [],
+      files: [
+        {
+          externalId: "F1",
+          name: "report.pdf",
+          mimeType: "application/pdf",
+          urlPrivate: "https://files.slack.com/F1/report.pdf",
+          size: 1024,
+          postedAt: new Date("2026-07-21T09:00:00.000Z"),
+        },
+      ],
+    }),
+    downloadSlackFile: async () => {
+      downloads += 1;
+      return Buffer.from("x");
+    },
+    put: async () => {
+      puts += 1;
+      return { url: "https://store.private.blob.vercel-storage.com/x" };
+    },
+    sendItemCaptured: async () => {},
+  });
+
+  const result = await runSourceSync(SLACK_SOURCE, "manual");
+
+  assert.equal(result.ok, true);
+  assert.equal(downloads, 0, "an already-imported file must not be re-downloaded");
+  assert.equal(puts, 0, "an already-imported file must not be re-uploaded");
+  // No new item beyond the pre-seeded one.
+  assert.equal(db.state.items.length, 1);
+});

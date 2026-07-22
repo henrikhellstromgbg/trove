@@ -7,9 +7,31 @@ export type SlackMessage = {
   threadTs?: string; // set on replies, so provenance can note the parent thread
 };
 
+// A file shared in a channel. externalId is the Slack file id, unique and
+// stable, so item dedup works the same way it does for messages.
+export type SlackFile = {
+  externalId: string;
+  name: string;
+  mimeType: string;
+  urlPrivate: string;
+  size: number;
+  postedAt: Date;
+  threadTs?: string;
+};
+
 export type SlackHistoryResult = {
   messages: SlackMessage[];
+  files: SlackFile[];
   latestTs: string | null;
+};
+
+type SlackApiFile = {
+  id: string;
+  name?: string;
+  title?: string;
+  mimetype?: string;
+  url_private?: string;
+  size?: number;
 };
 
 type SlackApiMessage = {
@@ -19,6 +41,7 @@ type SlackApiMessage = {
   bot_id?: string;
   thread_ts?: string;
   reply_count?: number;
+  files?: SlackApiFile[];
 };
 
 type SlackApiResponse = {
@@ -67,6 +90,41 @@ function toCapturable(
   };
 }
 
+// Pull the shareable files off a message. A file needs an id and a private URL
+// to be downloadable; tombstoned/deleted files (which drop url_private) are
+// skipped.
+function collectFiles(m: SlackApiMessage, threadTs?: string): SlackFile[] {
+  if (!m.files || m.files.length === 0) return [];
+  const postedAt = new Date(parseFloat(m.ts) * 1000);
+  const out: SlackFile[] = [];
+  for (const f of m.files) {
+    if (!f.id || !f.url_private) continue;
+    out.push({
+      externalId: f.id,
+      name: f.name ?? f.title ?? f.id,
+      mimeType: f.mimetype ?? "",
+      urlPrivate: f.url_private,
+      size: f.size ?? 0,
+      postedAt,
+      ...(threadTs ? { threadTs } : {}),
+    });
+  }
+  return out;
+}
+
+// Download a shared file's bytes. url_private requires the bot token, so this
+// must not be a plain fetch. Callers cap size before invoking.
+export async function downloadSlackFile(urlPrivate: string): Promise<Buffer> {
+  const token = slackToken();
+  const res = await fetch(urlPrivate, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error(`Slack file download failed: HTTP ${res.status}`);
+  }
+  return Buffer.from(await res.arrayBuffer());
+}
+
 // Fetch the replies under one thread parent, excluding the parent itself (it is
 // already captured from history). externalId dedup at persist covers the
 // inclusive-boundary overlap, so no strict oldest filtering is needed here.
@@ -87,9 +145,8 @@ async function fetchThreadReplies(
 }
 
 // Poll mode: conversations.history since the stored cursor, plus the replies
-// under any thread parent in that window. Skips subtyped messages (joins,
-// edits, deletes) and bot posts for this cut. Shared files are not yet
-// captured, see docs/architecture-v2.md.
+// under any thread parent in that window, plus any files shared in those
+// messages. Skips subtyped messages (joins, edits, deletes) and bot posts.
 export async function fetchSlackMessages(
   channelId: string,
   oldest: string | undefined
@@ -102,6 +159,7 @@ export async function fetchSlackMessages(
 
   let latestTs: string | null = null;
   const messages: SlackMessage[] = [];
+  const files: SlackFile[] = [];
   const threadParents: string[] = [];
 
   for (const m of raw) {
@@ -111,6 +169,7 @@ export async function fetchSlackMessages(
     if (m.reply_count && m.reply_count > 0) threadParents.push(m.ts);
     const capturable = toCapturable(m);
     if (capturable) messages.push(capturable);
+    files.push(...collectFiles(m));
   }
 
   for (const threadTs of threadParents) {
@@ -119,6 +178,7 @@ export async function fetchSlackMessages(
       if (!latestTs || parseFloat(m.ts) > parseFloat(latestTs)) latestTs = m.ts;
       const capturable = toCapturable(m, threadTs);
       if (capturable) messages.push(capturable);
+      files.push(...collectFiles(m, threadTs));
     }
   }
 
@@ -127,5 +187,5 @@ export async function fetchSlackMessages(
   // chronological.
   messages.sort((a, b) => parseFloat(a.externalId) - parseFloat(b.externalId));
 
-  return { messages, latestTs };
+  return { messages, files, latestTs };
 }

@@ -12,8 +12,17 @@ export function isUrl(value: string): boolean {
 }
 
 export function classifyFile(file: File): FileKind | null {
-  const name = file.name.toLowerCase();
-  const mime = (file.type || "").toLowerCase();
+  return classifyByNameAndType(file.name, file.type);
+}
+
+// Same rules as classifyFile, but from a name + MIME string, so non-File
+// callers (e.g. a source sync downloading bytes) can classify too.
+export function classifyByNameAndType(
+  rawName: string,
+  rawMime: string
+): FileKind | null {
+  const name = rawName.toLowerCase();
+  const mime = (rawMime || "").toLowerCase();
 
   if (mime === "application/pdf" || name.endsWith(".pdf")) return "pdf";
 
@@ -37,7 +46,11 @@ export function classifyFile(file: File): FileKind | null {
 }
 
 export function contentTypeFor(kind: FileKind, file: File): string {
-  if (file.type) return file.type;
+  return contentTypeForKind(kind, file.type);
+}
+
+export function contentTypeForKind(kind: FileKind, mime: string): string {
+  if (mime) return mime;
   switch (kind) {
     case "pdf":
       return "application/pdf";

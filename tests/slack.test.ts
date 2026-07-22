@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
-import { fetchSlackMessages } from "@/lib/sources/slack";
+import { downloadSlackFile, fetchSlackMessages } from "@/lib/sources/slack";
 
 type FetchResponse = { ok: boolean; messages?: unknown[]; error?: string };
 
@@ -103,4 +103,54 @@ test("captures thread replies and tags them with their parent thread", async () 
     messages.map((m) => m.text),
     ["standalone", "parent", "reply one"]
   );
+});
+
+test("extracts shared files and skips tombstoned files with no url_private", async () => {
+  mockSlack({
+    "conversations.history": {
+      ok: true,
+      messages: [
+        {
+          ts: "200.000",
+          text: "here you go",
+          files: [
+            {
+              id: "F1",
+              name: "report.pdf",
+              mimetype: "application/pdf",
+              url_private: "https://files.slack.com/F1",
+              size: 10,
+            },
+            { id: "F2", name: "deleted.pdf", mimetype: "application/pdf", size: 0 },
+          ],
+        },
+      ],
+    },
+  });
+
+  const { files } = await fetchSlackMessages("C1", undefined);
+  assert.equal(files.length, 1);
+  assert.equal(files[0]?.externalId, "F1");
+  assert.equal(files[0]?.name, "report.pdf");
+  assert.equal(files[0]?.urlPrivate, "https://files.slack.com/F1");
+});
+
+test("downloadSlackFile sends the bot token and returns bytes", async () => {
+  let authHeader: string | undefined;
+  globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+    authHeader = (init?.headers as Record<string, string>)?.Authorization;
+    return {
+      ok: true,
+      arrayBuffer: async () => new TextEncoder().encode("filebytes").buffer,
+    } as Response;
+  }) as typeof fetch;
+
+  const buffer = await downloadSlackFile("https://files.slack.com/F1");
+  assert.equal(authHeader, "Bearer xoxb-test");
+  assert.equal(buffer.toString(), "filebytes");
+});
+
+test("downloadSlackFile throws on a non-ok response", async () => {
+  globalThis.fetch = (async () => ({ ok: false, status: 403 }) as Response) as typeof fetch;
+  await assert.rejects(() => downloadSlackFile("https://files.slack.com/F1"), /HTTP 403/);
 });
