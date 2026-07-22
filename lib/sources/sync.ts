@@ -471,7 +471,11 @@ async function syncSlack(
   source: SyncableSource,
   sourceRunId: string
 ): Promise<SyncResult> {
-  const config = source.config as { channelId?: string };
+  const config = source.config as {
+    channelId?: string;
+    teamId?: string;
+    mode?: "poll" | "events";
+  };
   if (!config.channelId) {
     return {
       ok: false,
@@ -480,6 +484,12 @@ async function syncSlack(
       error: "missing channelId in source config",
     };
   }
+
+  // conversations.history works for any channel the bot can read, so poll is the
+  // delivery path for both modes today; `mode` is recorded as provenance until
+  // the Events webhook exists. `teamId` disambiguates the channel across
+  // workspaces and travels with each captured original.
+  const mode = config.mode ?? "poll";
 
   const cursor = source.cursor as { latestTs?: string } | null;
 
@@ -517,6 +527,8 @@ async function syncSlack(
       payload: {
         kind: "slack_channel",
         channelId: config.channelId,
+        mode,
+        ...(config.teamId ? { teamId: config.teamId } : {}),
         text: message.text,
         postedAt: message.postedAt.toISOString(),
       },

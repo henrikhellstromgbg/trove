@@ -432,7 +432,7 @@ test("Slack sync keeps its cursor behind until item/captured succeeds", async ()
   const source: SyncableSource = {
     ...SOURCE,
     kind: "slack_channel",
-    config: { channelId: "channel-a" },
+    config: { channelId: "channel-a", teamId: "T123", mode: "events" },
     cursor: null,
   };
   const db = new MockSyncDb({
@@ -472,6 +472,12 @@ test("Slack sync keeps its cursor behind until item/captured succeeds", async ()
   });
   assert.equal(db.state.items.length, 1);
   assert.equal(sendAttempts, 2);
+
+  // teamId and mode travel with the captured original as provenance.
+  const payload = db.state.originals[0]?.payload as Record<string, unknown>;
+  assert.equal(payload.channelId, "channel-a");
+  assert.equal(payload.teamId, "T123");
+  assert.equal(payload.mode, "events");
 });
 
 test("an active review rule holds matching items and never emits them", async () => {
