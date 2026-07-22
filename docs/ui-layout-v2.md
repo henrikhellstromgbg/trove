@@ -324,7 +324,7 @@ only missing piece — build these first, they unlock shipped capability) · **p
 | route or surface | screen | scope | status |
 |------------------|--------|-------|--------|
 | `/p/[slug]` | project overview and Ask launcher | project | exists |
-| `/p/[slug]/ask` | focused Ask workspace with citations | project | exists; persistence planned |
+| `/p/[slug]/ask` | focused Ask workspace with citations | project | exists; threads persist and the right panel is tabbed sources/chats (list, resume, new, delete) |
 | capture overlay | file, link and text capture | project | exists |
 | `/p/[slug]/library` | library list | project | exists |
 | `/p/[slug]/library/[id]` | item viewer | project | exists with an actions card: rename/retag (`PATCH /[id]`), reprocess (`/[id]/reprocess`), move/copy (`/[id]/move`), trash (`/api/items/trash`) |
