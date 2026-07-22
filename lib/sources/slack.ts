@@ -48,7 +48,14 @@ type SlackApiResponse = {
   ok: boolean;
   error?: string;
   messages?: SlackApiMessage[];
+  has_more?: boolean;
+  response_metadata?: { next_cursor?: string };
 };
+
+// Safety bound on cursor pagination so a pathological response can't loop
+// forever; at 200/page this is 4000 messages per method call. Hitting it is
+// logged, never silent.
+const MAX_SLACK_PAGES = 20;
 
 function slackToken(): string {
   const token = process.env.SLACK_BOT_TOKEN;
@@ -58,11 +65,11 @@ function slackToken(): string {
   return token;
 }
 
-async function slackGet(
+async function slackGetPage(
   method: string,
   params: URLSearchParams,
   token: string
-): Promise<SlackApiMessage[]> {
+): Promise<{ messages: SlackApiMessage[]; nextCursor?: string }> {
   const res = await fetch(`${SLACK_API}/${method}?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -70,7 +77,40 @@ async function slackGet(
   if (!data.ok) {
     throw new Error(`Slack API error: ${data.error ?? "unknown"}`);
   }
-  return data.messages ?? [];
+  const nextCursor =
+    data.has_more && data.response_metadata?.next_cursor
+      ? data.response_metadata.next_cursor
+      : undefined;
+  return { messages: data.messages ?? [], nextCursor };
+}
+
+// Follow cursor pagination to completion (or the page cap). The first call
+// carries oldest/ts; subsequent calls carry only the cursor (Slack encodes the
+// window in it), so oldest is dropped once paging begins.
+async function slackGet(
+  method: string,
+  baseParams: URLSearchParams,
+  token: string
+): Promise<SlackApiMessage[]> {
+  const all: SlackApiMessage[] = [];
+  let cursor: string | undefined;
+
+  for (let page = 0; page < MAX_SLACK_PAGES; page++) {
+    const params = new URLSearchParams(baseParams);
+    if (cursor) {
+      params.set("cursor", cursor);
+      params.delete("oldest");
+    }
+    const { messages, nextCursor } = await slackGetPage(method, params, token);
+    all.push(...messages);
+    if (!nextCursor) return all;
+    cursor = nextCursor;
+  }
+
+  console.warn(
+    `slack ${method}: stopped at ${MAX_SLACK_PAGES} pages; older messages this window were not fetched`
+  );
+  return all;
 }
 
 // A capturable message is real user text, not a join/edit/delete subtype or a

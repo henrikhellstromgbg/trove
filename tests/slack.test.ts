@@ -37,6 +37,38 @@ test("throws a clear error when the bot token is missing", async () => {
   await assert.rejects(() => fetchSlackMessages("C1", undefined), /SLACK_BOT_TOKEN/);
 });
 
+test("follows cursor pagination across pages and drops oldest after page one", async () => {
+  const urls: string[] = [];
+  globalThis.fetch = (async (input: string) => {
+    const url = String(input);
+    urls.push(url);
+    const body = url.includes("cursor=PAGE2")
+      ? { ok: true, messages: [{ ts: "3.0", text: "third" }] }
+      : {
+          ok: true,
+          messages: [
+            { ts: "2.0", text: "second" },
+            { ts: "1.0", text: "first" },
+          ],
+          has_more: true,
+          response_metadata: { next_cursor: "PAGE2" },
+        };
+    return { json: async () => body } as Response;
+  }) as typeof fetch;
+
+  const { messages } = await fetchSlackMessages("C1", "0.5");
+
+  assert.deepEqual(
+    messages.map((m) => m.text),
+    ["first", "second", "third"]
+  );
+  // Page 1 carries oldest; page 2 carries the cursor and no oldest.
+  assert.equal(urls.length, 2);
+  assert.ok(urls[0]!.includes("oldest=0.5"));
+  assert.ok(urls[1]!.includes("cursor=PAGE2"));
+  assert.ok(!urls[1]!.includes("oldest="));
+});
+
 test("surfaces a Slack API error instead of returning empty", async () => {
   mockSlack({ "conversations.history": { ok: false, error: "channel_not_found" } });
   await assert.rejects(() => fetchSlackMessages("C1", undefined), /channel_not_found/);
