@@ -173,6 +173,37 @@ export async function listLocalSourcesForToken(
     .orderBy(desc(schema.source.createdAt));
 }
 
+// Cursor write-back from the daemon. The update is scoped in a single WHERE by
+// userId, local runtime, and (for a locked token) projectId, so a token can
+// only move the cursor of a local source it actually owns. No matching row
+// means not-owned / not-local / wrong-project, which surfaces as a 404.
+export async function updateLocalSourceCursor(
+  userId: string,
+  sourceId: string,
+  cursor: unknown,
+  lockedProjectId?: string | null
+): Promise<Source> {
+  if (!isUuid(sourceId)) throw new InvalidSourceError();
+
+  const conditions = [
+    eq(schema.source.id, normalizeUuid(sourceId)),
+    eq(schema.source.userId, userId),
+    eq(schema.source.runtime, "local"),
+  ];
+  if (lockedProjectId) {
+    conditions.push(eq(schema.source.projectId, lockedProjectId));
+  }
+
+  const [updated] = await db
+    .update(schema.source)
+    .set({ cursor })
+    .where(and(...conditions))
+    .returning();
+
+  if (!updated) throw new InvalidSourceError();
+  return updated;
+}
+
 export async function getOwnedSource(
   userId: string,
   sourceId: string,
