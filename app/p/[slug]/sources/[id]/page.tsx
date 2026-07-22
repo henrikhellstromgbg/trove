@@ -54,19 +54,28 @@ export default async function SourceDetailPage({
     .orderBy(desc(schema.item.capturedAt))
     .limit(20);
 
+  const isLocal = source.runtime === "local";
   const config = source.config as {
     feedUrl?: string;
     url?: string;
     channelId?: string;
+    mboxPath?: string;
+    folderPath?: string;
   };
-  const configSummary = config.feedUrl ?? config.url ?? (config.channelId ? `channel ${config.channelId}` : null);
+  const configSummary =
+    config.feedUrl ??
+    config.url ??
+    config.mboxPath ??
+    config.folderPath ??
+    (config.channelId ? `channel ${config.channelId}` : null);
 
   return (
     <section className="relative mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 pb-16 pt-16 md:px-10">
       <header className="flex flex-col gap-1">
         <div className="flex items-center justify-between gap-6">
           <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink-faint">
-            source · {source.kind} · {source.cron ?? "manual"}
+            source · {source.kind} ·{" "}
+            {isLocal ? "desktop app" : (source.cron ?? "manual")}
           </p>
           <Link
             href={`${base}/sources`}
@@ -124,7 +133,13 @@ export default async function SourceDetailPage({
           )}
 
           <div className="mt-2 flex items-center justify-between">
-            <SyncNowButton id={source.id} />
+            {isLocal ? (
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
+                syncs from the trove desktop app
+              </span>
+            ) : (
+              <SyncNowButton id={source.id} />
+            )}
             <DeleteSourceButton id={source.id} />
           </div>
         </section>
