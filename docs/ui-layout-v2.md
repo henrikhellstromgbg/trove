@@ -327,7 +327,7 @@ only missing piece — build these first, they unlock shipped capability) · **p
 | `/p/[slug]/ask` | focused Ask workspace with citations | project | exists; persistence planned |
 | capture overlay | file, link and text capture | project | exists |
 | `/p/[slug]/library` | library list | project | exists |
-| `/p/[slug]/library/[id]` | item viewer | project | read-only exists; move/copy + delete **backend ready**, rename/retag/reprocess need routes |
+| `/p/[slug]/library/[id]` | item viewer | project | exists with an actions card: rename/retag (`PATCH /[id]`), reprocess (`/[id]/reprocess`), move/copy (`/[id]/move`), trash (`/api/items/trash`) |
 | `/p/[slug]/sources` | source list | project | exists |
 | `/p/[slug]/sources/new` | source setup | project | exists (rss/web/slack + mail_folder/folder_watch); local kinds carry an honest 'runs on your mac' note and daemon-driven sync |
 | `/p/[slug]/sources/[id]` | source status and latest items | project | exists, richer run history planned |
