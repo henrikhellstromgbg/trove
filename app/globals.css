@@ -11,7 +11,7 @@
   --ink-ghost: #A3A3A3;
   --silver: #666666;
   --brand: #E4130E;        /* warm red: logo, active project, alert counts */
-  --capture: #477E23;      /* forest green: capture / drop accent only */
+  --capture: #477E23;      /* forest green: capture/drop, approval and success */
   --ember: #E4130E;        /* alias kept for existing call sites, now brand red */
   --line: rgba(0, 0, 0, 0.08);
   --line-strong: rgba(0, 0, 0, 0.14);
@@ -46,7 +46,7 @@ body {
   font-feature-settings: "ss01", "ss02";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  letter-spacing: -0.005em;
+  letter-spacing: 0;
 }
 
 ::selection {
@@ -79,7 +79,7 @@ body {
 .font-display {
   font-family: var(--font-display);
   font-weight: 400;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .font-mono {
@@ -118,4 +118,19 @@ input[type="email"],
 input[type="password"],
 textarea {
   caret-color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

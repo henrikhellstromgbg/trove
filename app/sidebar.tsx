@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import {
   Chat,
@@ -18,10 +18,12 @@ import {
   ChevronDown,
   Menu,
   Close,
+  UserAvatar,
   type CarbonIconType,
 } from "@carbon/icons-react";
 import { useProject } from "./project-context";
 import { trapFocus } from "./focus-trap";
+import { Button, IconButton, StatusIndicator } from "./components/ui";
 import type { ProjectCounts } from "@/lib/projects";
 
 // Numbers render with a space thousands separator, matching the sketch
@@ -47,12 +49,15 @@ function CountFor({ seg, counts }: { seg: string; counts: ProjectCounts }) {
   const cls = "font-mono text-xs text-ink-faint";
   if (seg === "library")
     return (
-      <span className={cls}>
-        {counts.items ? fmt(counts.items) : null}
+      <span className="inline-flex items-center gap-2">
+        {counts.items ? <span className={cls}>{fmt(counts.items)}</span> : null}
         {counts.reviewPending > 0 ? (
-          <span className="ml-1.5 rounded bg-capture/15 px-1.5 py-0.5 text-capture">
-            {counts.reviewPending} to review
-          </span>
+          <StatusIndicator
+            status="review"
+            label="to review"
+            count={counts.reviewPending}
+            className="text-xs"
+          />
         ) : null}
       </span>
     );
@@ -60,14 +65,24 @@ function CountFor({ seg, counts }: { seg: string; counts: ProjectCounts }) {
     return counts.topics ? <span className={cls}>{fmt(counts.topics)}</span> : null;
   if (seg === "pipelines")
     return counts.pipelinesActive ? (
-      <span className={cls}>{counts.pipelinesActive} active</span>
+      <StatusIndicator
+        status="active"
+        label="active"
+        count={counts.pipelinesActive}
+        className="text-xs"
+      />
     ) : null;
   if (seg === "sources")
     return (
-      <span className={cls}>
-        {counts.sources > 0 ? fmt(counts.sources) : null}
+      <span className="inline-flex items-center gap-2">
+        {counts.sources > 0 ? <span className={cls}>{fmt(counts.sources)}</span> : null}
         {counts.sourceErrors > 0 ? (
-          <span className="ml-1.5 text-brand">({counts.sourceErrors})</span>
+          <StatusIndicator
+            status="error"
+            label="errors"
+            count={counts.sourceErrors}
+            className="text-xs"
+          />
         ) : null}
       </span>
     );
@@ -90,6 +105,7 @@ export function Sidebar() {
   const [desktopNav, setDesktopNav] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   const base = `/p/${project.slug}`;
   const askHref = `${base}/ask`;
@@ -157,31 +173,38 @@ export function Sidebar() {
   return (
     <>
       {/* mobile top bar — the drawer trigger */}
-      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-line bg-canvas px-4 md:hidden">
-        <Link href={base} onClick={closeMobile} className="flex items-center">
-          <Image src="/logo.svg" alt="Trove" width={78} height={20} priority />
-        </Link>
-        <span className="min-w-0 flex-1 truncate text-center text-sm font-medium text-brand">
+      <div
+        className="fixed inset-x-0 top-0 z-30 grid h-14 items-center gap-3 border-b border-line bg-canvas px-4 md:hidden"
+        style={{ gridTemplateColumns: "78px minmax(0,1fr) 78px" }}
+      >
+        <div className="flex items-center">
+          <Link href={base} onClick={closeMobile} className="flex items-center">
+            <Image src="/logo.svg" alt="Trove" width={78} height={20} priority />
+          </Link>
+        </div>
+        <span className="min-w-0 truncate text-center text-sm font-medium text-brand">
           {project.name}
         </span>
-        <button
-          ref={menuButtonRef}
-          onClick={() => setMobileOpen(true)}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-dim transition-colors hover:bg-ink/[0.04] hover:text-ink"
-          aria-label="open menu"
-          aria-expanded={mobileOpen}
-          aria-controls="project-navigation"
-        >
-          <Menu size={20} />
-        </button>
+        <div className="flex items-center justify-self-end">
+          <IconButton
+            ref={menuButtonRef}
+            onClick={() => setMobileOpen(true)}
+            label="Open menu"
+            aria-expanded={mobileOpen}
+            aria-controls="project-navigation"
+          >
+            <Menu size={20} />
+          </IconButton>
+        </div>
       </div>
 
       {/* backdrop under the open drawer, mobile only */}
       {mobileOpen ? (
         <button
+          type="button"
           onClick={closeMobile}
-          aria-label="close menu"
-          className="fixed inset-0 z-30 bg-ink/20 backdrop-blur-sm md:hidden"
+          aria-label="Close menu"
+          className="fixed inset-0 z-30 bg-ink/20 md:hidden"
         />
       ) : null}
 
@@ -189,7 +212,7 @@ export function Sidebar() {
         id="project-navigation"
         inert={!desktopNav && !mobileOpen}
         aria-hidden={!desktopNav && !mobileOpen}
-        className={`fixed left-0 top-0 z-40 flex h-[100dvh] w-[280px] flex-col border-r border-line bg-canvas px-5 py-6 transition-transform duration-200 md:translate-x-0 ${
+        className={`fixed left-0 top-0 z-40 flex h-[100dvh] w-[280px] flex-col overflow-y-auto border-r border-line bg-canvas px-5 py-6 transition-transform duration-150 md:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -198,27 +221,27 @@ export function Sidebar() {
           <Link href={base} onClick={closeMobile} className="flex items-center">
             <Image src="/logo.svg" alt="Trove" width={78} height={20} priority />
           </Link>
-          <button
+          <IconButton
             ref={closeButtonRef}
             onClick={closeMobile}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/[0.04] hover:text-ink md:hidden"
-            aria-label="close menu"
+            label="Close menu"
+            className="md:hidden"
           >
             <Close size={18} />
-          </button>
+          </IconButton>
         </div>
 
         {/* project switcher — always shows the active project */}
         <div className="relative mb-6">
           <button
+            type="button"
             onClick={() => setSwitcherOpen((o) => !o)}
             className="flex w-full flex-col gap-0.5 rounded-lg border border-line px-3 py-2 text-left transition-colors hover:border-line-strong"
             aria-expanded={switcherOpen}
+            aria-controls="project-switcher-popup"
           >
             <span className="flex items-center justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
-                Project
-              </span>
+              <span className="text-xs text-ink-faint">Project</span>
               <ChevronDown size={16} className="text-ink-faint" />
             </span>
             <span className="truncate text-[15px] font-medium text-brand">
@@ -229,10 +252,11 @@ export function Sidebar() {
           <AnimatePresence>
             {switcherOpen ? (
               <motion.div
-                initial={{ opacity: 0, y: -6 }}
+                id="project-switcher-popup"
+                initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.18 }}
+                exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+                transition={{ duration: 0.15 }}
                 className="absolute left-0 right-0 top-full z-40 mt-1 rounded-lg border border-line bg-paper p-1 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.18)]"
               >
                 <ul className="flex flex-col">
@@ -263,6 +287,7 @@ export function Sidebar() {
                     <div className="flex flex-col gap-2 p-2">
                       <input
                         autoFocus
+                        aria-label="Project name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         onKeyDown={(e) => {
@@ -271,33 +296,37 @@ export function Sidebar() {
                         placeholder="project name"
                         className="w-full bg-transparent text-sm text-ink placeholder:text-ink-faint focus:outline-none"
                       />
-                      <div className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider">
+                      <div className="flex items-center gap-1 font-mono text-xs">
                         {(["personal", "client"] as const).map((k) => (
                           <button
                             key={k}
+                            type="button"
                             onClick={() => setKind(k)}
+                            aria-pressed={kind === k}
                             className={`rounded px-2 py-1 ${
                               kind === k ? "bg-ink text-canvas" : "text-ink-faint"
                             }`}
                           >
-                            {k}
+                            {k === "personal" ? "Personal" : "Client"}
                           </button>
                         ))}
-                        <button
+                        <Button
+                          variant="secondary"
                           onClick={create}
                           disabled={busy}
-                          className="ml-auto rounded px-2 py-1 text-ink hover:text-ink disabled:opacity-40"
+                          className="ml-auto"
                         >
-                          {busy ? "…" : "create"}
-                        </button>
+                          {busy ? "…" : "Create"}
+                        </Button>
                       </div>
                     </div>
                   ) : (
                     <button
+                      type="button"
                       onClick={() => setCreating(true)}
                       className="w-full rounded-md px-2 py-1.5 text-left text-sm text-ink-dim transition-colors hover:bg-ink/[0.04] hover:text-ink"
                     >
-                      + new project
+                      + New project
                     </button>
                   )}
                 </div>
@@ -312,80 +341,86 @@ export function Sidebar() {
           <Link
             href={askHref}
             onClick={closeMobile}
+            aria-current={isActive("ask") ? "page" : undefined}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
               isActive("ask") ? "bg-ink/[0.05] text-ink" : "text-ink hover:bg-ink/[0.03]"
             }`}
           >
-            <Chat size={18} className="shrink-0 text-ink-dim" />
-            <span>Ask</span>
+            <Chat size={18} className={`shrink-0 ${isActive("ask") ? "text-brand" : "text-ink-dim"}`} />
+            <span className="min-w-0 truncate">Ask</span>
           </Link>
           <Link
             href={`${base}/chats`}
             onClick={closeMobile}
+            aria-current={isActive("chats") ? "page" : undefined}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
               isActive("chats") ? "bg-ink/[0.05] text-ink" : "text-ink hover:bg-ink/[0.03]"
             }`}
           >
-            <Archive size={18} className="shrink-0 text-ink-dim" />
-            <span>Chat archive</span>
+            <Archive size={18} className={`shrink-0 ${isActive("chats") ? "text-brand" : "text-ink-dim"}`} />
+            <span className="min-w-0 truncate">Chat archive</span>
           </Link>
           {DESTINATIONS.map(({ seg, label, Icon }) => (
             <Link
               key={seg}
               href={`${base}/${seg}`}
               onClick={closeMobile}
+              aria-current={isActive(seg) ? "page" : undefined}
               className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
                 isActive(seg) ? "bg-ink/[0.05] text-ink" : "text-ink hover:bg-ink/[0.03]"
               }`}
             >
-              <Icon size={18} className="shrink-0 text-ink-dim" />
-              <span>{label}</span>
-              <span className="ml-auto">
+              <Icon size={18} className={`shrink-0 ${isActive(seg) ? "text-brand" : "text-ink-dim"}`} />
+              <span className="min-w-0 truncate">{label}</span>
+              <span className="ml-auto shrink-0">
                 <CountFor seg={seg} counts={counts} />
               </span>
             </Link>
           ))}
         </nav>
 
-        {/* actions */}
+        {/* capture */}
         <div className="mt-6 flex flex-col gap-0.5 border-t border-line pt-6">
           <button
+            type="button"
             onClick={openCapture}
             className="flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] text-ink transition-colors hover:bg-ink/[0.03]"
           >
             <Download size={18} className="shrink-0 text-ink-dim" />
-            <span>Capture</span>
+            <span className="min-w-0 truncate">Capture</span>
           </button>
+        </div>
+
+        {/* settings + account */}
+        <div className="mt-auto flex flex-col gap-0.5 border-t border-line pt-6">
           <Link
             href={`${base}/settings`}
             onClick={closeMobile}
+            aria-current={isActive("settings") ? "page" : undefined}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
               isActive("settings") ? "bg-ink/[0.05] text-ink" : "text-ink hover:bg-ink/[0.03]"
             }`}
           >
-            <Settings size={18} className="shrink-0 text-ink-dim" />
-            <span>Settings</span>
+            <Settings size={18} className={`shrink-0 ${isActive("settings") ? "text-brand" : "text-ink-dim"}`} />
+            <span className="min-w-0 truncate">Settings</span>
           </Link>
-        </div>
 
-        {/* user */}
-        <div className="mt-auto flex items-start gap-3 px-3 pt-6">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line-strong text-ink-dim">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="8" r="3.5" />
-              <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" />
-            </svg>
-          </div>
-          <div className="flex min-w-0 flex-col">
-            <span className="truncate text-sm text-ink">
-              {user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? "Account"}
-            </span>
-            <button
-              onClick={() => signOut()}
-              className="self-start text-xs text-ink-dim underline underline-offset-2 transition-colors hover:text-ink"
-            >
-              Log out
-            </button>
+          <div className="flex items-start gap-3 px-3 pt-6">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line-strong text-ink-dim">
+              <UserAvatar size={14} />
+            </div>
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-sm text-ink">
+                {user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? "Account"}
+              </span>
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="self-start text-xs text-ink-dim underline underline-offset-2 transition-colors hover:text-ink"
+              >
+                Log out
+              </button>
+            </div>
           </div>
         </div>
       </aside>
