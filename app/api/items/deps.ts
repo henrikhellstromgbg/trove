@@ -8,6 +8,7 @@ import {
   permanentlyDeleteItem,
   restoreItem,
 } from "@/lib/review-or-deletion/store";
+import { moveItemToProject } from "@/lib/items/move";
 
 export const itemRouteDeps = {
   auth,
@@ -18,4 +19,5 @@ export const itemRouteDeps = {
   moveItemToTrash,
   restoreItem,
   permanentlyDeleteItem,
+  moveItemToProject,
 };
