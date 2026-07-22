@@ -54,6 +54,27 @@ export default async function SourceDetailPage({
     .orderBy(desc(schema.item.capturedAt))
     .limit(20);
 
+  const runs = await db
+    .select({
+      id: schema.sourceRun.id,
+      trigger: schema.sourceRun.trigger,
+      status: schema.sourceRun.status,
+      itemCount: schema.sourceRun.itemCount,
+      error: schema.sourceRun.error,
+      startedAt: schema.sourceRun.startedAt,
+      completedAt: schema.sourceRun.completedAt,
+    })
+    .from(schema.sourceRun)
+    .where(
+      and(
+        eq(schema.sourceRun.sourceId, source.id),
+        eq(schema.sourceRun.userId, userId),
+        eq(schema.sourceRun.projectId, project.id)
+      )
+    )
+    .orderBy(desc(schema.sourceRun.startedAt))
+    .limit(10);
+
   const isLocal = source.runtime === "local";
   const config = source.config as {
     feedUrl?: string;
@@ -183,6 +204,50 @@ export default async function SourceDetailPage({
           ) : null}
         </aside>
       </div>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink-faint">
+          run history
+        </h2>
+        {runs.length === 0 ? (
+          <p className="font-mono text-sm text-ink-faint">no runs yet.</p>
+        ) : (
+          <ul className="flex flex-col">
+            {runs.map((run) => (
+              <li
+                key={run.id}
+                className="flex flex-col gap-1 border-b border-line py-3 last:border-b-0"
+              >
+                <div className="flex items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
+                  <span>{run.startedAt.toLocaleString("en-GB")}</span>
+                  <span className="flex items-center gap-3">
+                    <span>{run.trigger}</span>
+                    <span
+                      className={
+                        run.status === "ok"
+                          ? "text-ink-dim"
+                          : run.status === "error"
+                          ? "text-brand"
+                          : "text-ink-ghost"
+                      }
+                    >
+                      {run.status}
+                    </span>
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between gap-4">
+                  <span className="text-sm text-ink-dim">
+                    {run.itemCount} new {run.itemCount === 1 ? "item" : "items"}
+                  </span>
+                </div>
+                {run.error ? (
+                  <p className="text-xs text-brand">{run.error}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </section>
   );
 }
