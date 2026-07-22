@@ -9,6 +9,7 @@ import { useUser, useClerk } from "@clerk/nextjs";
 import {
   Chat,
   Catalog,
+  Categories,
   DataShare,
   FlowConnection,
   Download,
@@ -36,6 +37,7 @@ type Destination = {
 
 const DESTINATIONS: Destination[] = [
   { seg: "library", label: "Library", Icon: Catalog },
+  { seg: "topics", label: "Topics", Icon: Categories },
   { seg: "sources", label: "Sources", Icon: DataShare },
   { seg: "pipelines", label: "Pipelines", Icon: FlowConnection },
 ];
@@ -53,6 +55,8 @@ function CountFor({ seg, counts }: { seg: string; counts: ProjectCounts }) {
         ) : null}
       </span>
     );
+  if (seg === "topics")
+    return counts.topics ? <span className={cls}>{fmt(counts.topics)}</span> : null;
   if (seg === "pipelines")
     return counts.pipelinesActive ? (
       <span className={cls}>{counts.pipelinesActive} active</span>
