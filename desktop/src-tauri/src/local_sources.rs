@@ -83,17 +83,7 @@ pub(crate) struct MailFolderSource {
     pub(crate) promo_blocklist: Vec<String>,
 }
 
-/// Parse the registry JSON text into sources, skipping malformed entries
-/// instead of failing the whole file. Only listed paths are ever read.
-pub(crate) fn parse_sources_json(text: &str) -> Vec<LocalSource> {
-    let entries: Vec<serde_json::Value> = match serde_json::from_str(text) {
-        Ok(entries) => entries,
-        Err(err) => {
-            eprintln!("trove local sources registry is not a JSON array: {err}");
-            return Vec::new();
-        }
-    };
-
+fn sources_from_values(entries: Vec<serde_json::Value>) -> Vec<LocalSource> {
     let mut sources = Vec::new();
     for entry in entries {
         match serde_json::from_value::<LocalSource>(entry.clone()) {
@@ -104,6 +94,65 @@ pub(crate) fn parse_sources_json(text: &str) -> Vec<LocalSource> {
         }
     }
     sources
+}
+
+/// Parse the local registry file (a JSON array) into sources, skipping
+/// malformed entries instead of failing the whole file. Only listed paths are
+/// ever read.
+pub(crate) fn parse_sources_json(text: &str) -> Vec<LocalSource> {
+    match serde_json::from_str::<Vec<serde_json::Value>>(text) {
+        Ok(entries) => sources_from_values(entries),
+        Err(err) => {
+            eprintln!("trove local sources registry is not a JSON array: {err}");
+            Vec::new()
+        }
+    }
+}
+
+/// Parse the server registry response (`{ "sources": [...] }`) into sources.
+/// The flat per-source shape matches the local file, so both paths yield the
+/// same `LocalSource` values.
+pub(crate) fn parse_sources_response(text: &str) -> Vec<LocalSource> {
+    #[derive(Deserialize)]
+    struct RegistryResponse {
+        #[serde(default)]
+        sources: Vec<serde_json::Value>,
+    }
+    match serde_json::from_str::<RegistryResponse>(text) {
+        Ok(response) => sources_from_values(response.sources),
+        Err(err) => {
+            eprintln!(
+                "trove local sources: server registry is not an object with a sources array: {err}"
+            );
+            Vec::new()
+        }
+    }
+}
+
+/// Fetch the approved source list from Trove. Returns None on any network or
+/// HTTP failure so the caller can fall back to the local file. The ingest token
+/// travels only in the Authorization header.
+pub(crate) async fn fetch_remote_registry(
+    client: &reqwest::Client,
+    config: &IngestConfig,
+) -> Option<Vec<LocalSource>> {
+    let response = client
+        .get(config.local_registry_url())
+        .bearer_auth(config.ingest_token())
+        .send()
+        .await
+        .ok()?;
+
+    if !response.status().is_success() {
+        eprintln!(
+            "trove local sources: server registry returned HTTP {}",
+            response.status()
+        );
+        return None;
+    }
+
+    let text = response.text().await.ok()?;
+    Some(parse_sources_response(&text))
 }
 
 fn load_registry(path: &Path) -> Vec<LocalSource> {
@@ -171,7 +220,25 @@ pub(crate) async fn run_local_sources_once(
     client: &reqwest::Client,
     config: &IngestConfig,
 ) -> Vec<SourceRunResult> {
-    let sources = load_registry(&registry_path());
+    // Prefer the server registry so approved sources are managed in Trove; fall
+    // back to the local file when the server is unreachable (offline resilience).
+    let sources = match fetch_remote_registry(client, config).await {
+        Some(remote) => {
+            eprintln!(
+                "trove local sources: using server registry ({} sources)",
+                remote.len()
+            );
+            remote
+        }
+        None => {
+            let local = load_registry(&registry_path());
+            eprintln!(
+                "trove local sources: using local file fallback ({} sources)",
+                local.len()
+            );
+            local
+        }
+    };
     let dir = checkpoint_dir();
     let mut results = Vec::new();
 
@@ -1080,6 +1147,43 @@ mod tests {
             }
             _ => panic!("expected mail_folder second"),
         }
+    }
+
+    #[test]
+    fn parses_server_registry_response() {
+        // Flat per-source shape from GET /api/sources/local, including extra
+        // name/cursor fields the daemon ignores.
+        let json = r#"{ "sources": [
+            { "id": "s1", "kind": "folder_watch", "projectId": "p1",
+              "folderPath": "/drop", "globs": ["**/*.pdf"], "name": "Drop", "cursor": null },
+            { "id": "s2", "kind": "mail_folder", "projectId": "p1",
+              "mboxPath": "/mail.mbox", "senderAllow": ["news@"], "senderBlock": [],
+              "promoBlocklist": [], "name": "Mail" },
+            { "id": "bad", "kind": "unknown_kind", "projectId": "p1" }
+        ] }"#;
+
+        let sources = parse_sources_response(json);
+        assert_eq!(sources.len(), 2);
+        match &sources[0] {
+            LocalSource::FolderWatch(s) => {
+                assert_eq!(s.folder_path, "/drop");
+                assert_eq!(s.globs, vec!["**/*.pdf".to_string()]);
+            }
+            _ => panic!("expected folder_watch first"),
+        }
+        match &sources[1] {
+            LocalSource::MailFolder(s) => {
+                assert_eq!(s.mbox_path, "/mail.mbox");
+                assert_eq!(s.sender_allow, vec!["news@".to_string()]);
+            }
+            _ => panic!("expected mail_folder second"),
+        }
+    }
+
+    #[test]
+    fn empty_or_malformed_server_response_yields_no_sources() {
+        assert!(parse_sources_response("{}").is_empty());
+        assert!(parse_sources_response("not json").is_empty());
     }
 
     #[test]

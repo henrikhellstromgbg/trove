@@ -131,6 +131,14 @@ impl IngestConfig {
     fn ingest_url(&self) -> String {
         format!("{}/api/ingest", self.backend_url)
     }
+
+    fn local_registry_url(&self) -> String {
+        format!("{}/api/sources/local", self.backend_url)
+    }
+
+    fn ingest_token(&self) -> &str {
+        &self.ingest_token
+    }
 }
 
 impl fmt::Display for ConfigError {
@@ -842,6 +850,39 @@ Body content here.\r\n",
         let _ = fs::remove_dir_all(checkpoint_dir);
     }
 
+    #[tokio::test]
+    async fn fetch_remote_registry_parses_sources_and_sends_bearer() {
+        use crate::local_sources::fetch_remote_registry;
+
+        let body = r#"{"sources":[{"id":"s1","kind":"folder_watch","projectId":"p1","folderPath":"/drop","globs":[]}]}"#;
+        let (backend_url, request) = spawn_http_server("200 OK", body).await;
+        let config = test_config(backend_url);
+
+        let sources = fetch_remote_registry(&reqwest::Client::new(), &config)
+            .await
+            .expect("registry should be fetched");
+        let request = request.await.expect("server task should finish");
+
+        assert_eq!(sources.len(), 1);
+        assert!(request.starts_with("GET /api/sources/local HTTP/1.1\r\n"));
+        assert!(request
+            .to_ascii_lowercase()
+            .contains("authorization: bearer secret-token\r\n"));
+    }
+
+    #[tokio::test]
+    async fn fetch_remote_registry_returns_none_on_server_error() {
+        use crate::local_sources::fetch_remote_registry;
+
+        let (backend_url, request) = spawn_http_server("500 Internal Server Error", "boom").await;
+        let config = test_config(backend_url);
+
+        let result = fetch_remote_registry(&reqwest::Client::new(), &config).await;
+        request.await.expect("server task should finish");
+
+        assert!(result.is_none());
+    }
+
     fn assert_json_payload(value: &Value, kind: &str, text: &str, project_id: &str) {
         assert_eq!(value.get("type").and_then(Value::as_str), Some(kind));
         assert_eq!(value.get("text").and_then(Value::as_str), Some(text));
@@ -914,6 +955,12 @@ Body content here.\r\n",
                     if request.len() >= end + 4 + length {
                         break;
                     }
+                }
+
+                // A bodyless request (e.g. GET) has no content-length; once the
+                // headers are complete there is nothing more to read.
+                if header_end.is_some() && content_length.is_none() {
+                    break;
                 }
             }
 
