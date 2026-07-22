@@ -37,7 +37,7 @@ Left sidebar, project scoped main area. The sidebar is the same on every screen.
 - **Project switcher** (top): current project name, opens the switcher panel.
 - **Nav**: Ask, Library, Sources and Pipelines. Each is project scoped. `/p/[slug]` is the project overview; Ask has its own focused workspace at `/p/[slug]/ask`.
 - **Capture**: a project-scoped action below the main navigation. It opens the existing capture overlay instead of requiring a separate route.
-- **Settings** (bottom): currently opens Clerk's account profile. The visualized Trove settings pages are planned.
+- **Settings** (bottom): routes to `/p/[slug]/settings` (ingest-token management + account access). Account email/security still opens the auth provider's own modal from inside that page.
 - **User** (bottom): account menu, sign out.
 
 Route is the source of truth for the active project, `/p/[slug]/library`, `/p/[slug]/sources`, and so on. The switcher just navigates. This avoids the router cache freezing client state, a lesson already logged.
@@ -329,7 +329,7 @@ only missing piece — build these first, they unlock shipped capability) · **p
 | `/p/[slug]/library` | library list | project | exists |
 | `/p/[slug]/library/[id]` | item viewer | project | read-only exists; move/copy + delete **backend ready**, rename/retag/reprocess need routes |
 | `/p/[slug]/sources` | source list | project | exists |
-| `/p/[slug]/sources/new` | source setup | project | exists (rss/web/slack); mail_folder/folder_watch **backend ready** (`buildSourceConfig`), form to extend |
+| `/p/[slug]/sources/new` | source setup | project | exists (rss/web/slack + mail_folder/folder_watch); local kinds carry an honest 'runs on your mac' note and daemon-driven sync |
 | `/p/[slug]/sources/[id]` | source status and latest items | project | exists, richer run history planned |
 | `/p/[slug]/pipelines` | pipeline list | project | exists |
 | pipeline template picker | choose one or several starter pipelines | project | **backend ready** (`lib/pipelines/templates.ts`); picker UI to build |
@@ -338,8 +338,7 @@ only missing piece — build these first, they unlock shipped capability) · **p
 | pipeline run result | persisted report with citations | project | partial through Digest |
 | Library review filter | review queue | project | **backend ready** (`/api/items/review`); UI to build |
 | Library trash filter | trash and restore | project | **backend ready** (`/api/items/trash`, `/[id]/restore`); UI to build |
-| `/p/[slug]/settings` | project settings | project | planned |
-| `/settings` | profile, connections and security | account | ingest tokens (`/api/ingest-tokens`) and connected accounts (`/api/sources/accounts`) **backend ready**; Clerk handles profile/security; page to build |
+| `/p/[slug]/settings` | project settings | project | exists; hosts ingest-token management (issue/scope/reveal-once/revoke) + account access. Connected accounts (`/api/sources/accounts`) still **backend ready** |
 
 ## Decided behavior and remaining questions
 
