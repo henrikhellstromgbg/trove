@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUp, ChevronDown, ChevronUp } from "@carbon/icons-react";
 import { drainNdjson, parseNdjsonRecord } from "@/lib/ndjson";
+import { ConversationList } from "./ask-conversation-list";
+
+type PanelTab = "sources" | "threads";
 
 type Citation = {
   n: number;
@@ -40,15 +43,30 @@ export function AskChat({
   projectId,
   slug,
   projectName,
+  initialConversationId = null,
+  activeId,
+  listVersion,
+  onPick,
+  onNew,
+  onConversationChange,
 }: {
   projectId: string;
   slug: string;
   projectName: string;
+  initialConversationId?: string | null;
+  activeId: string | null;
+  listVersion: number;
+  onPick: (id: string) => void;
+  onNew: () => void;
+  onConversationChange: (id: string) => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sourcesOpen, setSourcesOpen] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [panelTab, setPanelTab] = useState<PanelTab>("sources");
+  const [conversationId, setConversationId] = useState<string | null>(
+    initialConversationId
+  );
 
   const transcriptRef = useRef<HTMLDivElement>(null);
   const autoSubmitted = useRef(false);
@@ -123,10 +141,9 @@ export function AskChat({
           };
           if (msg.type === "conversation" && msg.id) {
             setConversationId(msg.id);
-            const url = new URL(window.location.href);
-            url.searchParams.delete("q");
-            url.searchParams.set("conversation", msg.id);
-            window.history.replaceState(null, "", url);
+            // The workspace owns the URL and the thread list; tell it a new
+            // thread now exists so it can mark it active and refresh the list.
+            onConversationChange(msg.id);
           } else if (msg.type === "citations") {
             patchMessage(index, { citations: msg.items ?? [] });
           } else if (msg.type === "text" && msg.text) {
@@ -163,18 +180,17 @@ export function AskChat({
         error: "Connection lost. Try again.",
       });
     }
-  }, [conversationId, patchMessage, projectId]);
+  }, [conversationId, patchMessage, projectId, onConversationChange]);
 
-  // Auto-submit from the home launcher: read ?q= once on mount. Reading
-  // window.location.search here avoids the useSearchParams Suspense rule.
+  // On mount (this component is remounted per thread via a key), restore the
+  // thread the workspace handed us, else auto-submit ?q= from the home launcher.
+  // Reading window.location.search avoids the useSearchParams Suspense rule.
   useEffect(() => {
     if (autoSubmitted.current) return;
     autoSubmitted.current = true;
-    const params = new URLSearchParams(window.location.search);
-    const savedConversationId = params.get("conversation");
-    if (savedConversationId) {
+    if (initialConversationId) {
       fetch(
-        `/api/ask?projectId=${encodeURIComponent(projectId)}&conversationId=${encodeURIComponent(savedConversationId)}`
+        `/api/ask?projectId=${encodeURIComponent(projectId)}&conversationId=${encodeURIComponent(initialConversationId)}`
       )
         .then(async (res) => {
           if (!res.ok) throw new Error("conversation load failed");
@@ -220,9 +236,9 @@ export function AskChat({
         });
       return;
     }
-    const q = params.get("q");
+    const q = new URLSearchParams(window.location.search).get("q");
     if (q && q.trim()) submit(q);
-  }, [projectId, submit]);
+  }, [projectId, submit, initialConversationId]);
 
   const canSend = input.trim().length > 0 && !isBusy;
 
@@ -277,26 +293,51 @@ export function AskChat({
           </div>
         </div>
 
-        {/* Mobile: collapsible sources panel */}
+        {/* Mobile: collapsible panel, tabbed like the desktop one */}
         <div className="border-t border-line md:hidden">
-          <button
-            type="button"
-            onClick={() => setSourcesOpen((v) => !v)}
-            className="flex w-full items-center justify-between px-6 py-3 transition-colors hover:bg-ink/[0.015]"
-            aria-expanded={sourcesOpen}
-          >
-            <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink-faint">
-              Files that are relevant
-            </span>
-            {sourcesOpen ? (
-              <ChevronUp size={16} className="text-ink-faint" />
-            ) : (
-              <ChevronDown size={16} className="text-ink-faint" />
-            )}
-          </button>
+          <div className="flex items-center justify-between px-6 py-2">
+            <div className="flex gap-4">
+              {(["sources", "threads"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => {
+                    setPanelTab(tab);
+                    setSourcesOpen(true);
+                  }}
+                  className={`py-1 font-mono text-[10px] uppercase tracking-[0.28em] transition-colors ${
+                    sourcesOpen && panelTab === tab
+                      ? "text-ink"
+                      : "text-ink-faint hover:text-ink-dim"
+                  }`}
+                >
+                  {tab === "sources" ? "sources" : "chats"}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setSourcesOpen((v) => !v)}
+              aria-expanded={sourcesOpen}
+              aria-label={sourcesOpen ? "collapse panel" : "expand panel"}
+              className="p-1 text-ink-faint transition-colors hover:text-ink-dim"
+            >
+              {sourcesOpen ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+            </button>
+          </div>
           {sourcesOpen ? (
             <div className="max-h-56 overflow-y-auto px-6 pb-4">
-              <SourcesList citations={citations} slug={slug} />
+              {panelTab === "sources" ? (
+                <SourcesList citations={citations} slug={slug} />
+              ) : (
+                <ConversationList
+                  projectId={projectId}
+                  activeId={activeId}
+                  listVersion={listVersion}
+                  onPick={onPick}
+                  onNew={onNew}
+                />
+              )}
             </div>
           ) : null}
         </div>
@@ -332,15 +373,34 @@ export function AskChat({
         </div>
       </div>
 
-      {/* Desktop: right sources panel */}
+      {/* Desktop: right panel, tabbed between sources and conversation history */}
       <aside className="hidden w-80 flex-col border-l border-line md:flex">
-        <div className="border-b border-line px-6 py-4">
-          <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink-faint">
-            Files that are relevant
-          </span>
+        <div className="flex border-b border-line">
+          {(["sources", "threads"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setPanelTab(tab)}
+              className={`flex-1 px-4 py-4 font-mono text-[10px] uppercase tracking-[0.28em] transition-colors ${
+                panelTab === tab ? "text-ink" : "text-ink-faint hover:text-ink-dim"
+              }`}
+            >
+              {tab === "sources" ? "sources" : "chats"}
+            </button>
+          ))}
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          <SourcesList citations={citations} slug={slug} />
+          {panelTab === "sources" ? (
+            <SourcesList citations={citations} slug={slug} />
+          ) : (
+            <ConversationList
+              projectId={projectId}
+              activeId={activeId}
+              listVersion={listVersion}
+              onPick={onPick}
+              onNew={onNew}
+            />
+          )}
         </div>
       </aside>
     </div>
