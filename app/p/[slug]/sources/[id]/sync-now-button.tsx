@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProject } from "@/app/project-context";
+import { Button, InlineError } from "@/app/components/ui";
 
 export function SyncNowButton({ id }: { id: string }) {
   const router = useRouter();
@@ -29,14 +30,16 @@ export function SyncNowButton({ id }: { id: string }) {
   }
 
   return (
-    <div className="flex items-center gap-4 font-mono text-[10px] uppercase tracking-[0.22em]">
-      <button
+    <div className="flex flex-col items-start gap-2 sm:items-end">
+      <Button
+        variant="secondary"
         onClick={run}
-        className="rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
+        disabled={busy}
+        aria-busy={busy}
       >
-        {busy ? "syncing" : "sync now"}
-      </button>
-      {error ? <span className="text-brand">{error}</span> : null}
+        {busy ? "Syncing…" : "Run now"}
+      </Button>
+      <InlineError message={error} />
     </div>
   );
 }

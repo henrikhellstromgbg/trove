@@ -3,16 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProject } from "@/app/project-context";
+import { Button, ConfirmDialog, InlineError } from "@/app/components/ui";
 
-export function DeleteSourceButton({ id }: { id: string }) {
+export function DeleteSourceButton({ id, name }: { id: string; name: string }) {
   const router = useRouter();
   const { project } = useProject();
   const [busy, setBusy] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string>("");
 
   async function remove() {
     if (busy) return;
     setBusy(true);
+    setError("");
 
     const res = await fetch(
       `/api/sources/${id}?projectId=${encodeURIComponent(project.id)}`,
@@ -22,37 +25,37 @@ export function DeleteSourceButton({ id }: { id: string }) {
       router.push(`/p/${project.slug}/sources`);
       router.refresh();
     } else {
+      const err = await res.json().catch(() => ({}));
+      setError(err.error ?? `error ${res.status}`);
       setBusy(false);
+      setOpen(false);
     }
   }
 
-  if (!confirming) {
-    return (
-      <button
-        onClick={() => setConfirming(true)}
-        className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint hover:text-brand"
-      >
-        delete source
-      </button>
-    );
-  }
-
   return (
-    <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em]">
-      <span className="text-ink-dim">remove this source?</span>
-      <button
-        onClick={remove}
-        disabled={busy}
-        className="rounded-lg border border-brand/40 px-3 py-1.5 text-sm text-brand hover:bg-brand/10 disabled:opacity-30"
-      >
-        {busy ? "removing" : "yes"}
-      </button>
-      <button
-        onClick={() => setConfirming(false)}
-        className="text-ink-faint hover:text-ink"
-      >
-        cancel
-      </button>
+    <div className="flex flex-col items-start gap-2 sm:items-end">
+      <Button variant="destructive" onClick={() => setOpen(true)}>
+        Delete source
+      </Button>
+      <InlineError message={error} />
+      <ConfirmDialog
+        open={open}
+        title="Delete this source?"
+        description={
+          <>
+            Removing {name ? <>&ldquo;{name}&rdquo;</> : "this source"} stops
+            future syncs. Items already imported stay in your Library.
+          </>
+        }
+        confirmLabel={busy ? "Deleting…" : "Delete source"}
+        cancelLabel="Cancel"
+        destructive
+        confirmDisabled={busy}
+        onConfirm={remove}
+        onCancel={() => {
+          if (!busy) setOpen(false);
+        }}
+      />
     </div>
   );
 }
