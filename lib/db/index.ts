@@ -8,8 +8,11 @@ if (typeof WebSocket === "undefined") {
 }
 
 // Local development against a Postgres behind a Neon wsproxy. Never set in
-// production, where the driver talks to Neon directly.
+// production, where the driver talks to Neon directly. Force the `ws` package
+// here: the runtime's global WebSocket (Node 20+/Next) does not drive the
+// plaintext ws:// wsproxy connection correctly.
 if (process.env.DATABASE_WS_PROXY) {
+  neonConfig.webSocketConstructor = ws;
   neonConfig.wsProxy = () => process.env.DATABASE_WS_PROXY!;
   neonConfig.useSecureWebSocket = false;
   neonConfig.pipelineConnect = false;
