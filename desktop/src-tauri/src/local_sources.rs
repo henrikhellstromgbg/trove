@@ -155,6 +155,39 @@ pub(crate) async fn fetch_remote_registry(
     Some(parse_sources_response(&text))
 }
 
+/// Best-effort cursor write-back. POSTs a source's checkpoint so `source.cursor`
+/// persists server-side. Failures are logged, never fatal: the local checkpoint
+/// remains the source of truth for this machine, so a failed push only loses
+/// cross-machine resume, not idempotence here.
+pub(crate) async fn push_cursor(
+    client: &reqwest::Client,
+    config: &IngestConfig,
+    source_id: &str,
+    cursor: serde_json::Value,
+) -> bool {
+    let body = serde_json::json!({ "sourceId": source_id, "cursor": cursor });
+    match client
+        .post(config.local_cursor_url())
+        .bearer_auth(config.ingest_token())
+        .json(&body)
+        .send()
+        .await
+    {
+        Ok(response) if response.status().is_success() => true,
+        Ok(response) => {
+            eprintln!(
+                "trove local sources: cursor write-back for {source_id} returned HTTP {}",
+                response.status()
+            );
+            false
+        }
+        Err(err) => {
+            eprintln!("trove local sources: cursor write-back for {source_id} failed: {err}");
+            false
+        }
+    }
+}
+
 fn load_registry(path: &Path) -> Vec<LocalSource> {
     match fs::read_to_string(path) {
         Ok(text) => parse_sources_json(&text),
@@ -249,6 +282,24 @@ pub(crate) async fn run_local_sources_once(
             }
             LocalSource::MailFolder(source) => run_mail_folder(client, config, &source, &dir).await,
         };
+
+        // Write the advanced cursor back only when this run imported something,
+        // so idle ticks don't re-read a checkpoint or POST unchanged state.
+        if result.sent > 0 {
+            let cursor = match result.kind {
+                "folder_watch" => {
+                    serde_json::to_value(load_folder_checkpoint(&dir, &result.source_id)).ok()
+                }
+                "mail_folder" => {
+                    serde_json::to_value(load_mail_checkpoint(&dir, &result.source_id)).ok()
+                }
+                _ => None,
+            };
+            if let Some(cursor) = cursor {
+                push_cursor(client, config, &result.source_id, cursor).await;
+            }
+        }
+
         results.push(result);
     }
 

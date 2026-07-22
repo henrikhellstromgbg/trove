@@ -149,6 +149,10 @@ impl IngestConfig {
         format!("{}/api/sources/local", self.backend_url)
     }
 
+    fn local_cursor_url(&self) -> String {
+        format!("{}/api/sources/local/cursor", self.backend_url)
+    }
+
     fn ingest_token(&self) -> &str {
         &self.ingest_token
     }
@@ -972,6 +976,57 @@ Body content here.\r\n",
         request.await.expect("server task should finish");
 
         assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn push_cursor_posts_bearer_authenticated_cursor_body() {
+        use crate::local_sources::push_cursor;
+
+        let (backend_url, request) = spawn_http_server("200 OK", "{}").await;
+        let config = test_config(backend_url);
+        let cursor = serde_json::json!({ "sent": ["a@x"], "version": 2 });
+
+        let ok = push_cursor(&reqwest::Client::new(), &config, "src-1", cursor).await;
+        let request = request.await.expect("server task should finish");
+
+        assert!(ok, "a 200 response should report success");
+        assert!(request.starts_with("POST /api/sources/local/cursor HTTP/1.1\r\n"));
+        assert!(request
+            .to_ascii_lowercase()
+            .contains("authorization: bearer secret-token\r\n"));
+        // The body carries the sourceId and the cursor, and no filesystem path.
+        let body = request.rsplit("\r\n\r\n").next().unwrap_or("");
+        let parsed: Value = serde_json::from_str(body).expect("body should be JSON");
+        assert_eq!(
+            parsed.get("sourceId").and_then(Value::as_str),
+            Some("src-1")
+        );
+        assert_eq!(
+            parsed
+                .get("cursor")
+                .and_then(|c| c.get("version"))
+                .and_then(Value::as_i64),
+            Some(2)
+        );
+    }
+
+    #[tokio::test]
+    async fn push_cursor_reports_failure_on_server_error() {
+        use crate::local_sources::push_cursor;
+
+        let (backend_url, request) = spawn_http_server("404 Not Found", "nope").await;
+        let config = test_config(backend_url);
+
+        let ok = push_cursor(
+            &reqwest::Client::new(),
+            &config,
+            "src-1",
+            serde_json::json!({}),
+        )
+        .await;
+        request.await.expect("server task should finish");
+
+        assert!(!ok, "a non-2xx response must not report success");
     }
 
     fn assert_json_payload(value: &Value, kind: &str, text: &str, project_id: &str) {
