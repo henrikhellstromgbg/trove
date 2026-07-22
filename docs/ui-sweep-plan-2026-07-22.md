@@ -1,6 +1,6 @@
 # Trove UI sweep — staged plan (2026-07-22)
 
-**Status line (who writes now):** Stage C shell adoption + Codex review corrections complete (Claude, 2026-07-22). Document is **Ready for Codex final approval and commit.** No agent currently editing. Next agent: claim by putting your name here before writing.
+**Status line (who writes now):** Phase 1 is committed in `ace2dbc`. The Sources screen migration is active under [`docs/ui-sources-sweep-2026-07-22.md`](ui-sources-sweep-2026-07-22.md), ready for Stage S1. No agent currently editing.
 
 **One-writer-at-a-time rule:** exactly one agent writes this document at a time. The plan doc is the only interface between agents; no instruction lives only in a chat (AGENTS.md). Before you start writing, put your name in the status line above; when you finish a stage, add a handoff-log row and reset the status line. Commit at each completed and verified stage so the next agent starts from a clean tree.
 
@@ -27,10 +27,10 @@
 | Phase | Title | State |
 |-------|-------|-------|
 | 0 | Documentation & inventory | **Completed** (2026-07-22) |
-| 1 | Shell & shared primitives | **Ready for Codex final approval and commit** (Stage C shell adoption + review corrections complete) |
+| 1 | Shell & shared primitives | **Completed** (`ace2dbc`) |
 | 2 | Library / item sweep | Deferred |
 | 3 | Ask / Digest sweep | Deferred |
-| 4 | Sources / Pipelines sweep | Deferred |
+| 4 | Sources / Pipelines sweep | **Sources active** (see resumable Sources plan); Pipelines deferred |
 | 5 | Settings split | Deferred |
 
 Only Phase 0 and Phase 1 are specified in detail. Phases 2–5 are named so the shape is visible; each phase's scope is fixed only when the prior phase lands, not now.
@@ -70,7 +70,7 @@ Only Phase 0 and Phase 1 are specified in detail. Phases 2–5 are named so the 
 
 ---
 
-## Phase 1 — Shell & shared primitives 🟢 Stage C complete, ready for Codex final approval and commit
+## Phase 1 — Shell & shared primitives ✅ completed in `ace2dbc`
 
 **Goal:** stand up the shared primitive layer and adopt it in the shell only, with zero change to routes, data, auth, scoping, or behaviour. Broad screen migration is Phase 2+.
 
@@ -200,7 +200,8 @@ One row per stage. Records exactly which files each stage created or modified, s
 | 2026-07-22 | Claude | B2 (remaining primitives) | Created `app/components/ui/page-frame.tsx`, `app/components/ui/page-header.tsx`, `app/components/ui/section-header.tsx`, `app/components/ui/tabs.tsx`, `app/components/ui/data-list.tsx`, `app/components/ui/confirm-dialog.tsx`; updated `app/components/ui/index.ts` to export all six. No sidebar or page changes, no call sites wired. Nothing committed. |
 | 2026-07-22 | Claude | B2 review correction | Edited `app/components/ui/tabs.tsx`, `app/components/ui/data-list.tsx`, `app/components/ui/button.tsx`, `app/components/ui/index.ts`. No sidebar or page changes, no call sites wired. Nothing committed. |
 | 2026-07-22 | Claude | C (shell adoption) | Edited `app/sidebar.tsx`, `app/globals.css` to adopt `Button`/`IconButton` and resolve the project-label anti-pattern. Nothing committed. |
-| 2026-07-22 | Claude | C review corrections | Edited `app/components/ui/tabs.tsx`, `app/components/ui/data-list.tsx`, `app/components/ui/confirm-dialog.tsx`, `app/components/ui/button.tsx`, `app/sidebar.tsx`, `app/globals.css` for Codex findings (Tabs keyboard/ARIA, DataRow accessible names + focus ring, ConfirmDialog focus, Button safe type, mobile short-viewport overflow + centered grid, lint type alias, responsive tab overflow, Node 22 test harness); created `tests/ui-primitives.test.ts` (4 cases). Nothing committed. |
+| 2026-07-22 | Claude | C review corrections | Edited `app/components/ui/tabs.tsx`, `app/components/ui/data-list.tsx`, `app/components/ui/confirm-dialog.tsx`, `app/components/ui/button.tsx`, `app/sidebar.tsx`, `app/globals.css` for Codex findings (Tabs keyboard/ARIA, DataRow accessible names + focus ring, ConfirmDialog focus, Button safe type, mobile short-viewport overflow + centered grid, lint type alias, responsive tab overflow, Node 22 test harness); created `tests/ui-primitives.test.ts` (4 cases). |
+| 2026-07-22 | Codex | Phase 1 integration | Reviewed and verified the shell/primitives work, then committed it as `ace2dbc` (`refactor(ui): establish shared application shell`). |
 
 **Final Phase 1 changed-file list (as of this handoff):** `DESIGN.md`, `docs/ui-sweep-plan-2026-07-22.md`, `app/globals.css`, `app/sidebar.tsx`, `app/components/ui/class-names.ts`, `app/components/ui/button.tsx`, `app/components/ui/icon-button.tsx`, `app/components/ui/status-indicator.tsx`, `app/components/ui/empty-state.tsx`, `app/components/ui/inline-error.tsx`, `app/components/ui/form-fields.tsx`, `app/components/ui/page-frame.tsx`, `app/components/ui/page-header.tsx`, `app/components/ui/section-header.tsx`, `app/components/ui/tabs.tsx`, `app/components/ui/data-list.tsx`, `app/components/ui/confirm-dialog.tsx`, `app/components/ui/index.ts`, `tests/ui-primitives.test.ts`. Untouched/untracked and out of scope: `.omx/`, `2026-05-22-081046-were-going-to-explore-and-define-a-new-product-c.txt`.
 
@@ -220,4 +221,4 @@ _Add a row here and to the changed-files log when you finish a stage. Update the
 
 **Build-fix note (2026-07-22, Claude):** `tabs.tsx` build failure — custom `onSelect` was left in `...rest` and spread onto `<nav>`, colliding with DOM `onSelect`. Fixed by destructuring `onSelect` out before `rest` and using it only in the button branch; added `"use client"` (uses `useRef`/keyboard handlers). Not committed; Codex to rerun build.
 
-| 2026-07-22 | Claude | C | Adopted the primitives in the shell (`app/sidebar.tsx`, `app/globals.css`): nav remains semantic `Next` `Link`s and account/logout remains appropriate native markup; only the mobile menu/close controls use `IconButton`, and the project switcher's Create action uses `Button` — not all nav/account controls. Frozen nav order and Capture/Digest/Review/Trash placement unchanged, project-label anti-pattern resolved to `text-xs text-ink-faint`, drawer focus-trap/`inert`/Escape behavior preserved exactly. `app/globals.css`: root/`.font-display` letter-spacing neutralised to `0` and a reduced-motion fallback added; legacy `.glass`/`.glass-soft` definitions left untouched. Then applied Codex's review corrections on top: Tabs keyboard nav plus `tabId`/`panelId` ARIA wiring; DataRow required accessible names and a visible focus ring; ConfirmDialog focus fix for the disabled/destructive Cancel case; `Button` safe default `type`; mobile short-viewport overflow fix and an equal 78px end-column mobile top-bar grid (not the shell background); an empty interface flagged by lint replaced with a type alias; responsive tab overflow handling; a descriptor-based Node 22 global patch/restore in the test harness (not a pinned test runner). Added `tests/ui-primitives.test.ts` (4 cases) covering the corrected Tabs/DataRow/ConfirmDialog behavior. Fresh validation this session: `pnpm exec tsc --noEmit` PASS, `pnpm test` PASS 204/204, `pnpm lint` PASS (0 errors, 1 pre-existing/generated warning under `desktop/src-tauri/target`), `pnpm build` PASS. Visual gap: the in-app browser project list was empty, so no screenshot/manual drawer click test was possible; an unauthenticated local `curl` to `/p/inbox` reached the expected inaccessible/404 state without a signed-in session; no Playwright or other dependency was added — this is the only remaining review gap, covered otherwise by the new automated tests. The manual signed-in drawer keyboard/visual check in the acceptance checklist is left unchecked for this reason. Prod untouched, nothing pushed, `.omx/` and the 2026-05-22 txt file untouched/untracked. Nothing committed — no commit hash exists yet. Marked Stage C **Completed**, Phase 1 **Ready for Codex final approval and commit**. Phase 2+ remains deferred. |
+| 2026-07-22 | Claude + Codex | C | Adopted and reviewed the shared shell and primitives. Validation passed: TypeScript, 204/204 tests, lint with zero errors, and production build. Committed as `ace2dbc`. The signed-in visual drawer check remains documented as the only Phase 1 validation gap. |
