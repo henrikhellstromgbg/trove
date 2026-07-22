@@ -145,6 +145,39 @@ export async function GET(req: Request) {
   return Response.json({ conversations });
 }
 
+export async function DELETE(req: Request) {
+  const { userId } = await askDeps.auth();
+  if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  const url = new URL(req.url);
+  let projectId: string;
+  try {
+    projectId = await resolveProject(userId, url.searchParams.get("projectId"));
+  } catch (error) {
+    if (error instanceof InvalidProjectError) {
+      return Response.json({ error: error.message }, { status: 400 });
+    }
+    throw error;
+  }
+
+  // Reuse the same ownership gate as the reads: a missing or foreign thread is a
+  // 404, indistinguishable on purpose. Messages go with it via ON DELETE cascade.
+  const conversationId = await requireConversation(
+    userId,
+    projectId,
+    url.searchParams.get("conversationId")
+  );
+  if (!conversationId) {
+    return Response.json({ error: "Conversation not found" }, { status: 404 });
+  }
+
+  await askDeps.db
+    .delete(schema.conversation)
+    .where(eq(schema.conversation.id, conversationId));
+
+  return Response.json({ ok: true, id: conversationId });
+}
+
 export async function POST(req: Request) {
   const { userId } = await askDeps.auth();
   if (!userId) {
