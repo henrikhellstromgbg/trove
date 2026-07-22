@@ -48,7 +48,9 @@ const DEFAULT_PROMO_BLOCKLIST: [&str; 4] = [
 // Registry
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+// Not Eq: the server-supplied `cursor` is an arbitrary JSON value (serde_json::
+// Value), which is PartialEq but not Eq. PartialEq is all the tests need.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(tag = "kind")]
 pub(crate) enum LocalSource {
     #[serde(rename = "folder_watch")]
@@ -57,7 +59,7 @@ pub(crate) enum LocalSource {
     MailFolder(MailFolderSource),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub(crate) struct FolderWatchSource {
     pub(crate) id: String,
     #[serde(rename = "projectId")]
@@ -66,9 +68,14 @@ pub(crate) struct FolderWatchSource {
     pub(crate) folder_path: String,
     #[serde(default)]
     pub(crate) globs: Vec<String>,
+    // Last checkpoint the server holds for this source. Used to seed the local
+    // checkpoint on a machine that has never run this source, so it doesn't
+    // re-import everything the first time. Ignored once a local checkpoint exists.
+    #[serde(default)]
+    pub(crate) cursor: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub(crate) struct MailFolderSource {
     pub(crate) id: String,
     #[serde(rename = "projectId")]
@@ -81,6 +88,8 @@ pub(crate) struct MailFolderSource {
     pub(crate) sender_block: Vec<String>,
     #[serde(rename = "promoBlocklist", default)]
     pub(crate) promo_blocklist: Vec<String>,
+    #[serde(default)]
+    pub(crate) cursor: Option<serde_json::Value>,
 }
 
 fn sources_from_values(entries: Vec<serde_json::Value>) -> Vec<LocalSource> {
@@ -288,10 +297,10 @@ pub(crate) async fn run_local_sources_once(
         if result.sent > 0 {
             let cursor = match result.kind {
                 "folder_watch" => {
-                    serde_json::to_value(load_folder_checkpoint(&dir, &result.source_id)).ok()
+                    serde_json::to_value(load_folder_checkpoint(&dir, &result.source_id, None)).ok()
                 }
                 "mail_folder" => {
-                    serde_json::to_value(load_mail_checkpoint(&dir, &result.source_id)).ok()
+                    serde_json::to_value(load_mail_checkpoint(&dir, &result.source_id, None)).ok()
                 }
                 _ => None,
             };
@@ -366,7 +375,7 @@ pub(crate) async fn run_folder_watch(
     }
 
     let candidates = collect_folder_candidates(&root);
-    let mut checkpoint = load_folder_checkpoint(checkpoint_dir, &source.id);
+    let mut checkpoint = load_folder_checkpoint(checkpoint_dir, &source.id, source.cursor.as_ref());
     let pending = select_folder_files(&source.globs, candidates, &checkpoint);
 
     for file in pending {
@@ -526,11 +535,19 @@ fn collect_folder_candidates(root: &Path) -> Vec<FolderCandidate> {
     out
 }
 
-fn load_folder_checkpoint(dir: &Path, source_id: &str) -> FolderWatchCheckpoint {
+// A local checkpoint file always wins. Only when none exists do we fall back to
+// the server-supplied seed, so a fresh machine resumes instead of re-importing.
+fn load_folder_checkpoint(
+    dir: &Path,
+    source_id: &str,
+    seed: Option<&serde_json::Value>,
+) -> FolderWatchCheckpoint {
     let path = dir.join(format!("{source_id}.json"));
     match fs::read_to_string(&path) {
         Ok(text) => serde_json::from_str(&text).unwrap_or_default(),
-        Err(_) => FolderWatchCheckpoint::default(),
+        Err(_) => seed
+            .and_then(|value| serde_json::from_value::<FolderWatchCheckpoint>(value.clone()).ok())
+            .unwrap_or_default(),
     }
 }
 
@@ -583,7 +600,7 @@ pub(crate) async fn run_mail_folder(
         }
     };
 
-    let mut checkpoint = load_mail_checkpoint(checkpoint_dir, &source.id);
+    let mut checkpoint = load_mail_checkpoint(checkpoint_dir, &source.id, source.cursor.as_ref());
     let mut seen: HashSet<String> = checkpoint.sent.iter().cloned().collect();
 
     for message in parse_mbox(&content) {
@@ -638,11 +655,17 @@ pub(crate) async fn run_mail_folder(
     result
 }
 
-fn load_mail_checkpoint(dir: &Path, source_id: &str) -> MailCheckpoint {
+fn load_mail_checkpoint(
+    dir: &Path,
+    source_id: &str,
+    seed: Option<&serde_json::Value>,
+) -> MailCheckpoint {
     let path = dir.join(format!("{source_id}.json"));
     match fs::read_to_string(&path) {
         Ok(text) => serde_json::from_str(&text).unwrap_or_default(),
-        Err(_) => MailCheckpoint::default(),
+        Err(_) => seed
+            .and_then(|value| serde_json::from_value::<MailCheckpoint>(value.clone()).ok())
+            .unwrap_or_default(),
     }
 }
 
@@ -1154,6 +1177,37 @@ fn parse_zone(token: &str) -> Option<i32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn checkpoint_loaders_seed_from_server_cursor_only_without_a_local_file() {
+        // A nonexistent dir guarantees the local-file read misses, exercising the
+        // seed fallback. Both loaders should adopt the server cursor.
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should advance")
+            .as_nanos();
+        let dir = env::temp_dir().join(format!("trove-seed-test-{nanos}-absent"));
+
+        // The seed mirrors what the daemon pushes: a serialized checkpoint,
+        // version field included.
+        let mail_seed = serde_json::json!({ "version": 1, "sent": ["msg-1", "msg-2"] });
+        let mail = load_mail_checkpoint(&dir, "src-mail", Some(&mail_seed));
+        assert_eq!(mail.sent, vec!["msg-1".to_string(), "msg-2".to_string()]);
+
+        let folder_seed = serde_json::json!({
+            "version": 1,
+            "files": { "a.pdf": { "modifiedAt": "2026-01-01T00:00:00.000Z", "size": 3, "externalId": "ext-a" } }
+        });
+        let folder = load_folder_checkpoint(&dir, "src-folder", Some(&folder_seed));
+        assert!(folder.files.contains_key("a.pdf"));
+        assert_eq!(folder.files["a.pdf"].external_id, "ext-a");
+
+        // No seed and no local file falls back to an empty checkpoint.
+        assert!(load_mail_checkpoint(&dir, "src-none", None).sent.is_empty());
+        assert!(load_folder_checkpoint(&dir, "src-none", None)
+            .files
+            .is_empty());
+    }
 
     #[test]
     fn parses_registry_and_skips_malformed_entries() {

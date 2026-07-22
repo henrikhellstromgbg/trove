@@ -806,6 +806,7 @@ Unsubscribe to stop these.\r\n",
             sender_allow: vec![],
             sender_block: vec![],
             promo_blocklist: vec![],
+            cursor: None,
         };
 
         let result =
@@ -865,6 +866,7 @@ Unsubscribe to stop these.\r\n",
             project_id: "project-123".to_string(),
             folder_path: root.to_string_lossy().into_owned(),
             globs: vec![],
+            cursor: None,
         };
 
         let result =
@@ -933,6 +935,7 @@ Body content here.\r\n",
             sender_allow: vec![],
             sender_block: vec![],
             promo_blocklist: vec![],
+            cursor: None,
         };
 
         let result =
