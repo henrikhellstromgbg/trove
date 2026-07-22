@@ -132,6 +132,14 @@ Correction after the first Codex run (2026-07-21):
 
 ## Reconciliation for the existing db:push database (future, not run now)
 
+> **Superseded by [`prod-db-reconciliation-runbook.md`](prod-db-reconciliation-runbook.md).**
+> This outline predated migrations 0002–0006 and only covered baselining onto
+> 0000 + 0001. The runbook extends it to the full 0000→0006 path, adds
+> `scripts/baseline-migrations.ts` (with a prod guard), and the baseline-then-
+> migrate mechanism is now tested to converge to a fresh migrate via
+> `scripts/test-reconciliation.sh`. Use the runbook; the steps below remain as
+> the original rationale.
+
 The prod database was created with `pnpm db:push` and has never run the migration path. Before it can be baselined onto 0000 + 0001, run this reconciliation, in order, against a backup-verified copy first:
 
 1. Take a backup and verify it restores.

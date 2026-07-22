@@ -110,7 +110,7 @@ Already done in `drizzle.config.ts` and `lib/db/migrate.ts`.
 
 **Project scoping.** Every DB query must validate `userId = currentUserId` and the active project. Do not accept an item, source or pipeline id without verifying that it belongs to the same user and project. No cross-project reads, ever.
 
-**Migration safety.** `0000 + 0001` is only the fresh-install path for an empty database. Never run it against the existing db:push-created production database. Its backup, comparison and baselining procedure is documented in [docs/review-fix-plan-2026-07-21.md](docs/review-fix-plan-2026-07-21.md), under “Reconciliation for the existing db:push database”; document and test that procedure on a restored copy before any production action.
+**Migration safety.** The migrations `0000`→`0006` are only the fresh-install path for an empty database. Never run them against the existing db:push-created production database as-is: with no journal the migrator restarts at `0000` and collides on existing objects. The backup-first, baseline-then-migrate reconciliation is documented and its mechanism is tested (converges to a fresh migrate) in [docs/prod-db-reconciliation-runbook.md](docs/prod-db-reconciliation-runbook.md) — use `scripts/baseline-migrations.ts` (records already-present migrations in the journal without running their SQL; refuses unless `--confirm-database` matches the target) and rehearse the whole thing on a restored copy before any production action. Prod is never touched directly.
 
 **Naming.** Tables and columns are snake_case in SQL, camelCase in TypeScript via Drizzle. Schema names are singular nouns. Sources import material. Pipelines read a project's library and create recurring results. Never call a source selection rule a pipeline.
 
@@ -127,7 +127,7 @@ Already done in `drizzle.config.ts` and `lib/db/migrate.ts`.
 | Step | State | Notes |
 |------|-------|-------|
 | Scaffold Next.js 16 | Done | App Router, Tailwind, Turbopack, dev server returns HTTP 200 |
-| Neon + Drizzle + pgvector | Partial | 0001 brings fresh installs to the current schema and vector(768); verified against a disposable database via `pnpm db:verify-fresh`. Prod (db:push-created) still needs the documented reconciliation and baselining. |
+| Neon + Drizzle + pgvector | Partial | Migrations 0000→0006 bring fresh installs to the current schema and vector(768); verified against a disposable database via `pnpm db:verify-fresh`. Prod (db:push-created) reconciliation is documented and its baseline-then-migrate mechanism is tested to converge (`docs/prod-db-reconciliation-runbook.md`, `scripts/baseline-migrations.ts`, `scripts/test-reconciliation.sh`); the prod cutover itself is not yet run. |
 | Clerk auth | Done | Protects application routes; `/api/ingest` supports its own Clerk/token auth. |
 | Capture + private Vercel Blob | Done | Browser still uses legacy `/api/capture`; migration to `/api/ingest` remains. |
 | Inngest + ingest worker | Done | Extraction, chunking, embedding, enrichment, topic clustering, source sync and due pipelines exist. |
