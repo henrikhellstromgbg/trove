@@ -35,8 +35,8 @@ function sourceStatus(source: { enabled: boolean; lastStatus: string | null }): 
   status: Status;
   label: string;
 } {
-  if (source.lastStatus === "error") return { status: "error", label: "Error" };
   if (!source.enabled) return { status: "paused", label: "Paused" };
+  if (source.lastStatus === "error") return { status: "error", label: "Error" };
   return { status: "active", label: "Active" };
 }
 
