@@ -5,6 +5,8 @@ use std::{
     error::Error,
     fmt, io,
     path::{Path, PathBuf},
+    sync::atomic::{AtomicBool, Ordering},
+    time::Duration,
 };
 use tauri::{
     image::Image,
@@ -22,6 +24,17 @@ const BACKEND_URL_ENV: &str = "TROVE_BACKEND_URL";
 const INGEST_TOKEN_ENV: &str = "TROVE_INGEST_TOKEN";
 const PROJECT_ID_ENV: &str = "TROVE_PROJECT_ID";
 const MAX_FILE_BYTES: u64 = 32 * 1024 * 1024;
+
+// Autonomous local-source sync. The daemon polls its approved sources on an
+// interval instead of waiting for a tray click. Env override in whole seconds,
+// floored so a typo can't turn it into a hot loop.
+const LOCAL_SYNC_INTERVAL_ENV: &str = "TROVE_LOCAL_SYNC_INTERVAL_SECS";
+const DEFAULT_LOCAL_SYNC_SECS: u64 = 300;
+const MIN_LOCAL_SYNC_SECS: u64 = 30;
+
+// A single in-flight guard shared by the timer and the tray action so a slow
+// run can never overlap the next tick (or a manual click).
+static LOCAL_SYNC_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 struct JsonIngestPayload {
@@ -372,6 +385,7 @@ pub fn run() {
 
             build_tray(app.handle())?;
             app.global_shortcut().register(hotkey)?;
+            spawn_local_sync_scheduler();
 
             if let Some(window) = app.get_webview_window("main") {
                 let handle = app.handle().clone();
@@ -483,7 +497,45 @@ async fn handle_drop_path(path: String) {
     }
 }
 
+// Resolve the sync interval from the environment, defaulting and flooring so a
+// misconfigured value can never produce a busy loop. Pure for testability.
+fn local_sync_interval_secs<F>(read: F) -> u64
+where
+    F: Fn(&str) -> Option<String>,
+{
+    read(LOCAL_SYNC_INTERVAL_ENV)
+        .and_then(|raw| raw.trim().parse::<u64>().ok())
+        .map(|secs| secs.max(MIN_LOCAL_SYNC_SECS))
+        .unwrap_or(DEFAULT_LOCAL_SYNC_SECS)
+}
+
+// Spawn the background timer. It runs one sync shortly after launch, then every
+// interval. Missing config (no token yet) just logs and skips per tick, so the
+// timer is harmless before the daemon is set up.
+fn spawn_local_sync_scheduler() {
+    let interval = Duration::from_secs(local_sync_interval_secs(|key| env::var(key).ok()));
+    tauri::async_runtime::spawn(async move {
+        loop {
+            sync_local_sources().await;
+            tokio::time::sleep(interval).await;
+        }
+    });
+}
+
 async fn sync_local_sources() {
+    // Skip if a run (timer tick or tray click) is already in progress. The guard
+    // is reset on drop so an early return or panic can't wedge it shut.
+    if LOCAL_SYNC_IN_FLIGHT.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    struct InFlightGuard;
+    impl Drop for InFlightGuard {
+        fn drop(&mut self) {
+            LOCAL_SYNC_IN_FLIGHT.store(false, Ordering::SeqCst);
+        }
+    }
+    let _guard = InFlightGuard;
+
     let config = match IngestConfig::from_env_local() {
         Ok(config) => config,
         Err(err) => {
@@ -524,6 +576,45 @@ mod tests {
     };
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
+
+    #[test]
+    fn local_sync_interval_defaults_when_unset_or_invalid() {
+        assert_eq!(local_sync_interval_secs(|_| None), DEFAULT_LOCAL_SYNC_SECS);
+        assert_eq!(
+            local_sync_interval_secs(|_| Some("not-a-number".to_string())),
+            DEFAULT_LOCAL_SYNC_SECS
+        );
+    }
+
+    #[test]
+    fn local_sync_interval_reads_and_floors_env() {
+        assert_eq!(
+            local_sync_interval_secs(
+                |key| (key == LOCAL_SYNC_INTERVAL_ENV).then(|| " 900 ".to_string())
+            ),
+            900
+        );
+        // A value below the floor is clamped up, never accepted as-is.
+        assert_eq!(
+            local_sync_interval_secs(
+                |key| (key == LOCAL_SYNC_INTERVAL_ENV).then(|| "5".to_string())
+            ),
+            MIN_LOCAL_SYNC_SECS
+        );
+    }
+
+    #[tokio::test]
+    async fn sync_local_sources_skips_when_already_in_flight() {
+        // Simulate a run in progress: the second call must return immediately
+        // without clearing another run's guard.
+        assert!(!LOCAL_SYNC_IN_FLIGHT.swap(true, Ordering::SeqCst));
+        sync_local_sources().await;
+        assert!(
+            LOCAL_SYNC_IN_FLIGHT.load(Ordering::SeqCst),
+            "an in-flight run's guard must survive a skipped call"
+        );
+        LOCAL_SYNC_IN_FLIGHT.store(false, Ordering::SeqCst);
+    }
 
     #[test]
     fn config_uses_default_backend_and_trims_values() {
