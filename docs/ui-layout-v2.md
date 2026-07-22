@@ -336,8 +336,8 @@ only missing piece — build these first, they unlock shipped capability) · **p
 | `/p/[slug]/pipelines/new` | plain-language custom pipeline setup | project | exists, preview planned |
 | `/p/[slug]/pipelines/[id]` | pipeline detail and run history | project | exists |
 | pipeline run result | persisted report with citations | project | partial through Digest |
-| Library review filter | review queue | project | **backend ready** (`/api/items/review`); UI to build |
-| Library trash filter | trash and restore | project | **backend ready** (`/api/items/trash`, `/[id]/restore`); UI to build |
+| Library review filter | review queue | project | exists — `?view=review` tab; approve/reject over `/api/items/review` |
+| Library trash filter | trash and restore | project | exists — `?view=trash` tab; restore + two-step permanent delete over `/[id]/restore` and `DELETE /[id]` |
 | `/p/[slug]/settings` | project settings | project | exists; hosts ingest-token management (issue/scope/reveal-once/revoke) + account access. Connected accounts (`/api/sources/accounts`) still **backend ready** |
 
 ## Decided behavior and remaining questions

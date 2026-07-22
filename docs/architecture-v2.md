@@ -32,7 +32,7 @@ Decisions taken for this version:
 | One ingest API | Exists | Browser capture and Tauri use `/api/ingest`; `/api/capture` remains temporarily as a compatibility route for older clients. |
 | Private blobs | Exists | New uploads are private and served through an authenticated route. |
 | Source runs and immutable originals | Exists | Source sync records runs and immutable original versions; local and Gmail runtimes remain. |
-| Review, trash and deletion markers | Partial | Project-scoped routes support decisions, trash, restore and retryable permanent deletion. Deletion markers prevent same-source re-import. An active, version-bound, project-scoped review rule now routes matching items to `review` at import (both source sync and `/api/ingest`); held items are never emitted, so they gain no chunks and stay out of Ask until approval sends them back to `pending`. Product UI remains. |
+| Review, trash and deletion markers | Partial | Project-scoped routes support decisions, trash, restore and retryable permanent deletion. Deletion markers prevent same-source re-import. An active, version-bound, project-scoped review rule now routes matching items to `review` at import (both source sync and `/api/ingest`); held items are never emitted, so they gain no chunks and stay out of Ask until approval sends them back to `pending`. The library now surfaces both: `review` and `trash` tabs approve/reject and restore/permanently-delete. |
 | Account connections and settings | Partial | Account metadata and ownership exist. OAuth, credential storage and settings UI are not built. |
 
 ## The one constraint that shapes everything
@@ -314,7 +314,7 @@ Phased by dependency rather than by source type:
 7. **Persist Ask conversations.** Complete: Ask writes project-scoped threads and messages, including citations and follow-up intent.
 8. **Product UI.** Phases 1–7 are done on the backend, but several capabilities are reachable only by API. Build the front doors, per `docs/ui-layout-v2.md` (behavior + screen inventory) and `docs/trove-project-flow-architecture.html` (visual). Sequenced by what a ready backend already unlocks:
    1. **Local runtime front door** — Done. `/p/[slug]/sources/new` now offers `mail_folder`/`folder_watch` with their config fields and an honest "runs on your mac" note; the source detail page labels local sources daemon-driven instead of showing a server cron/sync button. `/p/[slug]/settings` hosts ingest-token management (issue with optional label + project scope, reveal-once, revoke) over `/api/ingest-tokens`. The local runtime is now self-serve from the web.
-   2. **Review and trash** — review-queue and trash/restore filters in Library (`/api/items/review`, `/trash`, `/[id]/restore` all exist; the review-rules backend is inert without this UI).
+   2. **Review and trash** — Done. Library now excludes held/trashed items from the main list and adds `all`/`review`/`trash` tabs: the review queue approves or rejects (`/api/items/review`), and trash restores (`/[id]/restore`) or permanently deletes with a two-step confirm (`DELETE /[id]`). The review-rules backend is no longer inert.
    3. **Item detail actions** — move/copy control (`/api/items/[id]/move` exists) plus rename/retag/reprocess, which still need small item routes (only `DELETE` exists today).
    4. **Settings pages** — token panel + account access shipped at `/p/[slug]/settings`; connected accounts (`/api/sources/accounts`) still to add.
    Structure-first per the shell note; visual polish follows the established direction.
