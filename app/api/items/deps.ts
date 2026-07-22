@@ -9,6 +9,7 @@ import {
   restoreItem,
 } from "@/lib/review-or-deletion/store";
 import { moveItemToProject } from "@/lib/items/move";
+import { editItem, reprocessItem } from "@/lib/items/edit";
 
 export const itemRouteDeps = {
   auth,
@@ -20,4 +21,6 @@ export const itemRouteDeps = {
   restoreItem,
   permanentlyDeleteItem,
   moveItemToProject,
+  editItem,
+  reprocessItem,
 };
