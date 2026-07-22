@@ -8,6 +8,14 @@ import ws from "ws";
 
 neonConfig.webSocketConstructor = ws;
 
+// Local development against a Postgres behind a Neon wsproxy. Never set in
+// production, where the driver talks to Neon directly.
+if (process.env.DATABASE_WS_PROXY) {
+  neonConfig.wsProxy = () => process.env.DATABASE_WS_PROXY!;
+  neonConfig.useSecureWebSocket = false;
+  neonConfig.pipelineConnect = false;
+}
+
 async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
