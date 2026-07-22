@@ -1,5 +1,6 @@
 import { and, asc, cosineDistance, desc, eq } from "drizzle-orm";
 import { schema } from "@/lib/db";
+import { MODELS } from "@/lib/ai/models";
 import { InvalidProjectError, isUuid } from "@/lib/projects";
 import { askDeps } from "./deps";
 
@@ -300,7 +301,7 @@ export async function POST(req: Request) {
 
         failureCode = "ASK_GENERATION_FAILED";
         const claudeStream = askDeps.anthropic.messages.stream({
-          model: "claude-sonnet-4-6",
+          model: MODELS.answer,
           max_tokens: 1024,
           system: SYSTEM_PROMPT,
           messages: [

@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { MODELS } from "@/lib/ai/models";
 import { PipelineSpec, PipelineSpecSchema } from "./types";
 
 const anthropic = new Anthropic();
@@ -46,7 +47,7 @@ Respond with ONLY the JSON object. No preamble, no markdown.`;
 
 export async function compilePipelineDescription(description: string): Promise<PipelineSpec> {
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: MODELS.pipelineCompile,
     max_tokens: 1024,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: description }],

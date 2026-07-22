@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { MODELS } from "@/lib/ai/models";
 
 let aiClient: GoogleGenAI | null = null;
 function getAi(): GoogleGenAI {
@@ -11,7 +12,7 @@ function getAi(): GoogleGenAI {
   return aiClient;
 }
 
-const MODEL = "gemini-embedding-001";
+const MODEL = MODELS.embed;
 export const EMBEDDING_DIMENSIONS = 768;
 
 export async function embedTexts(texts: string[]): Promise<number[][]> {

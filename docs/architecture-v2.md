@@ -236,9 +236,9 @@ Sharpen the mental model. **Sources pull content in. Pipelines push results out.
 The current pipeline engine stays: filter items, run one Haiku prompt, shape the output, optionally email, on a cron. Changes:
 
 1. **Scope to a project.** A pipeline runs over one project's items, never across the wall.
-2. **Optional retrieval.** Today pipelines see only title, summary and tags (`lib/pipelines/run.ts`). For real "ask the corpus" quality, a pipeline can opt into vector retrieval over `chunk`, so it reasons over full text, not just summaries. Add a `retrieval` flag and a query to the spec.
+2. **Optional retrieval.** Done. A pipeline can opt into vector retrieval over `chunk` (`retrieval` flag + optional `retrievalQuery` in the spec, set by the compiler, validated in `lib/pipelines/api.ts`), so it reasons over full text instead of just title/summary/tags (`lib/pipelines/run.ts` `loadRetrievalContext`).
 3. **Richer triggers, later.** Cron now. Add "on new item matching filter" as an event trigger once sources are in, so a pipeline can react to arrivals, not just wake on a clock.
-4. **Answers model.** Keep Haiku for cheap digest and list shapes. Use a stronger model (Sonnet class) for the chat answer path and for retrieval-heavy pipelines. Reconcile model ids while here, see the config cleanup below.
+4. **Answers model.** Done. Model ids are centralised in `lib/ai/models.ts` (single source of truth, one test locks them to the documented choices). The chat answer path and pipeline compilation use Sonnet; ordinary pipeline runs use Haiku; a retrieval-heavy run gets the Sonnet-class model via `pipelineRunModel(retrieval)`.
 
 The weekly digest is already implemented as one seeded pipeline per project. It remains a normal pipeline rather than a separate subsystem. The seed now runs Friday at 15:00 to match the starter template, while the Digest page still depends on the seeded name `weekly-digest`. Remove the magic-name dependency when the template picker is built.
 
@@ -260,8 +260,9 @@ Slack `events` mode adds a plain route (`/api/slack/events`), outside Inngest, t
 - **Embeddings:** Gemini `gemini-embedding-001`, 768 dimensions.
 - **Answers and pipeline compilation:** Claude Sonnet 4.6.
 - **Extraction, enrichment and ordinary pipeline runs:** Claude Haiku 4.5.
+- **Retrieval-heavy pipeline runs:** Claude Sonnet 4.6 (they reason over full chunk text).
 
-The code, root `CLAUDE.md` and generated migrations `0000` through `0006` agree on these choices. The full fresh-database migration path has been executed and verified against a disposable empty database via `pnpm db:verify-fresh` (see `docs/review-fix-plan-2026-07-21.md`).
+These ids live in one place, `lib/ai/models.ts`, which every call site imports; a test (`tests/models.test.ts`) locks the role→id map so a stray edit can't drift them. The code, root `CLAUDE.md` and generated migrations `0000` through `0006` agree on these choices. The full fresh-database migration path has been executed and verified against a disposable empty database via `pnpm db:verify-fresh` (see `docs/review-fix-plan-2026-07-21.md`).
 
 ## Left sidebar shell, structure only
 

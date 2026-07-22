@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import { MODELS } from "@/lib/ai/models";
 
 const anthropic = new Anthropic();
 
@@ -25,7 +26,7 @@ export async function enrich(text: string): Promise<Enrichment> {
   const truncated = text.slice(0, 12000);
 
   const response = await anthropic.messages.create({
-    model: "claude-haiku-4-5",
+    model: MODELS.enrich,
     max_tokens: 512,
     messages: [{ role: "user", content: PROMPT + truncated }],
   });

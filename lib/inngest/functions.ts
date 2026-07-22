@@ -12,6 +12,7 @@ import { extractFromTextFile } from "@/lib/ai/extract-textfile";
 import { chunkText } from "@/lib/ai/chunk";
 import { embedTexts } from "@/lib/ai/embed";
 import { enrich } from "@/lib/ai/enrich";
+import { MODELS } from "@/lib/ai/models";
 import { runPipelineSpec } from "@/lib/pipelines/run";
 import { nextRunFromCron } from "@/lib/pipelines/cron";
 import { PipelineSpecSchema, runStatusForOutput } from "@/lib/pipelines/types";
@@ -235,7 +236,7 @@ ${bullets}
 `;
 
   const response = await anthropic.messages.create({
-    model: "claude-haiku-4-5",
+    model: MODELS.topicNaming,
     max_tokens: 512,
     messages: [{ role: "user", content: prompt }],
   });

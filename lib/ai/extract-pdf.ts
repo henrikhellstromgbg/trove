@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { fetchBlobBuffer } from "@/lib/blob";
+import { MODELS } from "@/lib/ai/models";
 
 const anthropic = new Anthropic();
 
@@ -22,7 +23,7 @@ export async function extractFromPdf(blobUrl: string): Promise<PdfExtracted> {
   const base64 = buffer.toString("base64");
 
   const response = await anthropic.messages.create({
-    model: "claude-haiku-4-5",
+    model: MODELS.extract,
     max_tokens: 8192,
     messages: [
       {

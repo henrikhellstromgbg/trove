@@ -2,6 +2,7 @@ import { and, eq, inArray, gte, ilike, or, desc, sql, lt, cosineDistance } from 
 import Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "@/lib/db";
 import { embedQuery } from "@/lib/ai/embed";
+import { pipelineRunModel } from "@/lib/ai/models";
 import {
   PipelineSpec,
   PipelineRunOutput,
@@ -54,7 +55,7 @@ export async function runPipelineSpec(
   const outputInstruction = outputInstructionFor(spec.outputShape);
 
   const response = await anthropic.messages.create({
-    model: "claude-haiku-4-5",
+    model: pipelineRunModel(spec.retrieval),
     max_tokens: 1500,
     messages: [
       {
