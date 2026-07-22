@@ -65,7 +65,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useUser();
-  const { signOut, openUserProfile } = useClerk();
+  const { signOut } = useClerk();
 
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -332,16 +332,16 @@ export function Sidebar() {
             <Download size={18} className="shrink-0 text-ink-dim" />
             <span>Capture</span>
           </button>
-          <button
-            onClick={() => {
-              closeMobile();
-              openUserProfile();
-            }}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] text-ink transition-colors hover:bg-ink/[0.03]"
+          <Link
+            href={`${base}/settings`}
+            onClick={closeMobile}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
+              isActive("settings") ? "bg-ink/[0.05] text-ink" : "text-ink hover:bg-ink/[0.03]"
+            }`}
           >
             <Settings size={18} className="shrink-0 text-ink-dim" />
             <span>Settings</span>
-          </button>
+          </Link>
         </div>
 
         {/* user */}
