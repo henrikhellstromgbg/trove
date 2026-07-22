@@ -2,21 +2,28 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
 import { useProject } from "@/app/project-context";
+import {
+  Button,
+  InlineError,
+  TextField,
+  TextArea,
+  Select,
+  cx,
+} from "@/app/components/ui";
 
 const CRON_PRESETS = [
-  { label: "every hour", value: "0 * * * *" },
-  { label: "every 6 hours", value: "0 */6 * * *" },
-  { label: "daily at 8am", value: "0 8 * * *" },
+  { label: "Every hour", value: "0 * * * *" },
+  { label: "Every 6 hours", value: "0 */6 * * *" },
+  { label: "Daily at 8am", value: "0 8 * * *" },
 ];
 
 const KINDS = [
-  { value: "rss", label: "rss feed" },
-  { value: "web_scrape", label: "web page" },
-  { value: "slack_channel", label: "slack channel" },
-  { value: "mail_folder", label: "mail folder" },
-  { value: "folder_watch", label: "watched folder" },
+  { value: "rss", label: "RSS feed" },
+  { value: "web_scrape", label: "Web page" },
+  { value: "slack_channel", label: "Slack channel" },
+  { value: "mail_folder", label: "Mail folder" },
+  { value: "folder_watch", label: "Watched folder" },
 ] as const;
 
 type Kind = (typeof KINDS)[number]["value"];
@@ -72,6 +79,8 @@ export function NewSourceForm() {
     return false;
   }
 
+  const canSubmit = name.trim().length > 0 && primaryFieldFilled() && !busy;
+
   async function submit() {
     const n = name.trim();
     if (n.length === 0 || !primaryFieldFilled() || busy) return;
@@ -124,236 +133,212 @@ export function NewSourceForm() {
   }
 
   return (
-    <div className="flex max-w-xl flex-col gap-5 rounded-2xl border border-line bg-paper p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)] md:p-8">
-      <div className="flex flex-col gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-          kind
-        </span>
-        <div className="flex flex-wrap gap-2">
-          {KINDS.map((k) => (
-            <button
-              key={k.value}
-              onClick={() => setKind(k.value)}
-              className={`rounded-lg border px-3 py-1.5 text-xs uppercase tracking-wider transition-colors ${
-                kind === k.value
-                  ? "border-ink bg-ink text-canvas"
-                  : "border-line text-ink-dim hover:border-line-strong"
-              }`}
-            >
-              {k.label}
-            </button>
-          ))}
+    <form
+      className="flex w-full max-w-xl flex-col gap-6"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit();
+      }}
+    >
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-2 text-sm font-medium text-ink">Kind</legend>
+        <div role="group" aria-label="Source kind" className="flex flex-wrap gap-2">
+          {KINDS.map((k) => {
+            const active = kind === k.value;
+            return (
+              <button
+                key={k.value}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setKind(k.value)}
+                className={cx(
+                  "rounded-lg border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-dim focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
+                  active
+                    ? "border-ink bg-ink text-canvas"
+                    : "border-line text-ink-dim hover:border-line-strong"
+                )}
+              >
+                {k.label}
+              </button>
+            );
+          })}
         </div>
-      </div>
+      </fieldset>
 
-      <label className="flex flex-col gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-          name
-        </span>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="a blog, a newsletter, whatever it is"
-          className="bg-transparent text-lg text-ink placeholder:text-ink-faint"
-        />
-      </label>
+      <TextField
+        id="source-name"
+        label="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="A blog, a newsletter, whatever it is"
+      />
 
       {kind === "rss" ? (
-        <label className="flex flex-col gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-            feed url
-          </span>
-          <input
-            value={feedUrl}
-            onChange={(e) => setFeedUrl(e.target.value)}
-            placeholder="https://example.com/feed.xml"
-            className="bg-transparent text-lg text-ink placeholder:text-ink-faint"
-          />
-        </label>
+        <TextField
+          id="feed-url"
+          label="Feed URL"
+          value={feedUrl}
+          onChange={(e) => setFeedUrl(e.target.value)}
+          placeholder="https://example.com/feed.xml"
+        />
       ) : null}
 
       {kind === "web_scrape" ? (
         <>
-          <label className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-              page url
-            </span>
-            <input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://example.com/blog"
-              className="bg-transparent text-lg text-ink placeholder:text-ink-faint"
-            />
-          </label>
-          <label className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-              link selector, optional
-            </span>
-            <input
-              value={selector}
-              onChange={(e) => setSelector(e.target.value)}
-              placeholder="e.g. article a, .post-list a"
-              className="bg-transparent font-mono text-sm text-ink placeholder:text-ink-faint"
-            />
-          </label>
-          <label className="flex items-center gap-2">
+          <TextField
+            id="page-url"
+            label="Page URL"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://example.com/blog"
+          />
+          <TextField
+            id="link-selector"
+            label="Link selector, optional"
+            value={selector}
+            onChange={(e) => setSelector(e.target.value)}
+            placeholder="e.g. article a, .post-list a"
+            className="font-mono"
+          />
+          <label className="flex items-start gap-2 text-sm text-ink-dim">
             <input
               type="checkbox"
               checked={followLinks}
               onChange={(e) => setFollowLinks(e.target.checked)}
+              className="mt-0.5"
             />
-            <span className="text-sm text-ink-dim">
-              follow links found on the page, capture new ones each sync
+            <span>
+              Follow links found on the page, capture new ones each sync
             </span>
           </label>
         </>
       ) : null}
 
       {kind === "slack_channel" ? (
-        <label className="flex flex-col gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-            channel id
-          </span>
-          <input
-            value={channelId}
-            onChange={(e) => setChannelId(e.target.value)}
-            placeholder="C0123456789"
-            className="bg-transparent font-mono text-lg text-ink placeholder:text-ink-faint"
-          />
-          <span className="text-xs text-ink-faint">
-            the bot must already be invited to this channel.
-          </span>
-        </label>
+        <TextField
+          id="channel-id"
+          label="Channel ID"
+          value={channelId}
+          onChange={(e) => setChannelId(e.target.value)}
+          placeholder="C0123456789"
+          className="font-mono"
+          aria-describedby="channel-id-note"
+        />
+      ) : null}
+      {kind === "slack_channel" ? (
+        <p id="channel-id-note" className="-mt-4 text-xs text-ink-faint">
+          The bot must already be invited to this channel.
+        </p>
       ) : null}
 
       {isLocal ? (
         <p className="rounded-lg border border-line bg-canvas px-3 py-2.5 text-xs leading-relaxed text-ink-dim">
-          runs on your mac. the trove desktop app reads this path and sends new
-          items to your library. the path must be one you approved in the app.
+          Runs on your Mac. The Trove desktop app reads this path and sends new
+          items to your library. The path must be one you approved in the app.
         </p>
       ) : null}
 
       {kind === "mail_folder" ? (
         <>
-          <label className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-              mbox path
-            </span>
-            <input
-              value={mboxPath}
-              onChange={(e) => setMboxPath(e.target.value)}
-              placeholder="~/Library/Mail/.../INBOX.mbox"
-              className="bg-transparent font-mono text-sm text-ink placeholder:text-ink-faint"
-            />
-          </label>
-          <label className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-              only from, optional
-            </span>
-            <textarea
-              value={senderAllow}
-              onChange={(e) => setSenderAllow(e.target.value)}
-              rows={2}
-              placeholder="one address or domain per line"
-              className="resize-y bg-transparent font-mono text-sm text-ink placeholder:text-ink-faint"
-            />
-            <span className="text-xs text-ink-faint">
-              leave empty to take everything.
-            </span>
-          </label>
-          <label className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-              never from, optional
-            </span>
-            <textarea
-              value={senderBlock}
-              onChange={(e) => setSenderBlock(e.target.value)}
-              rows={2}
-              placeholder="one address or domain per line"
-              className="resize-y bg-transparent font-mono text-sm text-ink placeholder:text-ink-faint"
-            />
-          </label>
-          <label className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-              drop as promo, optional
-            </span>
-            <textarea
-              value={promoBlocklist}
-              onChange={(e) => setPromoBlocklist(e.target.value)}
-              rows={2}
-              placeholder="words that mark a mail as promo, e.g. unsubscribe, sale"
-              className="resize-y bg-transparent font-mono text-sm text-ink placeholder:text-ink-faint"
-            />
-          </label>
+          <TextField
+            id="mbox-path"
+            label="Mbox path"
+            value={mboxPath}
+            onChange={(e) => setMboxPath(e.target.value)}
+            placeholder="~/Library/Mail/.../INBOX.mbox"
+            className="font-mono"
+          />
+          <TextArea
+            id="sender-allow"
+            label="Only from, optional"
+            value={senderAllow}
+            onChange={(e) => setSenderAllow(e.target.value)}
+            rows={2}
+            placeholder="one address or domain per line"
+            className="resize-y font-mono"
+            aria-describedby="sender-allow-note"
+          />
+          <p id="sender-allow-note" className="-mt-4 text-xs text-ink-faint">
+            Leave empty to take everything.
+          </p>
+          <TextArea
+            id="sender-block"
+            label="Never from, optional"
+            value={senderBlock}
+            onChange={(e) => setSenderBlock(e.target.value)}
+            rows={2}
+            placeholder="one address or domain per line"
+            className="resize-y font-mono"
+          />
+          <TextArea
+            id="promo-blocklist"
+            label="Drop as promo, optional"
+            value={promoBlocklist}
+            onChange={(e) => setPromoBlocklist(e.target.value)}
+            rows={2}
+            placeholder="words that mark a mail as promo, e.g. unsubscribe, sale"
+            className="resize-y font-mono"
+          />
         </>
       ) : null}
 
       {kind === "folder_watch" ? (
         <>
-          <label className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-              folder path
-            </span>
-            <input
-              value={folderPath}
-              onChange={(e) => setFolderPath(e.target.value)}
-              placeholder="~/Documents/inbox"
-              className="bg-transparent font-mono text-sm text-ink placeholder:text-ink-faint"
-            />
-          </label>
-          <label className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-              file patterns, optional
-            </span>
-            <textarea
-              value={globs}
-              onChange={(e) => setGlobs(e.target.value)}
-              rows={2}
-              placeholder={DEFAULT_GLOBS_HINT}
-              className="resize-y bg-transparent font-mono text-sm text-ink placeholder:text-ink-faint"
-            />
-            <span className="text-xs text-ink-faint">
-              leave empty for the defaults shown above.
-            </span>
-          </label>
+          <TextField
+            id="folder-path"
+            label="Folder path"
+            value={folderPath}
+            onChange={(e) => setFolderPath(e.target.value)}
+            placeholder="~/Documents/inbox"
+            className="font-mono"
+          />
+          <TextArea
+            id="globs"
+            label="File patterns, optional"
+            value={globs}
+            onChange={(e) => setGlobs(e.target.value)}
+            rows={2}
+            placeholder={DEFAULT_GLOBS_HINT}
+            className="resize-y font-mono"
+            aria-describedby="globs-note"
+          />
+          <p id="globs-note" className="-mt-4 text-xs text-ink-faint">
+            Leave empty for the defaults shown above.
+          </p>
         </>
       ) : null}
 
       {!isLocal ? (
-        <div className="flex flex-col gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-            check
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {CRON_PRESETS.map((p) => (
-              <button
-                key={p.value}
-                onClick={() => setCron(p.value)}
-                className={`rounded-lg border px-3 py-1.5 text-xs uppercase tracking-wider transition-colors ${
-                  cron === p.value
-                    ? "border-ink bg-ink text-canvas"
-                    : "border-line text-ink-dim hover:border-line-strong"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <Select
+          id="schedule"
+          label="Check"
+          value={cron}
+          onChange={(e) => setCron(e.target.value)}
+        >
+          {CRON_PRESETS.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </Select>
       ) : null}
 
-      <div className="flex items-center justify-between gap-4 border-t border-line pt-4">
-        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-          {busy ? "saving" : error || "ready when you are"}
-        </span>
-        <motion.button
-          onClick={submit}
-          whileTap={{ scale: 0.97 }}
-          className="shrink-0 rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
-        >
-          add source
-        </motion.button>
+      <div className="flex flex-col gap-3 border-t border-line pt-5">
+        <InlineError message={error || null} />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-sm text-ink-dim" aria-live="polite">
+            {busy ? "Saving…" : "Ready when you are"}
+          </span>
+          <Button
+            type="submit"
+            disabled={!canSubmit}
+            aria-busy={busy}
+            className="shrink-0"
+          >
+            {busy ? "Saving…" : "Add source"}
+          </Button>
+        </div>
       </div>
-    </div>
+    </form>
   );
 }
