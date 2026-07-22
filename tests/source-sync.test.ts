@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import { schema } from "@/lib/db";
 import {
+  nextRunAtWithBackoff,
   runSourceSync,
   sourceSyncDeps,
   type SyncableSource,
@@ -730,4 +731,74 @@ test("Slack sync skips a file whose id was already imported (no re-upload)", asy
   assert.equal(puts, 0, "an already-imported file must not be re-uploaded");
   // No new item beyond the pre-seeded one.
   assert.equal(db.state.items.length, 1);
+});
+
+test("nextRunAtWithBackoff delays a repeated failure but not a first one", () => {
+  const completedAt = new Date("2026-07-21T10:00:00.000Z");
+  const scheduled = new Date("2026-07-21T10:05:00.000Z"); // normal cron: +5 min
+  Object.assign(sourceSyncDeps as unknown as MutableDeps, {
+    nextRunFromCron: () => scheduled,
+  });
+  process.env.TROVE_SOURCE_ERROR_BACKOFF_SECS = "1800"; // 30 min
+
+  try {
+    // Success and a first failure (prior ok/null) keep the normal schedule.
+    assert.deepEqual(
+      nextRunAtWithBackoff("*/5 * * * *", completedAt, false, "ok"),
+      scheduled
+    );
+    assert.deepEqual(
+      nextRunAtWithBackoff("*/5 * * * *", completedAt, true, "ok"),
+      scheduled
+    );
+    assert.deepEqual(
+      nextRunAtWithBackoff("*/5 * * * *", completedAt, true, null),
+      scheduled
+    );
+    // A repeated failure (prior error) is pushed to completedAt + backoff.
+    const backed = nextRunAtWithBackoff("*/5 * * * *", completedAt, true, "error");
+    assert.equal(backed?.toISOString(), "2026-07-21T10:30:00.000Z");
+    // No cron means no scheduled run at all.
+    assert.equal(nextRunAtWithBackoff(null, completedAt, true, "error"), null);
+  } finally {
+    delete process.env.TROVE_SOURCE_ERROR_BACKOFF_SECS;
+  }
+});
+
+test("a repeated source failure backs off past the normal cron slot", async () => {
+  const scheduledSoon = new Date("2026-07-21T10:05:00.000Z"); // in the past now
+  const db = new MockSyncDb({
+    sources: [
+      {
+        id: SOURCE.id,
+        cron: "*/5 * * * *",
+        cursor: null,
+        lastStatus: "error", // the previous run already failed
+        lastError: "prev boom",
+      },
+    ],
+  });
+  process.env.TROVE_SOURCE_ERROR_BACKOFF_SECS = "1800";
+
+  Object.assign(sourceSyncDeps as unknown as MutableDeps, {
+    db,
+    nextRunFromCron: () => scheduledSoon,
+    fetchRssEntries: async () => {
+      throw new Error("feed down");
+    },
+    sendItemCaptured: async () => {},
+  });
+
+  try {
+    const result = await runSourceSync({ ...SOURCE, cron: "*/5 * * * *" }, "cron");
+    assert.equal(result.ok, false);
+    const nextRunAt = db.state.sources[0]?.nextRunAt as Date;
+    // Backed off ~30 min from now, far past the (already-past) 5-min cron slot.
+    assert.ok(
+      nextRunAt.getTime() - Date.now() > 25 * 60 * 1000,
+      "a repeated failure should back off well beyond the cron cadence"
+    );
+  } finally {
+    delete process.env.TROVE_SOURCE_ERROR_BACKOFF_SECS;
+  }
 });

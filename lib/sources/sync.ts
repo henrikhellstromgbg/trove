@@ -34,8 +34,42 @@ export type SourceRunTrigger = "manual" | "cron";
 const ACTIVE_SOURCE_RUN_CONSTRAINT = "source_run_active_source_idx";
 const ALREADY_RUNNING_ERROR = "source sync already running";
 
+// On a *repeated* failure a source is pushed at least this far out instead of
+// retrying at full cron cadence, so a persistently failing source (bad token,
+// deleted channel) stops hammering the upstream API. A one-off blip keeps the
+// normal schedule. Overridable; floored so it can't be turned off by a typo.
+const SOURCE_ERROR_BACKOFF_ENV = "TROVE_SOURCE_ERROR_BACKOFF_SECS";
+const DEFAULT_SOURCE_ERROR_BACKOFF_SECS = 3600;
+const MIN_SOURCE_ERROR_BACKOFF_SECS = 60;
+
+function sourceErrorBackoffMs(): number {
+  const raw = process.env[SOURCE_ERROR_BACKOFF_ENV];
+  const parsed = raw ? Number.parseInt(raw.trim(), 10) : NaN;
+  const secs = Number.isFinite(parsed)
+    ? Math.max(parsed, MIN_SOURCE_ERROR_BACKOFF_SECS)
+    : DEFAULT_SOURCE_ERROR_BACKOFF_SECS;
+  return secs * 1000;
+}
+
+// Normal cron cadence, except a repeated failure is delayed to at least
+// completedAt + backoff (never earlier than the scheduled time).
+export function nextRunAtWithBackoff(
+  cron: string | null,
+  completedAt: Date,
+  failed: boolean,
+  priorStatus: string | null | undefined
+): Date | null {
+  if (!cron) return null;
+  const scheduled = sourceSyncDeps.nextRunFromCron(cron, completedAt);
+  if (failed && priorStatus === "error") {
+    const backedOff = new Date(completedAt.getTime() + sourceErrorBackoffMs());
+    return !scheduled || backedOff > scheduled ? backedOff : scheduled;
+  }
+  return scheduled;
+}
+
 type SourceRunStartResult =
-  | { started: true; sourceRunId: string }
+  | { started: true; sourceRunId: string; priorStatus: string | null }
   | { started: false; result: SyncResult };
 
 type SyncDbClient = Pick<typeof db, "select" | "insert" | "update">;
@@ -693,6 +727,14 @@ export async function startSourceRun(
 ): Promise<SourceRunStartResult> {
   try {
     return await sourceSyncDeps.db.transaction(async (tx) => {
+      // Read the outgoing status before overwriting it with "running", so the
+      // result recorder can tell a repeated failure from a first one.
+      const priorRows = await tx
+        .select({ lastStatus: schema.source.lastStatus })
+        .from(schema.source)
+        .where(eq(schema.source.id, source.id));
+      const priorStatus = (priorRows[0]?.lastStatus as string | null) ?? null;
+
       const [run] = await tx
         .insert(schema.sourceRun)
         .values({
@@ -713,7 +755,7 @@ export async function startSourceRun(
         })
         .where(eq(schema.source.id, source.id));
 
-      return { started: true, sourceRunId: run.id };
+      return { started: true, sourceRunId: run.id, priorStatus };
     });
   } catch (error) {
     if (isActiveSourceRunConflict(error)) {
@@ -726,7 +768,8 @@ export async function startSourceRun(
 export async function recordSyncResult(
   source: SyncableSource,
   sourceRunId: string,
-  result: SyncResult
+  result: SyncResult,
+  priorStatus: string | null
 ) {
   const completedAt = new Date();
 
@@ -749,7 +792,12 @@ export async function recordSyncResult(
         lastSyncAt: completedAt,
         lastStatus: result.ok ? "ok" : "error",
         lastError: result.ok ? null : result.error ?? "unknown error",
-        nextRunAt: source.cron ? sourceSyncDeps.nextRunFromCron(source.cron, completedAt) : null,
+        nextRunAt: nextRunAtWithBackoff(
+          source.cron,
+          completedAt,
+          !result.ok,
+          priorStatus
+        ),
         ...(result.cursor !== undefined ? { cursor: result.cursor } : {}),
       })
       .where(eq(schema.source.id, source.id));
@@ -777,6 +825,6 @@ export async function runSourceSync(
     };
   }
 
-  await recordSyncResult(source, sourceRunId, result);
+  await recordSyncResult(source, sourceRunId, result, started.priorStatus);
   return result;
 }
