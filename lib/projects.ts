@@ -137,6 +137,7 @@ export type ProjectCounts = {
   sourceErrors: number; // red alert on Sources
   pipelinesActive: number; // "N active"
   processing: number; // in-flight ingestions
+  reviewPending: number; // items held for review
 };
 
 export async function getProjectCounts(
@@ -150,6 +151,7 @@ export async function getProjectCounts(
     sourceErrorsRow,
     pipelinesRow,
     processingRow,
+    reviewRow,
   ] = await Promise.all([
     db
       .select({ c: count() })
@@ -193,6 +195,16 @@ export async function getProjectCounts(
           inArray(schema.item.status, ["pending", "processing"])
         )
       ),
+    db
+      .select({ c: count() })
+      .from(schema.item)
+      .where(
+        and(
+          eq(schema.item.userId, userId),
+          eq(schema.item.projectId, projectId),
+          eq(schema.item.status, "review")
+        )
+      ),
   ]);
 
   return {
@@ -202,6 +214,7 @@ export async function getProjectCounts(
     sourceErrors: sourceErrorsRow[0]?.c ?? 0,
     pipelinesActive: pipelinesRow[0]?.c ?? 0,
     processing: processingRow[0]?.c ?? 0,
+    reviewPending: reviewRow[0]?.c ?? 0,
   };
 }
 

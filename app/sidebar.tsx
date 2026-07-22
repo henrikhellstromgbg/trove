@@ -43,7 +43,16 @@ const DESTINATIONS: Destination[] = [
 function CountFor({ seg, counts }: { seg: string; counts: ProjectCounts }) {
   const cls = "font-mono text-xs text-ink-faint";
   if (seg === "library")
-    return counts.items ? <span className={cls}>{fmt(counts.items)}</span> : null;
+    return (
+      <span className={cls}>
+        {counts.items ? fmt(counts.items) : null}
+        {counts.reviewPending > 0 ? (
+          <span className="ml-1.5 rounded bg-capture/15 px-1.5 py-0.5 text-capture">
+            {counts.reviewPending} to review
+          </span>
+        ) : null}
+      </span>
+    );
   if (seg === "pipelines")
     return counts.pipelinesActive ? (
       <span className={cls}>{counts.pipelinesActive} active</span>
