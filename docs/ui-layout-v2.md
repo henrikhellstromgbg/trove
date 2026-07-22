@@ -196,7 +196,7 @@ Two planned recovery paths, because mistakes happen both ways. Neither is implem
                              └──────────────────┘
 ```
 
-**What “move” does under the hood:** manual material with `source_id = null` is moved by reassigning `project_id` on the item and its chunks, removing it from the old project's topics and queuing a re-cluster. Material from an automatic source is copied instead, because its source belongs to one project and moving the same item would create a cross-project `source_id`. The copy belongs to the destination and is processed there; the source-project original remains. The action labels must say “move” or “copy” accordingly.
+**What “move” does under the hood:** manual material with `source_id = null` is moved by reassigning `project_id` on the item and its chunks, removing it from the old project's topics and queuing a re-cluster. Material from an automatic source is copied instead, because its source belongs to one project and moving the same item would create a cross-project `source_id`. The copy belongs to the destination and is processed there; the source-project original remains. The action labels must say “move” or “copy” accordingly. **Implemented** as `POST /api/items/[id]/move` (`lib/items/move.ts`); only ready items are eligible and the copy does not share the origin's blob. The library/item UI control is the remaining piece.
 
 ## Item detail and the file viewer
 
@@ -317,30 +317,34 @@ The current code already implements list, plain-language creation, detail, run-n
 
 ## Screen inventory
 
+Status legend: **exists** (built UI) · **backend ready** (API/store done, UI is the
+only missing piece — build these first, they unlock shipped capability) · **planned**
+(needs backend too). Kept in step with the build order in `architecture-v2.md`.
+
 | route or surface | screen | scope | status |
 |------------------|--------|-------|--------|
 | `/p/[slug]` | project overview and Ask launcher | project | exists |
 | `/p/[slug]/ask` | focused Ask workspace with citations | project | exists; persistence planned |
 | capture overlay | file, link and text capture | project | exists |
 | `/p/[slug]/library` | library list | project | exists |
-| `/p/[slug]/library/[id]` | item viewer | project | read-only exists; actions planned |
+| `/p/[slug]/library/[id]` | item viewer | project | read-only exists; move/copy + delete **backend ready**, rename/retag/reprocess need routes |
 | `/p/[slug]/sources` | source list | project | exists |
-| `/p/[slug]/sources/new` | RSS, web and Slack setup | project | exists |
+| `/p/[slug]/sources/new` | source setup | project | exists (rss/web/slack); mail_folder/folder_watch **backend ready** (`buildSourceConfig`), form to extend |
 | `/p/[slug]/sources/[id]` | source status and latest items | project | exists, richer run history planned |
 | `/p/[slug]/pipelines` | pipeline list | project | exists |
-| pipeline template picker | choose one or several starter pipelines | project | planned next |
+| pipeline template picker | choose one or several starter pipelines | project | **backend ready** (`lib/pipelines/templates.ts`); picker UI to build |
 | `/p/[slug]/pipelines/new` | plain-language custom pipeline setup | project | exists, preview planned |
 | `/p/[slug]/pipelines/[id]` | pipeline detail and run history | project | exists |
 | pipeline run result | persisted report with citations | project | partial through Digest |
-| Library review filter | review queue | project | planned |
-| Library trash filter | trash and restore | project | planned |
+| Library review filter | review queue | project | **backend ready** (`/api/items/review`); UI to build |
+| Library trash filter | trash and restore | project | **backend ready** (`/api/items/trash`, `/[id]/restore`); UI to build |
 | `/p/[slug]/settings` | project settings | project | planned |
-| `/settings` | profile, connections and security | account | planned; Clerk currently handles profile/security |
+| `/settings` | profile, connections and security | account | ingest tokens (`/api/ingest-tokens`) and connected accounts (`/api/sources/accounts`) **backend ready**; Clerk handles profile/security; page to build |
 
 ## Decided behavior and remaining questions
 
 - **Project is mandatory:** every capture has an explicit active project. There is no cross-project triage inbox.
 - **Trash lifetime:** items stay recoverable for 30 days, with explicit restore and permanent-delete actions.
-- **Move/copy:** manual material moves with its chunks and is re-clustered without re-extraction or re-embedding. Automatic-source material is copied and processed in the destination so its original never gets a cross-project `source_id`.
+- **Move/copy:** manual material moves with its chunks and is re-clustered without re-extraction or re-embedding. Automatic-source material is copied and processed in the destination so its original never gets a cross-project `source_id`. **Backend implemented** (`POST /api/items/[id]/move`); the UI control remains.
 - **Source deletion:** default is stop the source and keep imported items. The alternative moves its imported items to project trash.
 - **Still open:** exact bulk actions in Library and whether project owners can change the 30-day retention period.

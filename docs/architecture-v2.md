@@ -264,6 +264,17 @@ Slack `events` mode adds a plain route (`/api/slack/events`), outside Inngest, t
 
 These ids live in one place, `lib/ai/models.ts`, which every call site imports; a test (`tests/models.test.ts`) locks the role→id map so a stray edit can't drift them. The code, root `CLAUDE.md` and generated migrations `0000` through `0006` agree on these choices. The full fresh-database migration path has been executed and verified against a disposable empty database via `pnpm db:verify-fresh` (see `docs/review-fix-plan-2026-07-21.md`).
 
+## UI: canonical spec
+
+The full UI is specified outside this document and is the source of truth for
+screens, behavior and route status:
+
+- **`docs/trove-project-flow-architecture.html`** — the canonical visual wireframe set.
+- **`docs/ui-layout-v2.md`** — its behavioral companion: shell, project switcher, settings split (global vs project), capture, item detail, move/copy, deletion, sources view, pipelines journey, and a **screen inventory** table with per-screen status.
+
+Keep those two in sync with this file when real status changes. The sketch below
+is a summary of the shell only; defer to the docs above for anything richer.
+
 ## Left sidebar shell, structure only
 
 The top nav (`app/shell.tsx`, `MODULES` array) becomes a left sidebar. Visual design comes later, so build the structure and routing now and leave styling as a plain skeleton.
@@ -301,7 +312,13 @@ Phased by dependency rather than by source type:
 5. **Review and deletion.** Backend complete: review decisions, project trash, restore, retryable permanent blob/artifact deletion, deletion markers, and review rules applied during import (source sync and `/api/ingest`) that hold matching items for approval. Product UI remains.
 6. **Mail and watched folders.** Local mailbox (mbox) and watched-folder runtimes now run in the Tauri app on a background timer and post through `/api/ingest`, so review rules apply on arrival. Gmail OAuth and the setup/health UI remain.
 7. **Persist Ask conversations.** Complete: Ask writes project-scoped threads and messages, including citations and follow-up intent.
-8. **Later expansion.** Generic YouTube transcription, source templates, shared projects and vertical packs.
+8. **Product UI.** Phases 1–7 are done on the backend, but several capabilities are reachable only by API. Build the front doors, per `docs/ui-layout-v2.md` (behavior + screen inventory) and `docs/trove-project-flow-architecture.html` (visual). Sequenced by what a ready backend already unlocks:
+   1. **Local runtime front door** — extend `/p/[slug]/sources/new` to `mail_folder`/`folder_watch` (config validation exists in `buildSourceConfig`), and add an ingest-token panel to global `/settings` (`/api/ingest-tokens` exists). This alone makes the local runtime self-serve.
+   2. **Review and trash** — review-queue and trash/restore filters in Library (`/api/items/review`, `/trash`, `/[id]/restore` all exist; the review-rules backend is inert without this UI).
+   3. **Item detail actions** — move/copy control (`/api/items/[id]/move` exists) plus rename/retag/reprocess, which still need small item routes (only `DELETE` exists today).
+   4. **Settings pages** — global `/settings` (account, ingest tokens, connected accounts — `/api/sources/accounts` exists) and project `/p/[slug]/settings`.
+   Structure-first per the shell note; visual polish follows the established direction.
+9. **Later expansion.** Generic YouTube transcription, source templates, shared projects and vertical packs.
 
 ## Open questions, deferred
 
