@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import { getProjectBySlug } from "@/lib/projects";
-import { AskWorkspace } from "@/app/ask-workspace";
+import { AskChat } from "@/app/ask-chat";
 
 export default async function AskPage({
   params,
@@ -16,7 +16,7 @@ export default async function AskPage({
   if (!project) notFound();
 
   return (
-    <AskWorkspace
+    <AskChat
       projectId={project.id}
       slug={project.slug}
       projectName={project.name}

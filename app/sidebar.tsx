@@ -14,6 +14,7 @@ import {
   FlowConnection,
   Download,
   Settings,
+  Archive,
   ChevronDown,
   Menu,
   Close,
@@ -317,6 +318,16 @@ export function Sidebar() {
           >
             <Chat size={18} className="shrink-0 text-ink-dim" />
             <span>Ask</span>
+          </Link>
+          <Link
+            href={`${base}/chats`}
+            onClick={closeMobile}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
+              isActive("chats") ? "bg-ink/[0.05] text-ink" : "text-ink hover:bg-ink/[0.03]"
+            }`}
+          >
+            <Archive size={18} className="shrink-0 text-ink-dim" />
+            <span>Chat archive</span>
           </Link>
           {DESTINATIONS.map(({ seg, label, Icon }) => (
             <Link
