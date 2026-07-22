@@ -28,6 +28,7 @@ const PipelinePatchBodySchema = z
     retrieval: z.boolean().optional(),
     retrievalQuery: z.string().trim().min(1).max(300).nullable().optional(),
     includeForgotten: z.boolean().optional(),
+    runOnNewItem: z.boolean().optional(),
     enabled: z.boolean().optional(),
   })
   .strict();
@@ -42,6 +43,7 @@ const SPEC_PATCH_KEYS = [
   "retrieval",
   "retrievalQuery",
   "includeForgotten",
+  "runOnNewItem",
 ] as const;
 
 type PipelineRow = typeof schema.pipeline.$inferSelect;
@@ -146,6 +148,9 @@ export function buildPipelinePatchUpdate(
     ...(patch.retrieval !== undefined ? { retrieval: patch.retrieval } : {}),
     ...(patch.includeForgotten !== undefined
       ? { includeForgotten: patch.includeForgotten }
+      : {}),
+    ...(patch.runOnNewItem !== undefined
+      ? { runOnNewItem: patch.runOnNewItem }
       : {}),
     ...(patch.retrievalQuery !== undefined
       ? { retrievalQuery: patch.retrievalQuery ?? undefined }

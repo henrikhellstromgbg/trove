@@ -39,6 +39,9 @@ export const PipelineSpecSchema = z.object({
   // Attach one random item older than 30 days, for serendipity. Used by the
   // seeded weekly-digest pipeline; any pipeline can opt in.
   includeForgotten: z.boolean().default(false),
+  // Additional event trigger: also run (debounced) when a newly-ready item
+  // matches this pipeline's filter, not only on the cron schedule.
+  runOnNewItem: z.boolean().default(false),
 });
 export type PipelineSpec = z.infer<typeof PipelineSpecSchema>;
 

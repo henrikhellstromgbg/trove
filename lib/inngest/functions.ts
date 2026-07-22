@@ -13,6 +13,7 @@ import { chunkText } from "@/lib/ai/chunk";
 import { embedTexts } from "@/lib/ai/embed";
 import { enrich } from "@/lib/ai/enrich";
 import { MODELS } from "@/lib/ai/models";
+import { selectEventPipelines } from "@/lib/pipelines/triggers";
 import { runPipelineSpec } from "@/lib/pipelines/run";
 import { nextRunFromCron } from "@/lib/pipelines/cron";
 import { PipelineSpecSchema, runStatusForOutput } from "@/lib/pipelines/types";
@@ -149,6 +150,12 @@ export const ingestItem = inngest.createFunction(
           processedAt: new Date(),
         })
         .where(eq(schema.item.id, itemId));
+    });
+
+    // A now-ready item can trigger event-driven pipelines; the listener decides
+    // which (if any) match and are off cooldown.
+    await step.run("emit-ready", async () => {
+      await inngest.send({ name: "item/ready", data: { itemId } });
     });
 
     return { ok: true, chunks: chunks.length };
@@ -484,5 +491,117 @@ export const syncDueSources = inngest.createFunction(
     }
 
     return { ok: true, ran: results.length, results };
+  }
+);
+
+// Debounce window for event-triggered pipeline runs: a pipeline won't fire again
+// (from an arrival or a coincident cron run) within this window, so a burst of
+// items can't run the same pipeline repeatedly.
+const EVENT_PIPELINE_COOLDOWN_MS = 10 * 60 * 1000;
+
+// React to a newly-ready item: run any enabled pipeline in its project that
+// opted into runOnNewItem, whose filter the item matches, and that is off
+// cooldown. Cron pipelines are unaffected; this is purely additive.
+export const runEventPipelines = inngest.createFunction(
+  {
+    id: "run-event-pipelines",
+    retries: 1,
+    triggers: [{ event: "item/ready" }],
+  },
+  async ({ event, step }) => {
+    const { itemId } = event.data as { itemId: string };
+
+    const item = await step.run("load-item", async () => {
+      const rows = await db
+        .select({
+          userId: schema.item.userId,
+          projectId: schema.item.projectId,
+          type: schema.item.type,
+          tags: schema.item.tags,
+          title: schema.item.title,
+          rawText: schema.item.rawText,
+          capturedAt: schema.item.capturedAt,
+          status: schema.item.status,
+        })
+        .from(schema.item)
+        .where(eq(schema.item.id, itemId))
+        .limit(1);
+      return rows[0] ?? null;
+    });
+
+    if (!item || item.status !== "ready") return { ok: true, ran: 0 };
+
+    const candidates = await step.run("load-pipelines", async () => {
+      return await db
+        .select({
+          id: schema.pipeline.id,
+          userId: schema.pipeline.userId,
+          projectId: schema.pipeline.projectId,
+          enabled: schema.pipeline.enabled,
+          lastRunAt: schema.pipeline.lastRunAt,
+          spec: schema.pipeline.spec,
+        })
+        .from(schema.pipeline)
+        .where(
+          and(
+            eq(schema.pipeline.userId, item.userId),
+            eq(schema.pipeline.projectId, item.projectId),
+            eq(schema.pipeline.enabled, true)
+          )
+        );
+    });
+
+    // Dates are JSON-serialized to strings across the Inngest step boundary, so
+    // rehydrate them before the pure selector, which expects Date instances.
+    const now = new Date();
+    const selected = selectEventPipelines(
+      { ...item, capturedAt: new Date(item.capturedAt) },
+      candidates.map((c) => ({
+        ...c,
+        lastRunAt: c.lastRunAt ? new Date(c.lastRunAt) : null,
+      })),
+      now,
+      EVENT_PIPELINE_COOLDOWN_MS
+    );
+
+    for (const p of selected) {
+      try {
+        const output = await step.run(`run-${p.id}`, async () => {
+          return await runPipelineSpec(p.userId, p.projectId, p.spec);
+        });
+
+        await step.run(`record-${p.id}`, async () => {
+          await db.insert(schema.pipelineRun).values({
+            pipelineId: p.id,
+            userId: p.userId,
+            status: runStatusForOutput(output),
+            output,
+            completedAt: new Date(),
+          });
+          // lastRunAt advances so the cooldown holds; nextRunAt (cron) is left
+          // untouched, so the backstop schedule is unaffected by an event run.
+          await db
+            .update(schema.pipeline)
+            .set({ lastRunAt: new Date() })
+            .where(eq(schema.pipeline.id, p.id));
+        });
+      } catch (err) {
+        await step.run(`fail-${p.id}`, async () => {
+          await db.insert(schema.pipelineRun).values({
+            pipelineId: p.id,
+            userId: p.userId,
+            status: "failed",
+            output: { error: err instanceof Error ? err.message : "Unknown" },
+            completedAt: new Date(),
+          });
+          await db
+            .update(schema.pipeline)
+            .set({ lastRunAt: new Date() })
+            .where(eq(schema.pipeline.id, p.id));
+        });
+      }
+    }
+
+    return { ok: true, ran: selected.length };
   }
 );

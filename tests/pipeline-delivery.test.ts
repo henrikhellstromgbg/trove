@@ -26,6 +26,7 @@ const SPEC: PipelineSpec = {
   deliverByEmail: true,
   retrieval: false,
   includeForgotten: false,
+  runOnNewItem: false,
 };
 
 const OUTPUT = { shape: "text", text: "Here is your week." } as const;

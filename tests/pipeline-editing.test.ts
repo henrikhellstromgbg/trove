@@ -83,6 +83,7 @@ const baseSpec: PipelineSpec = {
   deliverByEmail: true,
   retrieval: false,
   includeForgotten: true,
+  runOnNewItem: false,
 };
 
 function pipelineRow(overrides: Partial<Record<string, unknown>> = {}) {
@@ -202,6 +203,7 @@ test("PATCH /api/pipelines/[id] updates editable fields and keeps row columns sy
       retrieval: true,
       retrievalQuery: "priority changes",
       includeForgotten: false,
+      runOnNewItem: false,
     },
     name: "morning-brief-edited",
     cron: "0 9 * * 1-5",

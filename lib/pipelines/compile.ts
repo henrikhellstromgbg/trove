@@ -37,6 +37,7 @@ Produce a JSON object with exactly these fields:
   - "list" if they want a list of items, names, links
 - deliverByEmail: true if the user asked to receive the result by email ("email me", "send to my inbox", "mail me", "to my email"). False otherwise.
 - retrieval: true only if the user explicitly wants deep reasoning over full saved text, not just titles and summaries (phrases like "read the full text", "dig into the details", "quote from the source"). False otherwise. Omit retrievalQuery unless retrieval is true; when true, retrievalQuery is a short phrase describing what to search for (defaults to the prompt if omitted).
+- runOnNewItem: true if the user wants the pipeline to react to arrivals ("when a new X arrives", "whenever I save", "as soon as something lands", "on every new item"). False otherwise. Still provide a sensible cron as a backstop schedule even when this is true.
 
 Rules:
 - Be conservative. Do not invent filters the user did not request.
