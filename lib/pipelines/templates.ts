@@ -8,6 +8,12 @@ export const STARTER_PIPELINE_TEMPLATE_IDS = [
 export type StarterPipelineTemplateId =
   (typeof STARTER_PIPELINE_TEMPLATE_IDS)[number];
 
+// The Digest surfaces (page + dashboard panel) read this template's runs. They
+// match on templateKey, not the pipeline's display name, so renaming it or a
+// user creating their own "weekly-digest" pipeline can never hijack the Digest.
+export const WEEKLY_DIGEST_TEMPLATE_ID: StarterPipelineTemplateId =
+  "weekly-summary";
+
 type StarterPipelineTemplateDefinition = {
   id: StarterPipelineTemplateId;
   title: string;

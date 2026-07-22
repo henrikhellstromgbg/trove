@@ -7,6 +7,7 @@ import {
   PIPELINE_RUN_COMPLETED,
   PIPELINE_RUN_DELIVERY_ERROR,
 } from "@/lib/pipelines/types";
+import { WEEKLY_DIGEST_TEMPLATE_ID } from "@/lib/pipelines/templates";
 
 type DigestOutput = {
   summary?: string;
@@ -47,7 +48,7 @@ export default async function DigestPage({
         eq(schema.pipelineRun.userId, userId),
         eq(schema.pipeline.userId, userId),
         eq(schema.pipeline.projectId, project.id),
-        eq(schema.pipeline.name, "weekly-digest"),
+        eq(schema.pipeline.templateKey, WEEKLY_DIGEST_TEMPLATE_ID),
         // A digest whose email failed is still a completed report and must show.
         inArray(schema.pipelineRun.status, [
           PIPELINE_RUN_COMPLETED,

@@ -2,12 +2,15 @@ import { and, asc, eq, count, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { Project } from "@/lib/db/schema";
 import { nextRunFromCron } from "@/lib/pipelines/cron";
-import { buildStarterPipelineTemplate } from "@/lib/pipelines/templates";
+import {
+  buildStarterPipelineTemplate,
+  WEEKLY_DIGEST_TEMPLATE_ID,
+} from "@/lib/pipelines/templates";
 
 // Seed the per-project Friday weekly digest pipeline through the standard
-// pipeline engine. Name "weekly-digest" is still relied on by the digest page.
+// pipeline engine. The Digest surfaces find it by templateKey, not by name.
 async function seedWeeklyDigestPipeline(userId: string, projectId: string) {
-  const template = buildStarterPipelineTemplate("weekly-summary");
+  const template = buildStarterPipelineTemplate(WEEKLY_DIGEST_TEMPLATE_ID);
 
   await db.insert(schema.pipeline).values({
     userId,

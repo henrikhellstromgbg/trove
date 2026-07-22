@@ -4,6 +4,7 @@ import { and, eq, desc, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug, getProjectCounts } from "@/lib/projects";
+import { WEEKLY_DIGEST_TEMPLATE_ID } from "@/lib/pipelines/templates";
 import { DashboardAsk } from "@/app/dashboard-ask";
 
 function Panel({
@@ -99,7 +100,7 @@ export default async function ProjectDashboard({
         and(
           eq(schema.pipeline.userId, userId),
           eq(schema.pipeline.projectId, project.id),
-          eq(schema.pipeline.name, "weekly-digest"),
+          eq(schema.pipeline.templateKey, WEEKLY_DIGEST_TEMPLATE_ID),
           eq(schema.pipelineRun.status, "completed")
         )
       )
