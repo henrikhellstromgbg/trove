@@ -529,6 +529,7 @@ async function syncSlack(
         channelId: config.channelId,
         mode,
         ...(config.teamId ? { teamId: config.teamId } : {}),
+        ...(message.threadTs ? { threadTs: message.threadTs } : {}),
         text: message.text,
         postedAt: message.postedAt.toISOString(),
       },

@@ -314,5 +314,6 @@ Phased by dependency rather than by source type:
 
 - Ingest-token skapas och återkallas via `/api/ingest-tokens`; en UI-yta för detta är inte byggd.
 - Slack-konfigurationen lagrar `channelId`, `teamId` och `mode`; poll-synken bär nu alla tre vidare som proveniens i varje `original_record`. Events-läget levereras dock fortfarande via poll eftersom Events-webhooken inte är byggd.
+- Slack-pollen fångar nu även trådsvar (`conversations.replies` per trådförälder i fönstret; svaren taggas med `threadTs`). Delade filer fångas fortfarande inte.
 - Uppladdningsprocenten i capture-wireframen saknar teknisk backing.
 - UI för review, trash, connected accounts och source rules är inte byggt trots att backendkontrakten finns.
