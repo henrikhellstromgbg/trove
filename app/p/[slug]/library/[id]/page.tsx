@@ -4,8 +4,9 @@ import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Launch } from "@carbon/icons-react";
 import { db, schema } from "@/lib/db";
-import { getProjectBySlug } from "@/lib/projects";
+import { getProjectBySlug, listProjects } from "@/lib/projects";
 import { itemOriginalUrl } from "@/lib/item-url";
+import { ItemActions } from "./item-actions";
 
 const STATUS_CLASS: Record<string, string> = {
   ready: "text-ink-dim",
@@ -45,6 +46,10 @@ export default async function ItemDetail({
     .limit(1);
 
   if (!item) notFound();
+
+  const otherProjects = (await listProjects(userId))
+    .filter((p) => p.id !== project.id)
+    .map((p) => ({ id: p.id, name: p.name, slug: p.slug }));
 
   const title = item.title ?? item.source ?? "(untitled)";
   const statusClass = STATUS_CLASS[item.status] ?? "text-ink-dim";
@@ -106,6 +111,16 @@ export default async function ItemDetail({
           </a>
         ) : null}
       </header>
+
+      <ItemActions
+        slug={slug}
+        projectId={project.id}
+        itemId={item.id}
+        initialTitle={item.title}
+        initialTags={item.tags ?? []}
+        status={item.status}
+        otherProjects={otherProjects}
+      />
 
       {item.status === "failed" ? (
         <p className="font-mono text-sm text-brand">processing failed for this item.</p>
