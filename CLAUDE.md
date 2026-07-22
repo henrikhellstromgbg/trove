@@ -132,7 +132,7 @@ Already done in `drizzle.config.ts` and `lib/db/migrate.ts`.
 | Capture + private Vercel Blob | Done | Browser still uses legacy `/api/capture`; migration to `/api/ingest` remains. |
 | Inngest + ingest worker | Done | Extraction, chunking, embedding, enrichment, topic clustering, source sync and due pipelines exist. |
 | Ask retrieval | Done | Streams project-scoped cited answers and requires an owned project id; conversation persistence remains. |
-| Topic clustering | Backend only | Nightly project-scoped clustering exists; no current topic browsing route. |
+| Topic clustering | Done | Nightly project-scoped clustering plus a read-only browsing route at `/p/[slug]/topics` (cards with name, summary and grouped items). |
 | Sources | Partial | RSS, web and Slack poll exist. Mail, watched folders, connected accounts and source runs remain. |
 | User-defined pipelines | Done | Plain-language compile, scheduling, run-now, pause, history, email and Digest exist. |
 | Web UI | Partial | Ask, Library, Sources and Pipelines exist. Item detail, review, trash and Trove settings are planned. |

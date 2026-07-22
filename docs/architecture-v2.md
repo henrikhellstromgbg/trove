@@ -299,7 +299,7 @@ The top nav (`app/shell.tsx`, `MODULES` array) becomes a left sidebar. Visual de
 
 - **Project switcher** at the top of the sidebar sets the active project. Active project id lives in the route (`/p/[projectSlug]/...`) so it is shareable and server-renderable, and in a small client context for the switcher. Prefer the route as source of truth, a lesson already learned about Next.js router cache freezing `useState`.
 - **New "sources" section** is where you add and monitor connectors: last sync, item counts, errors. This is the surface the old Intel folder never had.
-- Capture, Library, Sources, Pipelines, Digest and Ask are existing project surfaces. Topic clustering exists in the backend but has no current browsing route.
+- Capture, Library, Sources, Pipelines, Digest, Ask and Topics are existing project surfaces. Topic clustering runs nightly and is now browsable at `/p/[slug]/topics`.
 
 ## Build order
 

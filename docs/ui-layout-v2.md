@@ -328,6 +328,7 @@ only missing piece — build these first, they unlock shipped capability) · **p
 | capture overlay | file, link and text capture | project | exists |
 | `/p/[slug]/library` | library list | project | exists |
 | `/p/[slug]/library/[id]` | item viewer | project | exists with an actions card: rename/retag (`PATCH /[id]`), reprocess (`/[id]/reprocess`), move/copy (`/[id]/move`), trash (`/api/items/trash`) |
+| `/p/[slug]/topics` | auto-clustered topic browser | project | exists — read-only cards (name, summary, grouped items) over the nightly clustering |
 | `/p/[slug]/sources` | source list | project | exists |
 | `/p/[slug]/sources/new` | source setup | project | exists (rss/web/slack + mail_folder/folder_watch); local kinds carry an honest 'runs on your mac' note and daemon-driven sync |
 | `/p/[slug]/sources/[id]` | source status and latest items | project | exists, richer run history planned |
