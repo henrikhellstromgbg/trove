@@ -332,7 +332,7 @@ only missing piece — build these first, they unlock shipped capability) · **p
 | `/p/[slug]/sources/new` | source setup | project | exists (rss/web/slack + mail_folder/folder_watch); local kinds carry an honest 'runs on your mac' note and daemon-driven sync |
 | `/p/[slug]/sources/[id]` | source status and latest items | project | exists, richer run history planned |
 | `/p/[slug]/pipelines` | pipeline list | project | exists |
-| pipeline template picker | choose one or several starter pipelines | project | **backend ready** (`lib/pipelines/templates.ts`); picker UI to build |
+| pipeline template picker | choose one or several starter pipelines | project | exists on `/pipelines/new` — install a starter (optional email toggle) or write your own below |
 | `/p/[slug]/pipelines/new` | plain-language custom pipeline setup | project | exists, preview planned |
 | `/p/[slug]/pipelines/[id]` | pipeline detail and run history | project | exists |
 | pipeline run result | persisted report with citations | project | partial through Digest |
