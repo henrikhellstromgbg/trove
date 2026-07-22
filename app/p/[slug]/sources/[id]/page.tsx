@@ -14,21 +14,9 @@ import {
   StatusIndicator,
   type Status,
 } from "@/app/components/ui";
+import { sourceKindLabel, sourceRuntimeLabel } from "../source-display";
 import { DeleteSourceButton } from "./delete-button";
 import { SyncNowButton } from "./sync-now-button";
-
-const KIND_LABELS: Record<string, string> = {
-  rss: "RSS",
-  web_scrape: "Web page",
-  slack_channel: "Slack channel",
-  mail_folder: "Mail folder",
-  folder_watch: "Watched folder",
-  youtube_channel: "YouTube channel",
-};
-
-function kindLabel(kind: string) {
-  return KIND_LABELS[kind] ?? kind;
-}
 
 function fmt(date: Date) {
   return date.toLocaleString("en-GB");
@@ -99,33 +87,34 @@ export default async function SourceDetailPage({
     );
   }
 
-  const items = await db
-    .select()
-    .from(schema.item)
-    .where(eq(schema.item.sourceId, source.id))
-    .orderBy(desc(schema.item.capturedAt))
-    .limit(20);
-
-  const runs = await db
-    .select({
-      id: schema.sourceRun.id,
-      trigger: schema.sourceRun.trigger,
-      status: schema.sourceRun.status,
-      itemCount: schema.sourceRun.itemCount,
-      error: schema.sourceRun.error,
-      startedAt: schema.sourceRun.startedAt,
-      completedAt: schema.sourceRun.completedAt,
-    })
-    .from(schema.sourceRun)
-    .where(
-      and(
-        eq(schema.sourceRun.sourceId, source.id),
-        eq(schema.sourceRun.userId, userId),
-        eq(schema.sourceRun.projectId, project.id)
+  const [items, runs] = await Promise.all([
+    db
+      .select()
+      .from(schema.item)
+      .where(eq(schema.item.sourceId, source.id))
+      .orderBy(desc(schema.item.capturedAt))
+      .limit(20),
+    db
+      .select({
+        id: schema.sourceRun.id,
+        trigger: schema.sourceRun.trigger,
+        status: schema.sourceRun.status,
+        itemCount: schema.sourceRun.itemCount,
+        error: schema.sourceRun.error,
+        startedAt: schema.sourceRun.startedAt,
+        completedAt: schema.sourceRun.completedAt,
+      })
+      .from(schema.sourceRun)
+      .where(
+        and(
+          eq(schema.sourceRun.sourceId, source.id),
+          eq(schema.sourceRun.userId, userId),
+          eq(schema.sourceRun.projectId, project.id)
+        )
       )
-    )
-    .orderBy(desc(schema.sourceRun.startedAt))
-    .limit(10);
+      .orderBy(desc(schema.sourceRun.startedAt))
+      .limit(10),
+  ]);
 
   const isLocal = source.runtime === "local";
   const config = source.config as {
@@ -161,9 +150,9 @@ export default async function SourceDetailPage({
           description={
             <div className="flex flex-col gap-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <span>{kindLabel(source.kind)}</span>
+                <span>{sourceKindLabel(source.kind)}</span>
                 <span aria-hidden>·</span>
-                <span>{isLocal ? "Desktop" : "Cloud"}</span>
+                <span>{sourceRuntimeLabel(source.runtime)}</span>
                 <span aria-hidden>·</span>
                 <span>{scheduleLabel}</span>
               </div>

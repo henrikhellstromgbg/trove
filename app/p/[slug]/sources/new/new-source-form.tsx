@@ -11,6 +11,17 @@ import {
   Select,
   cx,
 } from "@/app/components/ui";
+import { requestJson } from "../request-json";
+import {
+  SOURCE_KIND_OPTIONS,
+  isLocalSourceKind,
+  type SourceKind,
+} from "../source-display";
+import {
+  buildSourceRequestBody,
+  sourcePrimaryFieldFilled,
+  type SourceFormValues,
+} from "./source-form-data";
 
 const CRON_PRESETS = [
   { label: "Every hour", value: "0 * * * *" },
@@ -18,40 +29,12 @@ const CRON_PRESETS = [
   { label: "Daily at 8am", value: "0 8 * * *" },
 ];
 
-const KINDS = [
-  { value: "rss", label: "RSS feed" },
-  { value: "web_scrape", label: "Web page" },
-  { value: "slack_channel", label: "Slack channel" },
-  { value: "mail_folder", label: "Mail folder" },
-  { value: "folder_watch", label: "Watched folder" },
-] as const;
-
-type Kind = (typeof KINDS)[number]["value"];
-
-// Local kinds run on the user's Mac through the desktop daemon, not on the
-// server. Creating one here just registers it; the daemon fetches its approved
-// list from /api/sources/local and does the actual reading.
-const LOCAL_KINDS: readonly Kind[] = ["mail_folder", "folder_watch"];
-
-// The list config fields (sender allow/block, globs) are arrays server-side.
-// Let people type one per line or comma-separated, then normalise.
-function parseList(text: string): string[] {
-  return [
-    ...new Set(
-      text
-        .split(/[\n,]/)
-        .map((entry) => entry.trim())
-        .filter((entry) => entry.length > 0)
-    ),
-  ];
-}
-
 const DEFAULT_GLOBS_HINT = "**/*.pdf, **/*.txt, **/*.md, **/*.docx, **/*.xlsx, **/*.csv";
 
 export function NewSourceForm() {
   const router = useRouter();
   const { project } = useProject();
-  const [kind, setKind] = useState<Kind>("rss");
+  const [kind, setKind] = useState<SourceKind>("rss");
   const [name, setName] = useState("");
   const [feedUrl, setFeedUrl] = useState("");
   const [url, setUrl] = useState("");
@@ -68,68 +51,46 @@ export function NewSourceForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>("");
 
-  const isLocal = LOCAL_KINDS.includes(kind);
-
-  function primaryFieldFilled() {
-    if (kind === "rss") return feedUrl.trim().length > 0;
-    if (kind === "web_scrape") return url.trim().length > 0;
-    if (kind === "slack_channel") return channelId.trim().length > 0;
-    if (kind === "mail_folder") return mboxPath.trim().length > 0;
-    if (kind === "folder_watch") return folderPath.trim().length > 0;
-    return false;
-  }
-
-  const canSubmit = name.trim().length > 0 && primaryFieldFilled() && !busy;
+  const values: SourceFormValues = {
+    kind,
+    name,
+    feedUrl,
+    url,
+    selector,
+    followLinks,
+    channelId,
+    mboxPath,
+    senderAllow,
+    senderBlock,
+    promoBlocklist,
+    folderPath,
+    globs,
+    cron,
+  };
+  const isLocal = isLocalSourceKind(kind);
+  const canSubmit =
+    name.trim().length > 0 && sourcePrimaryFieldFilled(values) && !busy;
 
   async function submit() {
     const n = name.trim();
-    if (n.length === 0 || !primaryFieldFilled() || busy) return;
+    if (n.length === 0 || !sourcePrimaryFieldFilled(values) || busy) return;
 
     setBusy(true);
     setError("");
 
-    const body: Record<string, unknown> = {
-      kind,
-      name: n,
-      projectId: project.id,
-    };
-    // Cloud sources sync on a cron the server runs. Local sources are polled by
-    // the desktop daemon on its own timer, so we leave cron at its default.
-    if (!isLocal) body.cron = cron;
-    if (kind === "rss") body.feedUrl = feedUrl.trim();
-    if (kind === "web_scrape") {
-      body.url = url.trim();
-      if (selector.trim()) body.selector = selector.trim();
-      body.followLinks = followLinks;
-    }
-    if (kind === "slack_channel") body.channelId = channelId.trim();
-    if (kind === "mail_folder") {
-      body.mboxPath = mboxPath.trim();
-      body.senderAllow = parseList(senderAllow);
-      body.senderBlock = parseList(senderBlock);
-      body.promoBlocklist = parseList(promoBlocklist);
-    }
-    if (kind === "folder_watch") {
-      body.folderPath = folderPath.trim();
-      const globList = parseList(globs);
-      if (globList.length > 0) body.globs = globList;
-    }
-
-    const res = await fetch("/api/sources", {
+    const result = await requestJson<{ id: string }>("/api/sources", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(buildSourceRequestBody(values, project.id)),
     });
+    setBusy(false);
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error ?? `error ${res.status}`);
-      setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
 
-    const { id } = await res.json();
-    router.push(`/p/${project.slug}/sources/${id}`);
+    router.push(`/p/${project.slug}/sources/${result.data.id}`);
   }
 
   return (
@@ -143,7 +104,7 @@ export function NewSourceForm() {
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 text-sm font-medium text-ink">Kind</legend>
         <div role="group" aria-label="Source kind" className="flex flex-wrap gap-2">
-          {KINDS.map((k) => {
+          {SOURCE_KIND_OPTIONS.map((k) => {
             const active = kind === k.value;
             return (
               <button

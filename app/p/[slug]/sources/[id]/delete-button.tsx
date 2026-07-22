@@ -1,60 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useReducer } from "react";
 import { useRouter } from "next/navigation";
 import { useProject } from "@/app/project-context";
 import { Button, ConfirmDialog, InlineError } from "@/app/components/ui";
+import { requestJson } from "../request-json";
+import { deleteStateReducer, initialDeleteState } from "./delete-state";
 
 export function DeleteSourceButton({ id, name }: { id: string; name: string }) {
   const router = useRouter();
   const { project } = useProject();
-  const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string>("");
+  const [state, dispatch] = useReducer(deleteStateReducer, initialDeleteState);
 
   async function remove() {
-    if (busy) return;
-    setBusy(true);
-    setError("");
+    if (state.busy) return;
+    dispatch({ type: "start" });
 
-    const res = await fetch(
+    const result = await requestJson(
       `/api/sources/${id}?projectId=${encodeURIComponent(project.id)}`,
       { method: "DELETE" }
     );
-    if (res.ok) {
+    if (result.ok) {
+      dispatch({ type: "success" });
       router.push(`/p/${project.slug}/sources`);
       router.refresh();
     } else {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error ?? `error ${res.status}`);
-      setBusy(false);
-      setOpen(false);
+      dispatch({ type: "failure", error: result.error });
     }
   }
 
   return (
     <div className="flex flex-col items-start gap-2 sm:items-end">
-      <Button variant="destructive" onClick={() => setOpen(true)}>
+      <Button variant="destructive" onClick={() => dispatch({ type: "open" })}>
         Delete source
       </Button>
-      <InlineError message={error} />
       <ConfirmDialog
-        open={open}
+        open={state.open}
         title="Delete this source?"
         description={
-          <>
-            Removing {name ? <>&ldquo;{name}&rdquo;</> : "this source"} stops
-            future syncs. Items already imported stay in your Library.
-          </>
+          <div className="flex flex-col gap-2">
+            <span>
+              Removing {name ? <>&ldquo;{name}&rdquo;</> : "this source"} stops
+              future syncs. Items already imported stay in your Library.
+            </span>
+            <InlineError message={state.error} />
+          </div>
         }
-        confirmLabel={busy ? "Deleting…" : "Delete source"}
+        confirmLabel={state.busy ? "Deleting…" : "Delete source"}
         cancelLabel="Cancel"
         destructive
-        confirmDisabled={busy}
+        confirmDisabled={state.busy}
         onConfirm={remove}
-        onCancel={() => {
-          if (!busy) setOpen(false);
-        }}
+        onCancel={() => dispatch({ type: "cancel" })}
       />
     </div>
   );

@@ -95,9 +95,9 @@ export function ConfirmDialog({
           </IconButton>
         </div>
         {description ? (
-          <p id={descriptionId} className="mb-6 text-sm text-ink-dim">
+          <div id={descriptionId} className="mb-6 text-sm text-ink-dim">
             {description}
-          </p>
+          </div>
         ) : null}
         <div className="flex items-center justify-end gap-3">
           <Button ref={cancelRef} type="button" variant="secondary" onClick={onCancel}>

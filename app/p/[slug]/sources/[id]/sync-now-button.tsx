@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProject } from "@/app/project-context";
 import { Button, InlineError } from "@/app/components/ui";
+import { requestJson } from "../request-json";
 
 export function SyncNowButton({ id }: { id: string }) {
   const router = useRouter();
@@ -16,17 +17,17 @@ export function SyncNowButton({ id }: { id: string }) {
     setBusy(true);
     setError("");
 
-    const res = await fetch(
+    const result = await requestJson(
       `/api/sources/${id}/sync?projectId=${encodeURIComponent(project.id)}`,
       { method: "POST" }
     );
-    if (res.ok) {
+    setBusy(false);
+
+    if (result.ok) {
       router.refresh();
     } else {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error ?? `error ${res.status}`);
+      setError(result.error);
     }
-    setBusy(false);
   }
 
   return (

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug } from "@/lib/projects";
@@ -13,23 +13,7 @@ import {
   StatusIndicator,
   type Status,
 } from "@/app/components/ui";
-
-const KIND_LABELS: Record<string, string> = {
-  rss: "RSS",
-  web_scrape: "Web page",
-  slack_channel: "Slack channel",
-  mail_folder: "Mail folder",
-  folder_watch: "Watched folder",
-  youtube_channel: "YouTube channel",
-};
-
-function kindLabel(kind: string) {
-  return KIND_LABELS[kind] ?? kind;
-}
-
-function runtimeLabel(runtime: string) {
-  return runtime === "cloud" ? "Cloud" : "Desktop";
-}
+import { sourceKindLabel, sourceRuntimeLabel } from "./source-display";
 
 function sourceStatus(source: { enabled: boolean; lastStatus: string | null }): {
   status: Status;
@@ -63,16 +47,23 @@ export default async function SourcesPage({
     )
     .orderBy(desc(schema.source.createdAt));
 
-  const itemCountRows = await db
-    .select({ sourceId: schema.item.sourceId, c: count() })
-    .from(schema.item)
-    .where(
-      and(
-        eq(schema.item.userId, userId),
-        eq(schema.item.projectId, project.id)
-      )
-    )
-    .groupBy(schema.item.sourceId);
+  const itemCountRows =
+    sources.length === 0
+      ? []
+      : await db
+          .select({ sourceId: schema.item.sourceId, c: count() })
+          .from(schema.item)
+          .where(
+            and(
+              eq(schema.item.userId, userId),
+              eq(schema.item.projectId, project.id),
+              inArray(
+                schema.item.sourceId,
+                sources.map((source) => source.id)
+              )
+            )
+          )
+          .groupBy(schema.item.sourceId);
 
   const itemCounts = new Map<string, number>();
   for (const row of itemCountRows) {
@@ -116,8 +107,8 @@ export default async function SourcesPage({
                     <StatusIndicator status={status} label={label} />
                   </div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-dim">
-                    <span>{kindLabel(s.kind)}</span>
-                    <span>{runtimeLabel(s.runtime)}</span>
+                    <span>{sourceKindLabel(s.kind)}</span>
+                    <span>{sourceRuntimeLabel(s.runtime)}</span>
                     <span>
                       {s.lastSyncAt
                         ? `Last synced ${s.lastSyncAt.toLocaleString("en-GB")}`

@@ -60,7 +60,7 @@ export function DataRow({
       {...props}
     >
       {leading ? <span className="shrink-0">{leading}</span> : null}
-      <span className="min-w-0 flex-1 text-sm text-ink">{children}</span>
+      <div className="min-w-0 flex-1 text-sm text-ink">{children}</div>
       {trailing ? <span className="relative z-10 shrink-0">{trailing}</span> : null}
       {href ? (
         <Link

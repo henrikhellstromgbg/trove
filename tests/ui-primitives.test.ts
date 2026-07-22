@@ -238,3 +238,21 @@ test("DataRow (interactive/button-driven): renders an accessible overlay control
     view.unmount();
   });
 });
+
+test("DataRow renders block children inside a block content wrapper", () => {
+  withDom(() => {
+    const view = renderComponent(
+      React.createElement(
+        DataRow,
+        {},
+        React.createElement("div", { "data-testid": "block-child" }, "Block content"),
+      ),
+    );
+
+    const child = view.container.querySelector("[data-testid='block-child']");
+    assert.ok(child);
+    assert.equal(child.parentElement?.tagName, "DIV");
+
+    view.unmount();
+  });
+});
