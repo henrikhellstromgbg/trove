@@ -150,6 +150,29 @@ export async function listSources(
     .orderBy(desc(schema.source.createdAt));
 }
 
+// Local-runtime sources for the daemon, resolved from an ingest token. Scoped
+// by userId; a project-locked token sees only its project. Enabled local kinds
+// only (mail_folder, folder_watch); cloud sources are never returned.
+export async function listLocalSourcesForToken(
+  userId: string,
+  lockedProjectId?: string | null
+): Promise<Source[]> {
+  const conditions = [
+    eq(schema.source.userId, userId),
+    eq(schema.source.runtime, "local"),
+    eq(schema.source.enabled, true),
+  ];
+  if (lockedProjectId) {
+    conditions.push(eq(schema.source.projectId, lockedProjectId));
+  }
+
+  return db
+    .select()
+    .from(schema.source)
+    .where(and(...conditions))
+    .orderBy(desc(schema.source.createdAt));
+}
+
 export async function getOwnedSource(
   userId: string,
   sourceId: string,

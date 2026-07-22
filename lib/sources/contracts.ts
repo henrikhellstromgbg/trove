@@ -157,6 +157,36 @@ export function isSupportedSourceRuleType(
   );
 }
 
+export type LocalSourceRow = {
+  id: string;
+  kind: string;
+  projectId: string;
+  name: string;
+  config: unknown;
+  cursor: unknown;
+};
+
+// The local daemon's registry entries are flat (kind + id + projectId + the
+// config keys), while source.config is nested JSONB. Flatten it so the same
+// shape parses whether it comes from the server or the local file. Fixed fields
+// win over any colliding config key.
+export function toLocalSourcePayload(
+  row: LocalSourceRow
+): Record<string, unknown> {
+  const config =
+    row.config && typeof row.config === "object" && !Array.isArray(row.config)
+      ? (row.config as Record<string, unknown>)
+      : {};
+  return {
+    ...config,
+    id: row.id,
+    kind: row.kind,
+    projectId: row.projectId,
+    name: row.name,
+    cursor: row.cursor ?? null,
+  };
+}
+
 export function runtimeForSourceKind(
   kind: SupportedSourceKind
 ): "cloud" | "local" {
