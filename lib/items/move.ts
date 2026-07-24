@@ -106,15 +106,19 @@ export async function moveItemToProject(
       .set({ projectId: toProjectId })
       .where(eq(schema.chunk.itemId, item.id));
 
+    // itemIds is a JSON array; rebuild it without this item. Only touch topics
+    // that actually reference it, so untouched clusters (and NULL itemIds) are
+    // left exactly as they were — the SQLite equivalent of array_remove.
     await tx
       .update(schema.topic)
       .set({
-        itemIds: sql`array_remove(${schema.topic.itemIds}, ${item.id}::uuid)`,
+        itemIds: sql`(SELECT json_group_array(value) FROM json_each(${schema.topic.itemIds}) WHERE value <> ${item.id})`,
       })
       .where(
         and(
           eq(schema.topic.userId, userId),
-          eq(schema.topic.projectId, item.projectId)
+          eq(schema.topic.projectId, item.projectId),
+          sql`EXISTS (SELECT 1 FROM json_each(${schema.topic.itemIds}) WHERE value = ${item.id})`
         )
       );
   });

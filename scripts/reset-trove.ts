@@ -1,21 +1,13 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
 import { count } from "drizzle-orm";
-import ws from "ws";
-import * as schema from "../lib/db/schema";
-
-neonConfig.webSocketConstructor = ws;
+import { db, schema, client } from "../lib/db";
 
 async function main() {
   const args = process.argv.slice(2);
   const confirm = args.includes("--confirm");
   const wipeConfigs = args.includes("--wipe-configs");
-
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  const db = drizzle({ client: pool, schema });
 
   console.log(`Trove reset — ${confirm ? "live" : "preview"} mode`);
   console.log("");
@@ -40,7 +32,7 @@ async function main() {
   if (!confirm) {
     console.log("(preview only — re-run with --confirm to actually delete)");
     console.log("(add --wipe-configs to also delete pipelines)");
-    await pool.end();
+    client.close();
     return;
   }
 
@@ -56,7 +48,7 @@ async function main() {
     await db.delete(schema.pipeline);
   }
 
-  await pool.end();
+  client.close();
   console.log("done");
 }
 

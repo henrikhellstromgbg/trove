@@ -1,5 +1,6 @@
-import { and, asc, cosineDistance, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { schema } from "@/lib/db";
+import { rankByEmbedding } from "@/lib/db/vector";
 import { MODELS } from "@/lib/ai/models";
 import { InvalidProjectError, isUuid } from "@/lib/projects";
 import { askDeps } from "./deps";
@@ -256,14 +257,18 @@ export async function POST(req: Request) {
         send({ type: "conversation", id: conversationId });
         const queryVec = await askDeps.embedQuery(question);
         failureCode = "ASK_RETRIEVAL_FAILED";
-        const distance = cosineDistance(schema.chunk.embedding, queryVec);
 
-        const matches = await askDeps.db
+        // Brute-force vector search: pull the project's ready chunks and rank
+        // them by cosine similarity in JS (see lib/db/vector.ts). The LIMIT is
+        // effectively unbounded at personal scale — it just keeps the terminal
+        // the injected test db expects.
+        const candidates = await askDeps.db
           .select({
             chunkText: schema.chunk.text,
             itemId: schema.chunk.itemId,
             title: schema.item.title,
             source: schema.item.source,
+            embedding: schema.chunk.embedding,
           })
           .from(schema.chunk)
           .innerJoin(schema.item, eq(schema.chunk.itemId, schema.item.id))
@@ -274,8 +279,9 @@ export async function POST(req: Request) {
               eq(schema.item.status, "ready")
             )
           )
-          .orderBy(distance)
-          .limit(12);
+          .limit(1_000_000);
+
+        const matches = rankByEmbedding(candidates, queryVec, 12);
 
         type GroupedItem = {
           n: number;

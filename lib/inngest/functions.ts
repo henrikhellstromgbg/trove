@@ -11,6 +11,7 @@ import { extractFromXlsx } from "@/lib/ai/extract-xlsx";
 import { extractFromTextFile } from "@/lib/ai/extract-textfile";
 import { chunkText } from "@/lib/ai/chunk";
 import { embedTexts } from "@/lib/ai/embed";
+import { encodeEmbedding } from "@/lib/db/vector";
 import { enrich } from "@/lib/ai/enrich";
 import { MODELS } from "@/lib/ai/models";
 import { selectEventPipelines } from "@/lib/pipelines/triggers";
@@ -130,7 +131,7 @@ export const ingestItem = inngest.createFunction(
           projectId: item.projectId,
           position: i,
           text,
-          embedding: embeddings[i],
+          embedding: encodeEmbedding(embeddings[i]),
         }))
       );
     });

@@ -1,19 +1,11 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
-import { sql } from "drizzle-orm";
-import ws from "ws";
-import * as schema from "../lib/db/schema";
-
-neonConfig.webSocketConstructor = ws;
+import { client } from "../lib/db";
+import { decodeEmbedding } from "../lib/db/vector";
 
 async function main() {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  const db = drizzle({ client: pool, schema });
-
-  const items = await db.execute(sql`
+  const items = await client.execute(`
     SELECT id, type, status, title, source, captured_at, processed_at
     FROM item
     ORDER BY captured_at DESC
@@ -22,17 +14,21 @@ async function main() {
   console.log("Items (latest 10):");
   console.table(items.rows);
 
-  const chunkCount = await db.execute(sql`SELECT COUNT(*) FROM chunk`);
-  console.log("Chunk count:", chunkCount.rows[0]);
+  const chunkCount = await client.execute("SELECT COUNT(*) AS n FROM chunk");
+  console.log("Chunk count:", chunkCount.rows[0]?.n);
 
-  const vectorDim = await db.execute(sql`
-    SELECT atttypmod
-    FROM pg_attribute
-    WHERE attrelid = 'chunk'::regclass AND attname = 'embedding'
-  `);
-  console.log("Vector column atttypmod (expected 772 for vector(768)):", vectorDim.rows[0]);
+  // Sanity-check the stored embedding blob decodes to the expected dimension.
+  const sample = await client.execute(
+    "SELECT embedding FROM chunk WHERE embedding IS NOT NULL LIMIT 1"
+  );
+  const dim = decodeEmbedding(sample.rows[0]?.embedding ?? null)?.length ?? 0;
+  console.log("Embedding dims (expected 768):", dim);
 
-  await pool.end();
+  // Full-text index health.
+  const ftsCount = await client.execute("SELECT COUNT(*) AS n FROM item_fts");
+  console.log("item_fts rows:", ftsCount.rows[0]?.n);
+
+  client.close();
 }
 
 main().catch((err) => {

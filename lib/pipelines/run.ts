@@ -1,6 +1,7 @@
-import { and, eq, inArray, gte, ilike, or, desc, sql, lt, cosineDistance } from "drizzle-orm";
+import { and, eq, inArray, gte, like, or, desc, sql, lt } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "@/lib/db";
+import { rankByEmbedding } from "@/lib/db/vector";
 import { embedQuery } from "@/lib/ai/embed";
 import { pipelineRunModel } from "@/lib/ai/models";
 import {
@@ -104,13 +105,16 @@ async function loadRetrievalContext(
   if (itemIds.length === 0) return "";
 
   const queryVec = await embedQuery(query);
-  const distance = cosineDistance(schema.chunk.embedding, queryVec);
 
-  const matches = await db
+  // Brute-force vector search over the already-filtered items, ranked in JS
+  // (see lib/db/vector.ts). The LIMIT is effectively unbounded at personal
+  // scale; ranking and top-K happen in rankByEmbedding.
+  const candidates = await db
     .select({
       chunkText: schema.chunk.text,
       itemId: schema.chunk.itemId,
       title: schema.item.title,
+      embedding: schema.chunk.embedding,
     })
     .from(schema.chunk)
     .innerJoin(schema.item, eq(schema.chunk.itemId, schema.item.id))
@@ -121,8 +125,9 @@ async function loadRetrievalContext(
         inArray(schema.chunk.itemId, itemIds)
       )
     )
-    .orderBy(distance)
-    .limit(MAX_RETRIEVAL_CHUNKS);
+    .limit(1_000_000);
+
+  const matches = rankByEmbedding(candidates, queryVec, MAX_RETRIEVAL_CHUNKS);
 
   const grouped = new Map<string, { title: string | null; chunks: string[] }>();
   for (const m of matches) {
@@ -184,21 +189,23 @@ async function loadItems(userId: string, projectId: string, spec: PipelineSpec) 
 
   if (spec.filter.contains) {
     const needle = `%${spec.filter.contains}%`;
+    // SQLite LIKE is case-insensitive for ASCII, matching the old ILIKE.
     conditions.push(
       or(
-        ilike(schema.item.title, needle),
-        ilike(schema.item.rawText, needle)
+        like(schema.item.title, needle),
+        like(schema.item.rawText, needle)
       )!
     );
   }
 
   if (spec.filter.tagsAny && spec.filter.tagsAny.length > 0) {
     const tagsAny = spec.filter.tagsAny;
+    // tags is a JSON array; overlap = any element matches one of tagsAny.
     conditions.push(
-      sql`${schema.item.tags} && ARRAY[${sql.join(
+      sql`EXISTS (SELECT 1 FROM json_each(${schema.item.tags}) WHERE value IN (${sql.join(
         tagsAny.map((t) => sql`${t}`),
         sql`, `
-      )}]::text[]`
+      )}))`
     );
   }
 

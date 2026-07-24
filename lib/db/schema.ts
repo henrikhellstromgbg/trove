@@ -1,30 +1,48 @@
 import {
-  boolean,
   index,
   integer,
-  jsonb,
-  pgTable,
+  sqliteTable,
   text,
-  timestamp,
   uniqueIndex,
-  uuid,
-  vector,
-} from "drizzle-orm/pg-core";
+  blob,
+} from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+
+// SQLite mapping notes (see docs, CLAUDE.md "Conventions"):
+//   uuid            -> text PK, app-generated via crypto.randomUUID()
+//   jsonb           -> text({ mode: "json" })
+//   timestamptz     -> integer({ mode: "timestamp_ms" }) — unix epoch ms, one
+//                      representation everywhere; Drizzle maps it to/from Date
+//   text[]          -> text({ mode: "json" }) holding a JSON array
+//   boolean         -> integer({ mode: "boolean" })
+//   vector(768)     -> blob (Float32 buffer); similarity is computed in JS,
+//                      see lib/db/vector.ts. No ANN index at personal scale.
+// Foreign-key actions are declared here but only enforced because the client
+// sets `PRAGMA foreign_keys = ON` (lib/db/index.ts).
+
+const id = () =>
+  text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID());
+
+const createdAt = () =>
+  integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date());
 
 // Hard container. Everything below scopes to a project.
 // See docs/architecture-v2.md.
-export const project = pgTable(
+export const project = sqliteTable(
   "project",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     userId: text("user_id").notNull(),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     kind: text("kind").notNull().default("personal"), // personal | client
     color: text("color"),
-    archived: boolean("archived").notNull().default(false),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    archived: integer("archived", { mode: "boolean" }).notNull().default(false),
+    createdAt: createdAt(),
   },
   (t) => [
     index("project_user_idx").on(t.userId),
@@ -32,19 +50,19 @@ export const project = pgTable(
   ]
 );
 
-export const connectedAccount = pgTable(
+export const connectedAccount = sqliteTable(
   "connected_account",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     userId: text("user_id").notNull(),
     provider: text("provider").notNull(), // gmail | slack | local
     accountKey: text("account_key").notNull(),
     label: text("label"),
-    config: jsonb("config").notNull().default({}),
+    config: text("config", { mode: "json" }).notNull().$defaultFn(() => ({})),
     status: text("status").notNull().default("active"), // active | error | revoked
-    lastHealthyAt: timestamp("last_healthy_at", { withTimezone: true }),
+    lastHealthyAt: integer("last_healthy_at", { mode: "timestamp_ms" }),
     lastError: text("last_error"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
   },
   (t) => [
     index("connected_account_user_idx").on(t.userId),
@@ -56,30 +74,30 @@ export const connectedAccount = pgTable(
   ]
 );
 
-export const source = pgTable(
+export const source = sqliteTable(
   "source",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     userId: text("user_id").notNull(),
-    projectId: uuid("project_id")
+    projectId: text("project_id")
       .notNull()
       .references(() => project.id, { onDelete: "cascade" }),
-    connectedAccountId: uuid("connected_account_id").references(
+    connectedAccountId: text("connected_account_id").references(
       () => connectedAccount.id,
       { onDelete: "set null" }
     ),
     kind: text("kind").notNull(), // mail_folder | folder_watch | youtube_channel | rss | web_scrape | slack_channel
     name: text("name").notNull(),
-    config: jsonb("config").notNull().default({}),
+    config: text("config", { mode: "json" }).notNull().$defaultFn(() => ({})),
     runtime: text("runtime").notNull(), // cloud | local
-    enabled: boolean("enabled").notNull().default(true),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     cron: text("cron"),
-    nextRunAt: timestamp("next_run_at", { withTimezone: true }),
-    cursor: jsonb("cursor"),
-    lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+    nextRunAt: integer("next_run_at", { mode: "timestamp_ms" }),
+    cursor: text("cursor", { mode: "json" }),
+    lastSyncAt: integer("last_sync_at", { mode: "timestamp_ms" }),
     lastStatus: text("last_status"), // ok | error | running
     lastError: text("last_error"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
   },
   (t) => [
     index("source_user_idx").on(t.userId, t.projectId),
@@ -87,22 +105,22 @@ export const source = pgTable(
   ]
 );
 
-export const sourceRule = pgTable(
+export const sourceRule = sqliteTable(
   "source_rule",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     userId: text("user_id").notNull(),
-    projectId: uuid("project_id")
+    projectId: text("project_id")
       .notNull()
       .references(() => project.id, { onDelete: "cascade" }),
-    sourceId: uuid("source_id")
+    sourceId: text("source_id")
       .notNull()
       .references(() => source.id, { onDelete: "cascade" }),
     version: integer("version").notNull(),
     ruleType: text("rule_type").notNull().default("selection"), // selection | review
-    config: jsonb("config").notNull().default({}),
-    enabled: boolean("enabled").notNull().default(true), // active version for its ruleType
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    config: text("config", { mode: "json" }).notNull().$defaultFn(() => ({})),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true), // active version for its ruleType
+    createdAt: createdAt(),
   },
   (t) => [
     index("source_rule_project_idx").on(t.userId, t.projectId, t.sourceId),
@@ -110,26 +128,28 @@ export const sourceRule = pgTable(
   ]
 );
 
-export const sourceRun = pgTable(
+export const sourceRun = sqliteTable(
   "source_run",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     userId: text("user_id").notNull(),
-    projectId: uuid("project_id")
+    projectId: text("project_id")
       .notNull()
       .references(() => project.id, { onDelete: "cascade" }),
-    sourceId: uuid("source_id")
+    sourceId: text("source_id")
       .notNull()
       .references(() => source.id, { onDelete: "cascade" }),
     trigger: text("trigger").notNull(), // manual | cron | webhook | local
     status: text("status").notNull(), // running | ok | error
-    cursorBefore: jsonb("cursor_before"),
-    cursorAfter: jsonb("cursor_after"),
+    cursorBefore: text("cursor_before", { mode: "json" }),
+    cursorAfter: text("cursor_after", { mode: "json" }),
     itemCount: integer("item_count").notNull().default(0),
     originalCount: integer("original_count").notNull().default(0),
     error: text("error"),
-    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
-    completedAt: timestamp("completed_at", { withTimezone: true }),
+    startedAt: integer("started_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
   },
   (t) => [
     index("source_run_project_idx").on(t.userId, t.projectId, t.startedAt),
@@ -140,19 +160,19 @@ export const sourceRun = pgTable(
   ]
 );
 
-export const ingestToken = pgTable(
+export const ingestToken = sqliteTable(
   "ingest_token",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     userId: text("user_id").notNull(),
     tokenHash: text("token_hash").notNull(),
     // Project-bound tokens must disappear with project, never become unlocked.
-    projectId: uuid("project_id").references(() => project.id, {
+    projectId: text("project_id").references(() => project.id, {
       onDelete: "cascade",
     }),
     label: text("label"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
   },
   (t) => [
     index("ingest_token_user_idx").on(t.userId),
@@ -160,15 +180,15 @@ export const ingestToken = pgTable(
   ]
 );
 
-export const item = pgTable(
+export const item = sqliteTable(
   "item",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     userId: text("user_id").notNull(),
-    projectId: uuid("project_id")
+    projectId: text("project_id")
       .notNull()
       .references(() => project.id, { onDelete: "cascade" }),
-    sourceId: uuid("source_id").references(() => source.id, {
+    sourceId: text("source_id").references(() => source.id, {
       onDelete: "set null",
     }),
     externalId: text("external_id"),
@@ -178,12 +198,14 @@ export const item = pgTable(
     rawText: text("raw_text"),
     title: text("title"),
     summary: text("summary"),
-    tags: text("tags").array(),
+    tags: text("tags", { mode: "json" }).$type<string[]>(),
     status: text("status").notNull().default("pending"), // pending | processing | ready | failed | review | trashed | deleting
-    trashedAt: timestamp("trashed_at", { withTimezone: true }),
+    trashedAt: integer("trashed_at", { mode: "timestamp_ms" }),
     restoreStatus: text("restore_status"),
-    capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
-    processedAt: timestamp("processed_at", { withTimezone: true }),
+    capturedAt: integer("captured_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    processedAt: integer("processed_at", { mode: "timestamp_ms" }),
   },
   (t) => [
     index("item_user_idx").on(t.userId, t.capturedAt),
@@ -192,20 +214,22 @@ export const item = pgTable(
   ]
 );
 
-export const reviewDecision = pgTable(
+export const reviewDecision = sqliteTable(
   "review_decision",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     userId: text("user_id").notNull(),
-    projectId: uuid("project_id")
+    projectId: text("project_id")
       .notNull()
       .references(() => project.id, { onDelete: "cascade" }),
-    itemId: uuid("item_id")
+    itemId: text("item_id")
       .notNull()
       .references(() => item.id, { onDelete: "cascade" }),
     decision: text("decision").notNull(), // approve | reject
     note: text("note"),
-    decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
+    decidedAt: integer("decided_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
   (t) => [
     index("review_decision_project_idx").on(t.userId, t.projectId, t.decidedAt),
@@ -213,19 +237,19 @@ export const reviewDecision = pgTable(
   ]
 );
 
-export const deletionMarker = pgTable(
+export const deletionMarker = sqliteTable(
   "deletion_marker",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     userId: text("user_id").notNull(),
-    projectId: uuid("project_id")
+    projectId: text("project_id")
       .notNull()
       .references(() => project.id, { onDelete: "cascade" }),
-    sourceId: uuid("source_id")
+    sourceId: text("source_id")
       .notNull()
       .references(() => source.id, { onDelete: "restrict" }),
     externalId: text("external_id").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
   },
   (t) => [
     uniqueIndex("deletion_marker_project_source_external_idx").on(
@@ -237,30 +261,32 @@ export const deletionMarker = pgTable(
   ]
 );
 
-export const originalRecord = pgTable(
+export const originalRecord = sqliteTable(
   "original_record",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     userId: text("user_id").notNull(),
-    projectId: uuid("project_id")
+    projectId: text("project_id")
       .notNull()
       .references(() => project.id, { onDelete: "cascade" }),
-    sourceId: uuid("source_id")
+    sourceId: text("source_id")
       .notNull()
       .references(() => source.id, { onDelete: "cascade" }),
-    sourceRunId: uuid("source_run_id").references(() => sourceRun.id, {
+    sourceRunId: text("source_run_id").references(() => sourceRun.id, {
       onDelete: "set null",
     }),
-    itemId: uuid("item_id").references(() => item.id, {
+    itemId: text("item_id").references(() => item.id, {
       onDelete: "set null",
     }),
     externalId: text("external_id").notNull(),
     version: integer("version").notNull().default(1),
     contentType: text("content_type"),
     sourceLabel: text("source_label"),
-    payload: jsonb("payload").notNull().default({}),
-    capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    payload: text("payload", { mode: "json" }).notNull().$defaultFn(() => ({})),
+    capturedAt: integer("captured_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    createdAt: createdAt(),
   },
   (t) => [
     index("original_record_project_idx").on(t.userId, t.projectId, t.capturedAt),
@@ -274,92 +300,98 @@ export const originalRecord = pgTable(
   ]
 );
 
-export const chunk = pgTable(
+export const chunk = sqliteTable(
   "chunk",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    itemId: uuid("item_id")
+    id: id(),
+    itemId: text("item_id")
       .notNull()
       .references(() => item.id, { onDelete: "cascade" }),
     userId: text("user_id").notNull(),
-    projectId: uuid("project_id")
+    projectId: text("project_id")
       .notNull()
       .references(() => project.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
     text: text("text").notNull(),
-    embedding: vector("embedding", { dimensions: 768 }),
+    // Float32Array of 768 dims, stored as a raw little-endian buffer.
+    // Encode/decode via lib/db/vector.ts. Nullable until embedding completes.
+    embedding: blob("embedding", { mode: "buffer" }),
   },
   (t) => [
-    index("chunk_embedding_idx").using("hnsw", t.embedding.op("vector_cosine_ops")),
     index("chunk_user_idx").on(t.userId),
     index("chunk_project_idx").on(t.userId, t.projectId),
+    index("chunk_item_idx").on(t.itemId),
   ]
 );
 
-export const conversation = pgTable("conversation", {
-  id: uuid("id").primaryKey().defaultRandom(),
+export const conversation = sqliteTable("conversation", {
+  id: id(),
   userId: text("user_id").notNull(),
-  projectId: uuid("project_id")
+  projectId: text("project_id")
     .notNull()
     .references(() => project.id, { onDelete: "cascade" }),
   title: text("title"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: createdAt(),
 });
 
-export const message = pgTable("message", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  conversationId: uuid("conversation_id")
+export const message = sqliteTable("message", {
+  id: id(),
+  conversationId: text("conversation_id")
     .notNull()
     .references(() => conversation.id, { onDelete: "cascade" }),
   role: text("role").notNull(),
   content: text("content").notNull(),
-  citations: jsonb("citations"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  citations: text("citations", { mode: "json" }),
+  createdAt: createdAt(),
 });
 
-export const pipeline = pgTable(
+export const pipeline = sqliteTable(
   "pipeline",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     userId: text("user_id").notNull(),
-    projectId: uuid("project_id")
+    projectId: text("project_id")
       .notNull()
       .references(() => project.id, { onDelete: "cascade" }),
     templateKey: text("template_key"),
     name: text("name").notNull(),
     description: text("description").notNull(),
-    spec: jsonb("spec").notNull(),
+    spec: text("spec", { mode: "json" }).notNull(),
     cron: text("cron"),
-    enabled: boolean("enabled").notNull().default(true),
-    nextRunAt: timestamp("next_run_at", { withTimezone: true }),
-    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    nextRunAt: integer("next_run_at", { mode: "timestamp_ms" }),
+    lastRunAt: integer("last_run_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
   },
   (t) => [uniqueIndex("pipeline_project_template_idx").on(t.projectId, t.templateKey)]
 );
 
-export const pipelineRun = pgTable("pipeline_run", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  pipelineId: uuid("pipeline_id")
+export const pipelineRun = sqliteTable("pipeline_run", {
+  id: id(),
+  pipelineId: text("pipeline_id")
     .notNull()
     .references(() => pipeline.id, { onDelete: "cascade" }),
   userId: text("user_id").notNull(),
   status: text("status").notNull(),
-  output: jsonb("output"),
-  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
-  completedAt: timestamp("completed_at", { withTimezone: true }),
+  output: text("output", { mode: "json" }),
+  startedAt: integer("started_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  completedAt: integer("completed_at", { mode: "timestamp_ms" }),
 });
 
-export const topic = pgTable("topic", {
-  id: uuid("id").primaryKey().defaultRandom(),
+export const topic = sqliteTable("topic", {
+  id: id(),
   userId: text("user_id").notNull(),
-  projectId: uuid("project_id")
+  projectId: text("project_id")
     .notNull()
     .references(() => project.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   summary: text("summary"),
-  itemIds: uuid("item_ids").array(),
-  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+  itemIds: text("item_ids", { mode: "json" }).$type<string[]>(),
+  generatedAt: integer("generated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export type Project = typeof project.$inferSelect;

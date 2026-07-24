@@ -2,14 +2,9 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 
 import { randomBytes } from "crypto";
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
 import { eq, and } from "drizzle-orm";
-import ws from "ws";
-import * as schema from "../lib/db/schema";
+import { db, schema, client } from "../lib/db";
 import { hashIngestToken } from "../lib/ingest-auth";
-
-neonConfig.webSocketConstructor = ws;
 
 function arg(name: string): string | null {
   const idx = process.argv.indexOf(`--${name}`);
@@ -27,9 +22,6 @@ async function main() {
     process.exit(1);
   }
 
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  const db = drizzle({ client: pool, schema });
-
   let projectId: string | null = null;
   if (projectSlug) {
     const rows = await db
@@ -39,7 +31,7 @@ async function main() {
       .limit(1);
     if (!rows[0]) {
       console.error(`No project with slug "${projectSlug}" for user ${userId}`);
-      await pool.end();
+      client.close();
       process.exit(1);
     }
     projectId = rows[0].id;
@@ -63,7 +55,7 @@ async function main() {
   console.log(`  project: ${projectSlug ?? "(none — falls back to inbox per request)"}`);
   console.log(`  label:   ${label ?? "(none)"}`);
 
-  await pool.end();
+  client.close();
 }
 
 main().catch((err) => {

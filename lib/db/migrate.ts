@@ -1,35 +1,32 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
-import { migrate } from "drizzle-orm/neon-serverless/migrator";
-import ws from "ws";
-
-neonConfig.webSocketConstructor = ws;
-
-// Local development against a Postgres behind a Neon wsproxy. Never set in
-// production, where the driver talks to Neon directly.
-if (process.env.DATABASE_WS_PROXY) {
-  neonConfig.wsProxy = () => process.env.DATABASE_WS_PROXY!;
-  neonConfig.useSecureWebSocket = false;
-  neonConfig.pipelineConnect = false;
-}
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
+import { migrate } from "drizzle-orm/libsql/migrator";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
+import { applyFullTextSearch } from "./fts";
 
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is not set");
+  const url = process.env.TROVE_DB_URL ?? "file:./data/trove.db";
+  if (url.startsWith("file:")) {
+    mkdirSync(dirname(url.slice("file:".length)), { recursive: true });
+  }
 
-  const pool = new Pool({ connectionString: url });
-  const db = drizzle({ client: pool });
+  const client = createClient({ url });
+  await client.execute("PRAGMA foreign_keys = ON");
 
-  await pool.query("CREATE EXTENSION IF NOT EXISTS vector");
-  console.log("pgvector extension ready");
-
+  const db = drizzle({ client });
   await migrate(db, { migrationsFolder: "./lib/db/migrations" });
   console.log("migrations applied");
 
-  await pool.end();
+  // FTS5 virtual table + triggers live outside Drizzle's generated migrations
+  // (drizzle-kit can't express them). Idempotent, so it runs every migrate.
+  await applyFullTextSearch(client);
+  console.log("full-text search ready");
+
+  client.close();
 }
 
 main().catch((err) => {

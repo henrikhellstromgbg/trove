@@ -1,24 +1,26 @@
-import { drizzle } from "drizzle-orm/neon-serverless";
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import ws from "ws";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import * as schema from "./schema";
 
-if (typeof WebSocket === "undefined") {
-  neonConfig.webSocketConstructor = ws;
+// Local-first: the entire database is one SQLite file in the repo (gitignored).
+// Override with TROVE_DB_URL (a libsql URL) for tests or an alternate location.
+export const dbUrl = process.env.TROVE_DB_URL ?? "file:./data/trove.db";
+
+// libsql creates the file but not its parent directory.
+if (dbUrl.startsWith("file:")) {
+  mkdirSync(dirname(dbUrl.slice("file:".length)), { recursive: true });
 }
 
-// Local development against a Postgres behind a Neon wsproxy. Never set in
-// production, where the driver talks to Neon directly. Force the `ws` package
-// here: the runtime's global WebSocket (Node 20+/Next) does not drive the
-// plaintext ws:// wsproxy connection correctly.
-if (process.env.DATABASE_WS_PROXY) {
-  neonConfig.webSocketConstructor = ws;
-  neonConfig.wsProxy = () => process.env.DATABASE_WS_PROXY!;
-  neonConfig.useSecureWebSocket = false;
-  neonConfig.pipelineConnect = false;
-}
+export const client = createClient({ url: dbUrl });
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// SQLite disables foreign keys per-connection by default; turn them on so the
+// onDelete actions declared in schema.ts actually cascade. WAL improves
+// read/write concurrency under the dev server. Both are queued on the
+// connection before any request-time query runs.
+void client.execute("PRAGMA foreign_keys = ON");
+void client.execute("PRAGMA journal_mode = WAL");
 
-export const db = drizzle({ client: pool, schema });
+export const db = drizzle({ client, schema });
 export { schema };
