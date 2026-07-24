@@ -646,9 +646,9 @@ test("Slack sync downloads a shared file, uploads it, and stores a file item", a
       downloaded.push(url);
       return Buffer.from("pdf-bytes");
     },
-    put: async (key: string) => {
-      putKeys.push(key);
-      return { url: `https://store.private.blob.vercel-storage.com/${key}` };
+    storeUpload: async (originalName: string) => {
+      putKeys.push(originalName);
+      return { key: `stored-${originalName}` };
     },
     sendItemCaptured: async (itemId: string) => {
       db.log.push(`event:${itemId}`);
@@ -658,20 +658,18 @@ test("Slack sync downloads a shared file, uploads it, and stores a file item", a
   const result = await runSourceSync(SLACK_SOURCE, "manual");
 
   assert.equal(result.ok, true);
-  // Only the supported, in-size file was downloaded and uploaded.
+  // Only the supported, in-size file was downloaded and stored.
   assert.deepEqual(downloaded, ["https://files.slack.com/F1/report.pdf"]);
   assert.equal(putKeys.length, 1);
-  assert.match(putKeys[0]!, /^pdf\/user-a\/F1-report\.pdf$/);
+  // storeUpload receives the original filename.
+  assert.equal(putKeys[0], "report.pdf");
 
   assert.equal(db.state.items.length, 1);
   const item = db.state.items[0]!;
   assert.equal(item.type, "pdf");
   assert.equal(item.externalId, "F1");
   assert.equal(item.source, "report.pdf");
-  assert.equal(
-    item.blobUrl,
-    "https://store.private.blob.vercel-storage.com/pdf/user-a/F1-report.pdf"
-  );
+  assert.equal(item.blobUrl, "stored-report.pdf");
 
   const original = db.state.originals.find((o) => o.externalId === "F1")!;
   const payload = original.payload as Record<string, unknown>;
@@ -717,9 +715,9 @@ test("Slack sync skips a file whose id was already imported (no re-upload)", asy
       downloads += 1;
       return Buffer.from("x");
     },
-    put: async () => {
+    storeUpload: async () => {
       puts += 1;
-      return { url: "https://store.private.blob.vercel-storage.com/x" };
+      return { key: "stored-x" };
     },
     sendItemCaptured: async () => {},
   });

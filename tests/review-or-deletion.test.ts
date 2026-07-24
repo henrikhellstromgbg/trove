@@ -305,7 +305,7 @@ beforeEach(() => {
   Object.assign(ingestDeps as unknown as MutableDeps, originalIngestDeps, {
     resolveIngestAuth: async () => ({ userId: USER_ID, lockedProjectId: null }),
     requireProjectId: async (_userId: string, projectId: unknown) => projectId,
-    put: async () => ({ url: "https://blob.test/file" }),
+    storeUpload: async () => ({ key: "stored-file-key" }),
     inngest: { send: async () => undefined },
   });
   Object.assign(reviewOrDeletionDeps as unknown as MutableDeps, originalReviewOrDeletionDeps, {

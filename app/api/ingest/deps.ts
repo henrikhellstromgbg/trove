@@ -1,4 +1,4 @@
-import { put } from "@vercel/blob";
+import { storeUpload } from "@/lib/files";
 import { db } from "@/lib/db";
 import { inngest } from "@/lib/inngest/client";
 import { resolveIngestAuth } from "@/lib/ingest-auth";
@@ -7,7 +7,7 @@ import { loadActiveReviewRuleConfig } from "@/lib/sources/sync";
 import type { ReviewRuleConfig } from "@/lib/sources/review-rules";
 
 export const ingestDeps = {
-  put,
+  storeUpload,
   db,
   inngest,
   resolveIngestAuth,

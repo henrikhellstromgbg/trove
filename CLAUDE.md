@@ -12,7 +12,7 @@ Audience is designers, freelancers, indie operators, researchers. Not "normal pe
 - Full-text search via FTS5 (`item_fts` virtual table + triggers); vector search is brute-force cosine in JS (`lib/db/vector.ts`, embeddings stored as Float32 blobs), no pgvector/ANN index
 - Clerk for auth (email magic links)
 - Inngest for background jobs and crons (runs locally against the local DB)
-- Private Vercel Blob storage for uploaded files
+- Local filesystem storage for uploaded files (`data/files/`, gitignored); served through an ownership-checked route, never as public static files
 - Anthropic Claude: Sonnet 4.6 for answers, Haiku 4.5 for extract/enrich
 - Gemini gemini-embedding-001 for embeddings (768 dims)
 - Tauri 2 for the partial macOS menu bar shell
@@ -75,7 +75,7 @@ ANTHROPIC_API_KEY                  Claude for answer, extract, enrich
 GEMINI_API_KEY                     Embeddings only
 INNGEST_EVENT_KEY                  Inngest (week 1)
 INNGEST_SIGNING_KEY                Inngest (week 1)
-PRIVATE_BLOB_READ_WRITE_TOKEN      Private Vercel Blob store
+TROVE_FILES_DIR                    uploads dir, optional (defaults to ./data/files)
 RESEND_API_KEY                     Optional pipeline email delivery
 SLACK_BOT_TOKEN                    Optional Slack poll source
 ```
@@ -108,6 +108,8 @@ Already done in `drizzle.config.ts` and `lib/db/migrate.ts`.
 
 **Vector search is brute-force.** No ANN index. `rankByEmbedding` (`lib/db/vector.ts`) loads a project's candidate chunks and ranks by cosine in JS. Fine at personal scale; revisit if the corpus grows past ~100k chunks.
 
+**File storage is local (`lib/files.ts`).** Uploads are written to a flat, browsable `data/files/` as `{uuid}-{sanitized original name}`; that filename (the "key") is stored in `item.blobUrl` (column name kept for continuity — it holds a key now, not a URL). Writes go through `storeUpload`; reads through `readUploadBuffer`/`readUploadText` (used by the extractors); deletes through `deleteUpload`. Files are served only via the ownership-checked `GET /api/items/[id]/blob` route (project + user scoped), never as public static files. `contentTypeForKey` infers the MIME from the extension. Keys are validated against path traversal.
+
 **pnpm 11 build approval.** pnpm 11 blocks postinstall scripts by default. When installs warn `[ERR_PNPM_IGNORED_BUILDS]`, run `pnpm approve-builds --all` once. So far we've approved `sharp`, `unrs-resolver`, `esbuild` variants, and `@clerk/shared`.
 
 **Clerk v7 control components.** `SignedIn` and `SignedOut` are gone. Use `<Show when="signed-in">` and `<Show when="signed-out">` from `@clerk/nextjs`. Note the kebab-case condition strings.
@@ -133,7 +135,7 @@ Already done in `drizzle.config.ts` and `lib/db/migrate.ts`.
 | Scaffold Next.js 16 | Done | App Router, Tailwind, Turbopack, dev server returns HTTP 200 |
 | SQLite (libSQL) + Drizzle | Done | Local file `data/trove.db`. Fresh migration `0000` builds the full schema; `db:migrate` then sets up FTS5. Brute-force JS vector search replaces pgvector. Migrated off Neon 2026-07-24. |
 | Clerk auth | Done | Protects application routes; `/api/ingest` supports its own Clerk/token auth. |
-| Capture + private Vercel Blob | Done | Browser still uses legacy `/api/capture`; migration to `/api/ingest` remains. |
+| Capture + local file storage | Done | Uploads stored on the local filesystem (`lib/files.ts`, `data/files/`), served via the ownership-checked `/api/items/[id]/blob` route. Migrated off Vercel Blob 2026-07-24. Browser still uses legacy `/api/capture`; migration to `/api/ingest` remains. |
 | Inngest + ingest worker | Done | Extraction, chunking, embedding, enrichment, topic clustering, source sync and due pipelines exist. |
 | Ask retrieval | Done | Streams project-scoped cited answers and requires an owned project id; conversation persistence remains. |
 | Topic clustering | Done | Nightly project-scoped clustering plus a read-only browsing route at `/p/[slug]/topics` (cards with name, summary and grouped items). |

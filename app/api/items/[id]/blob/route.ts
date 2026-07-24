@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { get } from "@vercel/blob";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { InvalidProjectError, requireProjectId } from "@/lib/projects";
+import { contentTypeForKey, readUploadBuffer } from "@/lib/files";
 
-// Legacy items live in the old public store (plain fetch works). New
-// uploads go to the private store and need an authenticated get().
-const PRIVATE_HOST_MARKER = ".private.blob.vercel-storage.com";
-
-export const itemBlobDeps = { auth, db, requireProjectId };
+export const itemBlobDeps = { auth, db, requireProjectId, readUploadBuffer };
 
 export async function GET(
   req: NextRequest,
@@ -54,30 +50,17 @@ export async function GET(
 
   const filename = (item.source ?? "file").replace(/"/g, "");
 
-  if (item.blobUrl.includes(PRIVATE_HOST_MARKER)) {
-    const result = await get(item.blobUrl, {
-      access: "private",
-      token: process.env.PRIVATE_BLOB_READ_WRITE_TOKEN,
-    });
-    if (!result || result.statusCode !== 200 || !result.stream) {
-      return NextResponse.json({ error: "not found" }, { status: 404 });
-    }
-    return new NextResponse(result.stream, {
-      headers: {
-        "Content-Type": result.blob.contentType,
-        "Content-Disposition": `inline; filename="${filename}"`,
-      },
-    });
-  }
-
-  const upstream = await fetch(item.blobUrl);
-  if (!upstream.ok || !upstream.body) {
+  // blobUrl now holds a local file key (see lib/files.ts); read it off disk.
+  let buffer: Buffer;
+  try {
+    buffer = await itemBlobDeps.readUploadBuffer(item.blobUrl);
+  } catch {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  return new NextResponse(upstream.body, {
+  return new NextResponse(new Uint8Array(buffer), {
     headers: {
-      "Content-Type": upstream.headers.get("content-type") ?? "application/octet-stream",
+      "Content-Type": contentTypeForKey(item.blobUrl),
       "Content-Disposition": `inline; filename="${filename}"`,
     },
   });

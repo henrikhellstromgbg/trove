@@ -22,7 +22,6 @@
     "@google/genai": "^2.3.0",
     "@libsql/client": "^0.15.4",
     "@mozilla/readability": "^0.6.0",
-    "@vercel/blob": "^2.3.3",
     "cron-parser": "^5.5.0",
     "drizzle-orm": "^0.45.2",
     "inngest": "^4.4.0",

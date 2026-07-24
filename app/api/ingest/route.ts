@@ -9,7 +9,7 @@ import {
   verifySourceOwnership,
 } from "@/lib/ingest-validation";
 import { IngestAuth } from "@/lib/ingest-auth";
-import { MAX_FILE_BYTES, classifyFile, contentTypeFor, isUrl } from "@/lib/capture";
+import { MAX_FILE_BYTES, classifyFile, isUrl } from "@/lib/capture";
 import {
   DeletedExternalItemError,
   assertExternalItemNotDeleted,
@@ -245,14 +245,10 @@ async function handleFile(req: NextRequest, ingestAuth: IngestAuth) {
     });
   }
 
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const blobKey = `${kind}/${ingestAuth.userId}/${Date.now()}-${safeName}`;
-
-  const blob = await ingestDeps.put(blobKey, file, {
-    access: "private",
-    contentType: contentTypeFor(kind, file),
-    token: process.env.PRIVATE_BLOB_READ_WRITE_TOKEN,
-  });
+  const { key } = await ingestDeps.storeUpload(
+    file.name,
+    Buffer.from(await file.arrayBuffer())
+  );
 
   const capturedAtField = form.get("capturedAt");
   const status = await resolveInitialStatus(projectId, sourceId, {
@@ -268,7 +264,7 @@ async function handleFile(req: NextRequest, ingestAuth: IngestAuth) {
       sourceId,
       externalId,
       type: kind,
-      blobUrl: blob.url,
+      blobUrl: key,
       source: file.name,
       status,
       ...(typeof capturedAtField === "string" && capturedAtField

@@ -1,6 +1,6 @@
-import { del } from "@vercel/blob";
 import { and, desc, eq, or } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
+import { deleteUpload } from "@/lib/files";
 import { inngest } from "@/lib/inngest/client";
 import type {
   DeletionMarker,
@@ -19,8 +19,6 @@ import {
   type OwnedItemRow,
   type ReviewDecisionValue,
 } from "./contracts";
-
-const PRIVATE_HOST_MARKER = ".private.blob.vercel-storage.com";
 
 type MutableItemFields = Pick<
   Item,
@@ -63,12 +61,11 @@ export const reviewOrDeletionDeps = {
   sendItemCaptured: async (itemId: string) => {
     await inngest.send({ name: "item/captured", data: { itemId } });
   },
+  // blobUrl now holds a local file key (see lib/files.ts). Delete the file off
+  // disk; false if there was nothing to delete.
   deleteBlobIfPresent: async (blobUrl: string | null) => {
-    if (!blobUrl || !blobUrl.includes(PRIVATE_HOST_MARKER)) return false;
-    await del(blobUrl, {
-      token: process.env.PRIVATE_BLOB_READ_WRITE_TOKEN,
-    });
-    return true;
+    if (!blobUrl) return false;
+    return deleteUpload(blobUrl);
   },
 };
 

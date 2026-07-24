@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { fetchBlobBuffer } from "@/lib/blob";
+import { readUploadBuffer } from "@/lib/files";
 import { MODELS } from "@/lib/ai/models";
 
 const anthropic = new Anthropic();
@@ -41,7 +41,7 @@ export async function extractFromImage(
 ): Promise<ImageExtracted> {
   const mediaType = normalizeMedia(mime, filename);
 
-  const buffer = await fetchBlobBuffer(blobUrl);
+  const buffer = await readUploadBuffer(blobUrl);
   const base64 = buffer.toString("base64");
 
   const response = await anthropic.messages.create({

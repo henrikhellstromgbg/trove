@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { fetchBlobBuffer } from "@/lib/blob";
+import { readUploadBuffer } from "@/lib/files";
 
 export type XlsxExtracted = {
   title: string;
@@ -10,7 +10,7 @@ export async function extractFromXlsx(
   blobUrl: string,
   filename: string
 ): Promise<XlsxExtracted> {
-  const buffer = await fetchBlobBuffer(blobUrl);
+  const buffer = await readUploadBuffer(blobUrl);
 
   const workbook = XLSX.read(buffer, { type: "buffer" });
 

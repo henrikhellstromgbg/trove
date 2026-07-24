@@ -1,5 +1,5 @@
 import mammoth from "mammoth";
-import { fetchBlobBuffer } from "@/lib/blob";
+import { readUploadBuffer } from "@/lib/files";
 
 export type DocxExtracted = {
   title: string;
@@ -10,7 +10,7 @@ export async function extractFromDocx(
   blobUrl: string,
   filename: string
 ): Promise<DocxExtracted> {
-  const buffer = await fetchBlobBuffer(blobUrl);
+  const buffer = await readUploadBuffer(blobUrl);
 
   const result = await mammoth.extractRawText({ buffer });
   const text = result.value.replace(/\r/g, "").trim();

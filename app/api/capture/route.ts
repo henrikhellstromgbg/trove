@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { schema } from "@/lib/db";
 import { InvalidProjectError } from "@/lib/projects";
-import { MAX_FILE_BYTES, classifyFile, contentTypeFor, isUrl } from "@/lib/capture";
+import { MAX_FILE_BYTES, classifyFile, isUrl } from "@/lib/capture";
 import { captureDeps } from "./deps";
 
 export async function POST(req: NextRequest) {
@@ -110,14 +110,10 @@ async function handleFile(req: NextRequest, userId: string) {
     throw error;
   }
 
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const blobKey = `${kind}/${userId}/${Date.now()}-${safeName}`;
-
-  const blob = await captureDeps.put(blobKey, file, {
-    access: "private",
-    contentType: contentTypeFor(kind, file),
-    token: process.env.PRIVATE_BLOB_READ_WRITE_TOKEN,
-  });
+  const { key } = await captureDeps.storeUpload(
+    file.name,
+    Buffer.from(await file.arrayBuffer())
+  );
 
   const [item] = await captureDeps.db
     .insert(schema.item)
@@ -125,7 +121,7 @@ async function handleFile(req: NextRequest, userId: string) {
       userId,
       projectId,
       type: kind,
-      blobUrl: blob.url,
+      blobUrl: key,
       source: file.name,
       status: "pending",
     })

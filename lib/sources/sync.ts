@@ -1,4 +1,4 @@
-import { put } from "@vercel/blob";
+import { storeUpload } from "@/lib/files";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { Source } from "@/lib/db/schema";
@@ -112,7 +112,7 @@ export const sourceSyncDeps = {
   fetchSlackMessages,
   fetchWebScrapeEntries,
   downloadSlackFile,
-  put,
+  storeUpload,
   nextRunFromCron,
   sendItemCaptured: async (itemId: string) => {
     await inngest.send({ name: "item/captured", data: { itemId } });
@@ -555,14 +555,8 @@ async function prepareSlackFileBatch(
     let blobUrl: string;
     try {
       const bytes = await sourceSyncDeps.downloadSlackFile(file.urlPrivate);
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const blobKey = `${kind}/${source.userId}/${file.externalId}-${safeName}`;
-      const blob = await sourceSyncDeps.put(blobKey, bytes, {
-        access: "private",
-        contentType: contentTypeForKind(kind, file.mimeType),
-        token: process.env.PRIVATE_BLOB_READ_WRITE_TOKEN,
-      });
-      blobUrl = blob.url;
+      const stored = await sourceSyncDeps.storeUpload(file.name, bytes);
+      blobUrl = stored.key;
     } catch (error) {
       console.warn(
         `slack file skipped (download/upload failed): ${file.name}: ${

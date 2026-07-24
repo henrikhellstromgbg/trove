@@ -1,4 +1,4 @@
-import { fetchBlobText } from "@/lib/blob";
+import { readUploadText } from "@/lib/files";
 
 export type TextFileExtracted = {
   title: string;
@@ -9,7 +9,7 @@ export async function extractFromTextFile(
   blobUrl: string,
   filename: string
 ): Promise<TextFileExtracted> {
-  const text = (await fetchBlobText(blobUrl)).replace(/\r/g, "").trim();
+  const text = (await readUploadText(blobUrl)).replace(/\r/g, "").trim();
 
   const firstLine = text.split("\n").map((l) => l.trim()).find(Boolean) ?? "";
   const fallback = filename.replace(/\.[^.]+$/, "");

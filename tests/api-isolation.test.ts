@@ -67,10 +67,10 @@ beforeEach(() => {
 
   Object.assign(captureDeps as unknown as MutableDeps, originalCaptureDeps, {
     auth: async () => ({ userId: USER_ID }),
-    put: async (...args: unknown[]) => {
+    storeUpload: async (...args: unknown[]) => {
       putCalls += 1;
       putInputs.push(args);
-      return { url: "https://blob.test/file" };
+      return { key: "stored-file-key" };
     },
     inngest: {
       send: async () => {
@@ -80,10 +80,10 @@ beforeEach(() => {
   });
   Object.assign(ingestDeps as unknown as MutableDeps, originalIngestDeps, {
     resolveIngestAuth: async () => ({ userId: USER_ID, lockedProjectId: null }),
-    put: async (...args: unknown[]) => {
+    storeUpload: async (...args: unknown[]) => {
       putCalls += 1;
       putInputs.push(args);
-      return { url: "https://blob.test/file" };
+      return { key: "stored-file-key" };
     },
     inngest: {
       send: async () => {
@@ -177,18 +177,18 @@ test("browser file capture uses multipart bytes through ingest", async () => {
   assert.equal(response.status, 200);
   assert.equal(putCalls, 1);
   assert.equal(sendCalls, 1);
-  assert.equal(putInputs[0]?.[1] instanceof File, true);
-  const uploadedFile = putInputs[0]?.[1] as File;
-  assert.equal(uploadedFile.name, "note.txt");
-  assert.equal(uploadedFile.type, "text/plain");
-  assert.equal(await uploadedFile.text(), "hello");
+  // storeUpload is called with (originalName, bytes).
+  assert.equal(putInputs[0]?.[0], "note.txt");
+  const uploadedBytes = putInputs[0]?.[1] as Buffer;
+  assert.equal(Buffer.isBuffer(uploadedBytes), true);
+  assert.equal(uploadedBytes.toString("utf-8"), "hello");
   assert.deepEqual(db.insertValues[0], {
     userId: USER_ID,
     projectId: PROJECT_A,
     sourceId: null,
     externalId: null,
     type: "textfile",
-    blobUrl: "https://blob.test/file",
+    blobUrl: "stored-file-key",
     source: "note.txt",
     status: "pending",
   });
