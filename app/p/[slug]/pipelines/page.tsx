@@ -4,6 +4,14 @@ import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug } from "@/lib/projects";
+import {
+  DataList,
+  DataRow,
+  EmptyState,
+  PageFrame,
+  PageHeader,
+  StatusIndicator,
+} from "@/app/components/ui";
 
 export default async function PipelinesPage({
   params,
@@ -31,62 +39,53 @@ export default async function PipelinesPage({
   const base = `/p/${project.slug}`;
 
   return (
-    <section className="relative mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 pb-16 pt-16 md:px-10">
-      <header className="flex items-end justify-between gap-6">
-        <div className="flex flex-col gap-1">
-          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink-faint">
-            Pipelines
-          </p>
-          <h1 className="text-3xl font-medium tracking-tight text-ink md:text-4xl">
-            Standing instructions.
-          </h1>
-          <p className="mt-1 max-w-xl text-sm text-ink-dim">
-            tell trove what to do, when to do it. it runs while you sleep.
-          </p>
-        </div>
-        <Link
-          href={`${base}/pipelines/new`}
-          className="shrink-0 rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
-        >
-          new pipeline
-        </Link>
-      </header>
+    <PageFrame maxWidth="5xl">
+      <PageHeader
+        title="Pipelines"
+        description="Standing instructions that run on a schedule."
+        action={
+          <Link
+            href={`${base}/pipelines/new`}
+            className="inline-flex items-center justify-center rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
+          >
+            new pipeline
+          </Link>
+        }
+      />
 
       {pipelines.length === 0 ? (
-        <p className="font-mono text-sm text-ink-faint">
-          nothing on a schedule yet.
-        </p>
+        <EmptyState message="Nothing on a schedule yet." />
       ) : (
-        <ul>
-          {pipelines.map((p) => (
-              <li key={p.id} className="border-b border-line last:border-b-0">
-                <Link
-                  href={`${base}/pipelines/${p.id}`}
-                  className="group grid grid-cols-[8rem,1fr,auto] items-baseline gap-6 px-6 py-5 transition-colors hover:bg-ink/[0.015]"
-                >
-                  <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-                    {p.cron ?? "manual"}
-                  </span>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-lg font-medium tracking-tight text-ink">
-                      {p.name}
-                    </span>
-                    <span className="text-sm text-ink-dim line-clamp-2">
-                      {p.description}
-                    </span>
-                  </div>
-                  <span
-                    className={`font-mono text-[10px] uppercase tracking-[0.22em] ${
-                      p.enabled ? "text-ink-dim" : "text-ink-ghost"
-                    }`}
-                  >
-                    {p.enabled ? "active" : "paused"}
-                  </span>
-                </Link>
-            </li>
+        <DataList>
+          {pipelines.map((pipeline) => (
+            <DataRow
+              key={pipeline.id}
+              href={`${base}/pipelines/${pipeline.id}`}
+              selectLabel={`Open pipeline ${pipeline.name}`}
+              leading={
+                <span className="font-mono text-xs text-ink-faint">
+                  {pipeline.cron ?? "manual"}
+                </span>
+              }
+              trailing={
+                <StatusIndicator
+                  status={pipeline.enabled ? "active" : "paused"}
+                  label={pipeline.enabled ? "active" : "paused"}
+                />
+              }
+            >
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="truncate text-base font-medium text-ink">
+                  {pipeline.name}
+                </span>
+                <span className="line-clamp-2 text-sm text-ink-dim">
+                  {pipeline.description}
+                </span>
+              </div>
+            </DataRow>
           ))}
-        </ul>
+        </DataList>
       )}
-    </section>
+    </PageFrame>
   );
 }

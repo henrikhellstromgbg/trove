@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
 import { useProject } from "@/app/project-context";
+import { Button, InlineError, TextArea } from "@/app/components/ui";
 
 const EXAMPLES = [
-  "every sunday at 9am, summarize my newsletters from the past week with three highlights",
+  "every sunday at 9am, summarize my newsletters into three highlights",
   "every morning, list new articles I tagged 'design' yesterday",
-  "monthly on the first, write a paragraph summary of everything I saved that month",
+  "monthly on first, write a short summary of everything I saved last month",
 ];
 
 export function NewPipelineForm() {
@@ -16,73 +16,80 @@ export function NewPipelineForm() {
   const { project } = useProject();
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState("");
 
   async function submit() {
     const value = description.trim();
-    if (value.length < 10 || busy) return;
+    if (busy || value.length < 10) return;
 
     setBusy(true);
     setError("");
 
-    const res = await fetch("/api/pipelines", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description: value, projectId: project.id }),
-    });
+    try {
+      const res = await fetch("/api/pipelines", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: value, projectId: project.id }),
+      });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error ?? `error ${res.status}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setError(err.error ?? `error ${res.status}`);
+        return;
+      }
+
+      const data = (await res.json()) as { id: string };
+      router.push(`/p/${project.slug}/pipelines/${data.id}`);
+    } finally {
       setBusy(false);
-      return;
     }
-
-    const { id } = await res.json();
-    router.push(`/p/${project.slug}/pipelines/${id}`);
   }
 
   return (
-    <div className="grid grid-cols-1 gap-10 lg:grid-cols-[2fr,1fr]">
-      <div className="flex flex-col gap-4 rounded-2xl border border-line bg-paper p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)] md:p-8">
-        <textarea
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <section className="flex flex-col gap-4 border border-line bg-paper p-6 md:p-8">
+        <TextArea
+          id="pipeline-description"
+          label="Pipeline prompt"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
           }}
-          placeholder="describe your pipeline. cmd return to save."
-          className="min-h-[200px] resize-none bg-transparent text-lg leading-relaxed text-ink placeholder:text-ink-faint md:text-xl"
+          placeholder="Describe what should happen and when."
+          rows={9}
+          className="min-h-[220px] resize-none border-0 bg-transparent p-0 text-base leading-relaxed text-ink placeholder:text-ink-faint focus-visible:ring-0"
+          containerClassName="gap-2"
         />
-        <div className="flex items-center justify-between gap-4 border-t border-line pt-4">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-            {busy ? "compiling" : error || "ready when you are"}
-          </span>
-          <motion.button
-            onClick={submit}
-            whileTap={{ scale: 0.97 }}
-            className="shrink-0 rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
-          >
-            compile and save
-          </motion.button>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+          <p className="font-mono text-xs text-ink-faint">
+            Press Cmd/Ctrl + Enter to save.
+          </p>
+          <Button onClick={submit} disabled={busy || description.trim().length < 10}>
+            {busy ? "Saving" : "Save pipeline"}
+          </Button>
         </div>
-      </div>
+
+        <InlineError message={error} />
+      </section>
 
       <aside className="flex flex-col gap-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink-faint">
-          patterns
-        </p>
-        {EXAMPLES.map((ex) => (
-          <button
-            key={ex}
-            onClick={() => setDescription(ex)}
-            className="group rounded-2xl border border-line bg-paper p-4 text-left shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-line-strong"
-          >
-            <p className="text-sm leading-relaxed text-ink-dim group-hover:text-ink">
-              {ex}
-            </p>
-          </button>
-        ))}
+        <p className="text-sm font-medium text-ink">Examples</p>
+        <div className="flex flex-col gap-2">
+          {EXAMPLES.map((example) => (
+            <Button
+              key={example}
+              variant="secondary"
+              onClick={() => setDescription(example)}
+              className="justify-start px-4 py-3 text-left"
+            >
+              <span className="whitespace-normal text-sm leading-relaxed">
+                {example}
+              </span>
+            </Button>
+          ))}
+        </div>
       </aside>
     </div>
   );

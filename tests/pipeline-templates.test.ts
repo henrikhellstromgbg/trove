@@ -6,6 +6,7 @@ import { pipelineTemplateDeps } from "@/app/api/pipelines/templates/deps";
 import { InvalidProjectError } from "@/lib/projects";
 import {
   buildStarterPipelineTemplate,
+  describeStarterPipelineSchedule,
   listStarterPipelineTemplates,
 } from "@/lib/pipelines/templates";
 
@@ -70,12 +71,20 @@ test("starter template definitions keep Friday digest naming and weekday morning
   assert.equal(morning.spec.cron, "0 8 * * 1-5");
   assert.equal(morning.spec.deliverByEmail, false);
   assert.equal(morning.spec.includeForgotten, false);
+  assert.equal(
+    describeStarterPipelineSchedule(morning.spec.cron),
+    "Weekdays 08:00 UTC"
+  );
 
   const weekly = buildStarterPipelineTemplate("weekly-summary");
   assert.equal(weekly.pipelineName, "weekly-digest");
   assert.equal(weekly.spec.cron, "0 15 * * 5");
   assert.equal(weekly.spec.deliverByEmail, true);
   assert.equal(weekly.spec.includeForgotten, true);
+  assert.equal(
+    describeStarterPipelineSchedule(weekly.spec.cron),
+    "Fridays 15:00 UTC"
+  );
 });
 
 test("GET /api/pipelines/templates returns project installation state", async () => {

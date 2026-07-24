@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProject } from "@/app/project-context";
+import { Button, ConfirmDialog } from "@/app/components/ui";
 
 export function DeletePipelineButton({ id }: { id: string }) {
   const router = useRouter();
   const { project } = useProject();
   const [busy, setBusy] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  const [open, setOpen] = useState(false);
 
   async function remove() {
     if (busy) return;
@@ -16,43 +17,33 @@ export function DeletePipelineButton({ id }: { id: string }) {
 
     const res = await fetch(
       `/api/pipelines/${id}?projectId=${encodeURIComponent(project.id)}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
     if (res.ok) {
       router.push(`/p/${project.slug}/pipelines`);
       router.refresh();
     } else {
       setBusy(false);
+      setOpen(false);
     }
   }
 
-  if (!confirming) {
-    return (
-      <button
-        onClick={() => setConfirming(true)}
-        className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint hover:text-brand"
-      >
-        delete pipeline
-      </button>
-    );
-  }
-
   return (
-    <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em]">
-      <span className="text-ink-dim">remove this pipeline?</span>
-      <button
-        onClick={remove}
-        disabled={busy}
-        className="rounded-lg border border-brand/40 px-3 py-1.5 text-sm text-brand hover:bg-brand/10 disabled:opacity-30"
-      >
-        {busy ? "removing" : "yes"}
-      </button>
-      <button
-        onClick={() => setConfirming(false)}
-        className="text-ink-faint hover:text-ink"
-      >
-        cancel
-      </button>
-    </div>
+    <>
+      <Button variant="destructive" onClick={() => setOpen(true)}>
+        delete
+      </Button>
+      <ConfirmDialog
+        open={open}
+        title="Delete pipeline?"
+        description="This removes the pipeline from the project."
+        confirmLabel={busy ? "Deleting..." : "Delete"}
+        cancelLabel="Cancel"
+        destructive
+        confirmDisabled={busy}
+        onCancel={() => setOpen(false)}
+        onConfirm={remove}
+      />
+    </>
   );
 }

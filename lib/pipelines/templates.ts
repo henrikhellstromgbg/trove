@@ -98,6 +98,12 @@ export function listStarterPipelineTemplates(): StarterPipelineTemplateSummary[]
   });
 }
 
+export function describeStarterPipelineSchedule(cron: string): string {
+  if (cron === "0 8 * * 1-5") return "Weekdays 08:00 UTC";
+  if (cron === "0 15 * * 5") return "Fridays 15:00 UTC";
+  return cron;
+}
+
 export function buildStarterPipelineTemplate(
   id: StarterPipelineTemplateId,
   options: { deliverByEmail?: boolean } = {}

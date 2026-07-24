@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
+import {
+  Button,
+  ConfirmDialog,
+  DataList,
+  DataRow,
+} from "@/app/components/ui";
 
 export type TrashRow = {
   id: string;
@@ -17,16 +23,17 @@ function fmtDate(iso: string): string {
 }
 
 export function TrashList({
+  slug,
   projectId,
   items,
-}: {
+  }: {
+  slug: string;
   projectId: string;
   items: TrashRow[];
 }) {
   const [rows, setRows] = useState<TrashRow[]>(items);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
-  // Permanent delete is irreversible, so it takes a second click to confirm.
-  const [confirming, setConfirming] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<TrashRow | null>(null);
 
   async function restore(id: string) {
     if (busy[id]) return;
@@ -40,6 +47,7 @@ export function TrashList({
       setRows((prev) => prev.filter((r) => r.id !== id));
     } else {
       setBusy((b) => ({ ...b, [id]: false }));
+      setConfirming(null);
     }
   }
 
@@ -48,7 +56,7 @@ export function TrashList({
     setBusy((b) => ({ ...b, [id]: true }));
     const res = await fetch(
       `/api/items/${id}?projectId=${encodeURIComponent(projectId)}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
     if (res.ok) {
       setRows((prev) => prev.filter((r) => r.id !== id));
@@ -60,79 +68,80 @@ export function TrashList({
 
   if (rows.length === 0) {
     return (
-      <p className="font-mono text-sm text-ink-faint">
-        trash is empty. items you remove land here first, then clear on their own.
+      <p className="text-sm text-ink-faint">
+        Trash is empty. Items you remove land here first, then clear on their own.
       </p>
     );
   }
 
   return (
-    <ul className="flex flex-col">
-      {rows.map((r) => {
-        const deleting = r.status === "deleting";
-        return (
-          <li
-            key={r.id}
-            className="flex items-center justify-between gap-4 border-b border-line py-4 last:border-b-0"
-          >
-            <div className="flex min-w-0 flex-col gap-1">
-              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-                <span>{r.type}</span>
-                <span>·</span>
-                <span>{deleting ? "deleting" : `clears ${fmtDate(r.deleteAfterAt)}`}</span>
-              </div>
-              <span className="truncate text-base font-medium text-ink-dim">
-                {r.title ?? r.source ?? "(untitled)"}
-              </span>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {deleting ? (
-                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-ghost">
-                  in progress
+    <>
+      <DataList>
+        {rows.map((r) => {
+          const deleting = r.status === "deleting";
+          return (
+            <DataRow
+              key={r.id}
+              href={`/p/${slug}/library/${r.id}`}
+              selectLabel={`Open ${r.title ?? r.source ?? "(untitled)"}`}
+              leading={
+                <span className="font-mono text-xs text-ink-faint">
+                  {r.type} · {deleting ? "deleting" : `clears ${fmtDate(r.deleteAfterAt)}`}
                 </span>
-              ) : confirming === r.id ? (
-                <>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-brand">
-                    delete for good?
-                  </span>
-                  <motion.button
-                    onClick={() => purge(r.id)}
-                    whileTap={{ scale: 0.97 }}
-                    disabled={busy[r.id]}
-                    className="rounded-lg border border-brand/60 px-3 py-1.5 text-xs font-medium text-brand transition-colors hover:border-brand disabled:opacity-40"
-                  >
-                    yes, delete
-                  </motion.button>
-                  <button
-                    onClick={() => setConfirming(null)}
-                    className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-dim transition-colors hover:border-line-strong hover:text-ink"
-                  >
-                    keep
-                  </button>
-                </>
-              ) : (
-                <>
-                  <motion.button
-                    onClick={() => restore(r.id)}
-                    whileTap={{ scale: 0.97 }}
-                    disabled={busy[r.id]}
-                    className="rounded-lg border border-line-strong bg-paper px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-ink disabled:opacity-40"
-                  >
-                    restore
-                  </motion.button>
-                  <button
-                    onClick={() => setConfirming(r.id)}
-                    disabled={busy[r.id]}
-                    className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-dim transition-colors hover:border-brand/60 hover:text-brand disabled:opacity-40"
-                  >
-                    delete
-                  </button>
-                </>
-              )}
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+              }
+              trailing={
+                <div className="flex items-center gap-2">
+                  {deleting ? (
+                    <span className="text-xs font-medium text-ink-ghost">
+                      in progress
+                    </span>
+                  ) : (
+                    <>
+                      <motion.div whileTap={{ scale: 0.97 }}>
+                        <Button
+                          onClick={() => restore(r.id)}
+                          disabled={busy[r.id]}
+                          variant="secondary"
+                          className="px-3 py-1.5 text-xs"
+                        >
+                          restore
+                        </Button>
+                      </motion.div>
+                      <Button
+                        onClick={() => setConfirming(r)}
+                        disabled={busy[r.id]}
+                        variant="destructive"
+                        className="px-3 py-1.5 text-xs"
+                      >
+                        delete
+                      </Button>
+                    </>
+                  )}
+                </div>
+              }
+            >
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="truncate text-base font-medium text-ink-dim">
+                  {r.title ?? r.source ?? "(untitled)"}
+                </span>
+              </div>
+            </DataRow>
+          );
+        })}
+      </DataList>
+      <ConfirmDialog
+        open={confirming !== null}
+        title="Delete permanently?"
+        description="This removes the item from trash and cannot be undone."
+        confirmLabel={confirming && busy[confirming.id] ? "Deleting..." : "Delete"}
+        cancelLabel="Keep"
+        destructive
+        confirmDisabled={confirming ? !!busy[confirming.id] : false}
+        onCancel={() => setConfirming(null)}
+        onConfirm={() => {
+          if (confirming) void purge(confirming.id);
+        }}
+      />
+    </>
   );
 }

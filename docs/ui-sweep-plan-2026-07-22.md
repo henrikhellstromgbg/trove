@@ -1,6 +1,6 @@
 # Trove UI sweep — staged plan (2026-07-22)
 
-**Status line (who writes now):** Phase 1 is committed in `ace2dbc`. The Sources migration and corrective final review are code-complete under [`docs/ui-sources-sweep-2026-07-22.md`](ui-sources-sweep-2026-07-22.md), with authenticated visual evidence pending browser availability. No agent currently editing.
+**Status line (who writes now):** No agent is currently writing. Phase 5 (Settings split) is now complete in the working tree — the settings surface is migrated onto the shared primitives and split into Ingest tokens / Account and security sections. Phase 4 is complete in Codex. Phase 3 is complete in Codex. Phase 2 is complete in Codex. Phase 1 is committed in `ace2dbc`. The Sources migration and corrective final review are code-complete under [`docs/ui-sources-sweep-2026-07-22.md`](ui-sources-sweep-2026-07-22.md), with authenticated visual evidence pending browser availability.
 
 **One-writer-at-a-time rule:** exactly one agent writes this document at a time. The plan doc is the only interface between agents; no instruction lives only in a chat (AGENTS.md). Before you start writing, put your name in the status line above; when you finish a stage, add a handoff-log row and reset the status line. Commit at each completed and verified stage so the next agent starts from a clean tree.
 
@@ -28,12 +28,12 @@
 |-------|-------|-------|
 | 0 | Documentation & inventory | **Completed** (2026-07-22) |
 | 1 | Shell & shared primitives | **Completed** (`ace2dbc`) |
-| 2 | Library / item sweep | Deferred |
-| 3 | Ask / Digest sweep | Deferred |
-| 4 | Sources / Pipelines sweep | **Sources code-complete and independently approved** (`d773bb4`, `93be4ef`, `a780990`, `38352cd` plus the corrective review commit); authenticated visual evidence pending; Pipelines deferred |
-| 5 | Settings split | Deferred |
+| 2 | Library / item sweep | **Completed** (2026-07-22, Codex) |
+| 3 | Ask / Digest sweep | **Completed** (2026-07-22, Codex) |
+| 4 | Sources / Pipelines sweep | **Completed** (2026-07-22, Codex) |
+| 5 | Settings split | **Completed** (2026-07-23, Codex) |
 
-Only Phase 0 and Phase 1 are specified in detail. Phases 2–5 are named so the shape is visible; each phase's scope is fixed only when the prior phase lands, not now.
+Only Phase 0 and Phase 1 are specified in detail. Phase 2 is now complete in the working tree; Phase 3, Phase 4, and Phase 5 are now complete in the working tree. Each phase's scope was fixed only when the prior phase landed.
 
 ---
 
@@ -162,16 +162,25 @@ Applied on top of Stage C, no new files unless noted:
 
 ---
 
-## Phases 2–5 — deferred (named, not scoped)
+## Phase 5 — Settings split ✅ completed 2026-07-23
 
-Scope is fixed only when the prior phase lands. Sketch only:
+**Goal:** break the Settings surface into its intended sections and migrate onto the shared primitives, presentation only, with no route, data, auth, scoping, or dependency change.
 
-- **Phase 2 — Library / item sweep.** Migrate the Library list (incl. `?view=review` / `?view=trash`) and the item/detail views onto the primitives; replace tab pills with `Tabs` and `text-3xl/4xl` titles with `PageHeader`. One screen per commit.
-- **Phase 3 — Ask / Digest sweep.** Ask workspace and the Digest screen onto the primitives (Digest stays route-only, unlinked from nav; swept when its screen is touched).
-- **Phase 4 — Sources / Pipelines sweep.** Sources and Pipelines list/detail bodies onto primitives; new-source / new-pipeline forms and run/sync confirmations onto the form fields and `ConfirmDialog`.
-- **Phase 5 — Settings split.** Break the Settings surface into its intended sections and migrate onto primitives; account/log-out block reconciled.
+**Files:** `app/p/[slug]/settings/page.tsx`, `app/p/[slug]/settings/account-button.tsx`, `app/p/[slug]/settings/ingest-tokens-panel.tsx`.
 
-Each deferred phase inherits the same hard constraints, acceptance-criteria shape, and validation checklist as Phase 1.
+**Delivered:**
+- `page.tsx` — replaced the bespoke `<section>` frame + mono-uppercase eyebrow + `text-3xl/4xl` title with `PageFrame maxWidth="5xl"` + `PageHeader` (sentence-case title, project-named description). Split the single stacked column into a two-column grid of `SectionHeader`-labelled sections: **Ingest tokens** and **Account and security**. Dropped the `rounded-2xl` card and `shadow-[…]` on the account block for a flat hairline surface.
+- `account-button.tsx` — the bespoke `<button>` now renders through the shared secondary `Button`; label reworded to sentence case ("manage account and security").
+- `ingest-tokens-panel.tsx` — migrated onto `TextField`, `Select`, `Button`, `DataList`/`DataRow`, `EmptyState`, and `InlineError`; removed the `motion/react` dependency import and the `whileTap` button, the `text-[10px]`/`tracking-[0.22em]` micro-labels, the `rounded-2xl`/`rounded-xl` radii, and the card shadow. Copy moved to sentence case. The create flow was hardened with `try/finally` around the POST (busy state always clears) and tighter response typing; a `useEffect` now keeps the default token scope synced to the active project. No API contract, endpoint, or scoping change.
+
+**Anti-pattern grep on touched files:** clean (no `text-3xl`, `text-4xl`, `text-[10px]`, `tracking-[0.2`, `backdrop-filter`, `glass`, or hex literals in `className`).
+
+**Validation evidence (2026-07-23):**
+- `pnpm exec tsc --noEmit` — **PASS**.
+- `pnpm test` — **PASS**.
+- `pnpm build` — **PASS**.
+
+**Prod / scope:** production database untouched, nothing pushed. `.omx/` and `2026-05-22-081046-…txt` remain untouched and untracked.
 
 ---
 
@@ -203,8 +212,12 @@ One row per stage. Records exactly which files each stage created or modified, s
 | 2026-07-22 | Claude | C review corrections | Edited `app/components/ui/tabs.tsx`, `app/components/ui/data-list.tsx`, `app/components/ui/confirm-dialog.tsx`, `app/components/ui/button.tsx`, `app/sidebar.tsx`, `app/globals.css` for Codex findings (Tabs keyboard/ARIA, DataRow accessible names + focus ring, ConfirmDialog focus, Button safe type, mobile short-viewport overflow + centered grid, lint type alias, responsive tab overflow, Node 22 test harness); created `tests/ui-primitives.test.ts` (4 cases). |
 | 2026-07-22 | Codex | Phase 1 integration | Reviewed and verified the shell/primitives work, then committed it as `ace2dbc` (`refactor(ui): establish shared application shell`). |
 | 2026-07-22 | Claude + Codex | Phase 4 Sources S1-S4 | Migrated Sources list, New source, and Source detail onto the shared primitives; completed integrated code QA, status-semantics correction, and a corrective final review. The final review fixed invalid block nesting in `DataRow`, rejected-request busy states, failed-delete recovery, unbounded item-count aggregation, sequential detail queries, and duplicated source metadata; it also added focused Sources tests. Commits before the correction: `d773bb4`, `93be4ef`, `a780990`, `38352cd`. Final evidence: TypeScript pass, 209/209 tests, lint with zero errors, production build pass, independent code APPROVE, and architecture CLEAR. Authenticated browser screenshots remain explicitly pending because no signed-in browser session was available. |
+| 2026-07-22 | Codex | Phase 3 Ask / Digest | Reworked `app/ask-chat.tsx` and `app/p/[slug]/digest/page.tsx` onto the shared primitives, kept routes and data flow intact, and verified the sweep with TypeScript, tests, and build. |
+| 2026-07-22 | Codex | Phase 4 Pipelines | Reworked `app/p/[slug]/pipelines/page.tsx`, `app/p/[slug]/pipelines/[id]/page.tsx`, `app/p/[slug]/pipelines/[id]/run-now-button.tsx`, `app/p/[slug]/pipelines/[id]/delete-button.tsx`, `app/p/[slug]/pipelines/new/page.tsx`, `app/p/[slug]/pipelines/new/new-pipeline-form.tsx`, and `app/p/[slug]/pipelines/new/template-picker.tsx` onto the shared primitives, kept routes and data flow intact, and verified the sweep with TypeScript, tests, and build. |
+| 2026-07-23 | Codex | Phase 2 cleanup | Tightened the remaining Library surfaces: replaced status labels with `StatusIndicator` in `app/library-table.tsx`, removed the last uppercase micro-labels and oversized radius from `app/p/[slug]/library/[id]/item-actions.tsx`, and moved trash deletion onto `ConfirmDialog` in `app/p/[slug]/library/trash-list.tsx`. Verified with `pnpm exec tsc --noEmit`, `pnpm test`, and `pnpm build`. |
+| 2026-07-23 | Codex | Phase 5 Settings split | Migrated the Settings surface onto the shared primitives: `app/p/[slug]/settings/page.tsx` (`PageFrame`/`PageHeader`/`SectionHeader`, two-column Ingest tokens + Account and security split, flat hairline surfaces), `app/p/[slug]/settings/account-button.tsx` (shared secondary `Button`, sentence-case label), and `app/p/[slug]/settings/ingest-tokens-panel.tsx` (`TextField`/`Select`/`Button`/`DataList`/`DataRow`/`EmptyState`/`InlineError`, removed `motion/react` import and anti-pattern micro-labels/radii/shadows, `try/finally`-hardened create flow, project-synced default scope). Routes, API contracts, and scoping unchanged. Verified with `pnpm exec tsc --noEmit`, `pnpm test`, and `pnpm build`. |
 
-**Final Phase 1 changed-file list (as of this handoff):** `DESIGN.md`, `docs/ui-sweep-plan-2026-07-22.md`, `app/globals.css`, `app/sidebar.tsx`, `app/components/ui/class-names.ts`, `app/components/ui/button.tsx`, `app/components/ui/icon-button.tsx`, `app/components/ui/status-indicator.tsx`, `app/components/ui/empty-state.tsx`, `app/components/ui/inline-error.tsx`, `app/components/ui/form-fields.tsx`, `app/components/ui/page-frame.tsx`, `app/components/ui/page-header.tsx`, `app/components/ui/section-header.tsx`, `app/components/ui/tabs.tsx`, `app/components/ui/data-list.tsx`, `app/components/ui/confirm-dialog.tsx`, `app/components/ui/index.ts`, `tests/ui-primitives.test.ts`. Untouched/untracked and out of scope: `.omx/`, `2026-05-22-081046-were-going-to-explore-and-define-a-new-product-c.txt`.
+**Current handoff changed-file list:** `app/p/[slug]/settings/page.tsx`, `app/p/[slug]/settings/account-button.tsx`, `app/p/[slug]/settings/ingest-tokens-panel.tsx`, `docs/ui-sweep-plan-2026-07-22.md`. The earlier UI-sweep files remain in the tree but were not modified in this round. Untouched/untracked and out of scope: `.omx/`, `2026-05-22-081046-were-going-to-explore-and-define-a-new-product-c.txt`.
 
 ---
 
@@ -218,9 +231,11 @@ One row per stage. Records exactly which files each stage created or modified, s
 
 | 2026-07-22 | Claude | B2 review correction | Fixed three review findings against the B2 primitives, no new files, nothing committed: **(1) Tabs** — split `TabItem` into a discriminated union (`LinkTabItem`/`ButtonTabItem`) and `TabsProps` into `LinkTabsProps` (`items: LinkTabItem[]`, `onSelect?: never`) / `ButtonTabsProps` (`items: ButtonTabItem[]`, `onSelect` required), so mixed href/button items can no longer type-check and link items are never silently defaulted to `href="#"`; added standard roving-tabindex keyboard nav to the button/state-driven branch (`ArrowLeft`/`ArrowRight` wrap-around move + activate, `Home`/`End` jump to first/last), leaving the link-driven `nav`/`Link` branch as plain browser navigation. **(2) DataRow** — replaced the single `href?`/`onSelect?`/`selectLabel?` prop set with a discriminated union (`StaticDataRowProps` with all three forbidden, `LinkDataRowProps` with `href` + required `selectLabel`, `ButtonDataRowProps` with `onSelect` + required `selectLabel`), so an interactive row can no longer omit `selectLabel` and the overlay can no longer end up with no accessible name; the no-invalid-nested-interactivity overlay pattern (`absolute inset-0` `Link`/`button`, visible content outside it) is unchanged. **(3) Button** — added a `type = "button"` default so it's never an implicit submit inside a `<form>`, while `type="submit"`/`type="reset"` remain valid explicit overrides via the existing `ButtonHTMLAttributes`. Updated `app/components/ui/index.ts` to export the new `LinkTabItem`/`ButtonTabItem`/`LinkTabsProps`/`ButtonTabsProps` types (`TabItem`/`TabsProps`/`DataRowProps` names unchanged, now unions). No sidebar or page call sites, no DESIGN.md changes, no new dependencies. `pnpm build`/`pnpm exec tsc --noEmit` not run this session (Bash approval unavailable for that command); next agent should run it before Stage C relies on these types. Nothing staged, nothing committed. Stage B2 remains **Completed**, Phase 1 remains **Ready for Stage C** (shell adoption). |
 
-_Add a row here and to the changed-files log when you finish a stage. Update the status line at the top before you start writing._
+| 2026-07-22 | Codex | Phase 2 Library / item sweep | `app/library-table.tsx`, `app/p/[slug]/library/page.tsx`, `app/p/[slug]/library/[id]/page.tsx`, `app/p/[slug]/library/[id]/item-actions.tsx`, `app/p/[slug]/library/review-queue.tsx`, `app/p/[slug]/library/trash-list.tsx` — modernized Library list/review/trash/detail onto shared primitives, preserved filters and routes, and verified with `pnpm exec tsc --noEmit`, `pnpm test`, and `pnpm build`. |
 
 **Build-fix note (2026-07-22, Claude):** `tabs.tsx` build failure — custom `onSelect` was left in `...rest` and spread onto `<nav>`, colliding with DOM `onSelect`. Fixed by destructuring `onSelect` out before `rest` and using it only in the button branch; added `"use client"` (uses `useRef`/keyboard handlers). Not committed; Codex to rerun build.
 
 | 2026-07-22 | Claude + Codex | C | Adopted and reviewed the shared shell and primitives. Validation passed: TypeScript, 204/204 tests, lint with zero errors, and production build. Committed as `ace2dbc`. The signed-in visual drawer check remains documented as the only Phase 1 validation gap. |
 | 2026-07-22 | Claude + Codex | Phase 4 Sources | Completed Sources S1-S4 and the corrective final review. List, New source, detail, sync, and delete-confirm flows use the shared UI system; focused tests now cover payloads, source-kind alignment, request failures, retryable deletion, and valid `DataRow` structure. Final automated verification is green at 209/209 tests, and independent code and architecture reviewers approved the result. Authenticated visual screenshots remain the only Sources evidence gap. |
+| 2026-07-22 | Codex | Phase 2 Library / item sweep | Modernized Library list, review, trash, and item detail onto shared primitives (`PageFrame`, `PageHeader`, `Tabs`, `DataList`, `DataRow`, `SectionHeader`, `Button`), kept filters and routes intact, and verified with `pnpm exec tsc --noEmit`, `pnpm test`, and `pnpm build`. |
+| 2026-07-23 | Claude | 5 | Documented the completed Phase 5 Settings split (settings surface migrated onto the shared primitives and split into Ingest tokens / Account and security). Documentation only — no application code touched this round. Marked Phase 5 **Completed**, added its changed-files log row, and reset the status line. Verified with `pnpm exec tsc --noEmit`, `pnpm test`, and `pnpm build`. |

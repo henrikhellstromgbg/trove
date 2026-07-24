@@ -5,8 +5,24 @@ import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug } from "@/lib/projects";
 import type { PipelineSpec, PipelineRunOutput } from "@/lib/pipelines/types";
+import {
+  DataList,
+  DataRow,
+  EmptyState,
+  PageFrame,
+  PageHeader,
+  SectionHeader,
+  StatusIndicator,
+  type Status,
+} from "@/app/components/ui";
 import { DeletePipelineButton } from "./delete-button";
 import { RunNowButton } from "./run-now-button";
+
+function runStatus(status: string): Status {
+  if (status === "completed") return "success";
+  if (status === "running") return "active";
+  return "paused";
+}
 
 export default async function PipelineDetailPage({
   params,
@@ -29,22 +45,27 @@ export default async function PipelineDetailPage({
       and(
         eq(schema.pipeline.id, id),
         eq(schema.pipeline.userId, userId),
-        eq(schema.pipeline.projectId, project.id)
-      )
+        eq(schema.pipeline.projectId, project.id),
+      ),
     )
     .limit(1);
 
   if (!pipeline) {
     return (
-      <section className="relative mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 pb-16 pt-16 md:px-10">
-        <p className="font-mono text-sm text-ink-faint">pipeline not found.</p>
-        <Link
-          href={`${base}/pipelines`}
-          className="self-start font-mono text-[10px] uppercase tracking-[0.22em] text-ink-dim transition-colors hover:text-ink"
-        >
-          back to pipelines
-        </Link>
-      </section>
+      <PageFrame maxWidth="5xl">
+        <PageHeader title="Pipeline not found" />
+        <EmptyState
+          message="That pipeline no longer exists in this project."
+          action={
+            <Link
+              href={`${base}/pipelines`}
+              className="text-sm font-medium text-ink underline underline-offset-2 transition-colors hover:text-brand"
+            >
+              back to pipelines
+            </Link>
+          }
+        />
+      </PageFrame>
     );
   }
 
@@ -58,76 +79,55 @@ export default async function PipelineDetailPage({
   const spec = pipeline.spec as PipelineSpec;
 
   return (
-    <section className="relative mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 pb-16 pt-16 md:px-10">
-      <header className="flex flex-col gap-1">
-        <div className="flex items-center justify-between gap-6">
-          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink-faint">
-            pipeline · {spec.cron}
-          </p>
-          <Link
-            href={`${base}/pipelines`}
-            className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint transition-colors hover:text-ink"
-          >
-            all pipelines
-          </Link>
-        </div>
-        <h1 className="text-3xl font-medium tracking-tight text-ink md:text-4xl">
-          {pipeline.name}
-        </h1>
-        <p className="mt-1 max-w-2xl text-sm text-ink-dim">
-          {pipeline.description}
-        </p>
-      </header>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr,1fr]">
-        <section className="flex flex-col gap-4">
-          <h2 className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink-faint">
-            recent runs
-          </h2>
-          {runs.length === 0 ? (
-            <p className="font-mono text-sm text-ink-faint">
-              no runs yet. the pipeline will fire at the next scheduled time.
-            </p>
-          ) : (
-            <ul>
-              {runs.map((run) => (
-                  <li
-                    key={run.id}
-                    className="flex flex-col gap-3 border-b border-line px-6 py-5 last:border-b-0"
-                  >
-                    <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-                      <span>
-                        {(run.completedAt ?? run.startedAt).toLocaleString("en-GB")}
-                      </span>
-                      <span
-                        className={
-                          run.status === "completed"
-                            ? "text-ink-dim"
-                            : run.status === "running"
-                            ? "text-brand"
-                            : "text-ink-ghost"
-                        }
-                      >
-                        {run.status}
-                      </span>
-                    </div>
-                    <RunOutput output={run.output as PipelineRunOutput | null} />
-                  </li>
-                ))}
-              </ul>
-          )}
-
-          <div className="mt-2 flex items-center justify-between">
+    <PageFrame maxWidth="5xl">
+      <PageHeader
+        title={pipeline.name}
+        description={
+          <span>
+            {pipeline.description} · {spec.cron}
+          </span>
+        }
+        action={
+          <div className="flex items-center gap-3">
             <RunNowButton id={pipeline.id} />
             <DeletePipelineButton id={pipeline.id} />
           </div>
+        }
+      />
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <section className="flex flex-col gap-4">
+          <SectionHeader title="Recent runs" />
+          {runs.length === 0 ? (
+            <EmptyState message="No runs yet. The pipeline will fire at the next scheduled time." />
+          ) : (
+            <DataList>
+              {runs.map((run) => (
+                <DataRow
+                  key={run.id}
+                  leading={
+                    <span className="font-mono text-xs text-ink-faint">
+                      {(run.completedAt ?? run.startedAt).toLocaleString("en-GB")}
+                    </span>
+                  }
+                  trailing={
+                    <StatusIndicator
+                      status={runStatus(run.status)}
+                      label={run.status}
+                    />
+                  }
+                  className="items-start"
+                >
+                  <RunOutput output={run.output as PipelineRunOutput | null} />
+                </DataRow>
+              ))}
+            </DataList>
+          )}
         </section>
 
-        <aside className="flex flex-col gap-4 self-start rounded-2xl border border-line bg-paper p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-          <h2 className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink-faint">
-            spec
-          </h2>
-          <dl className="flex flex-col gap-2 font-mono text-[11px] text-ink-dim">
+        <aside className="flex flex-col gap-4 self-start border border-line bg-paper p-6">
+          <SectionHeader title="Spec" />
+          <dl className="flex flex-col gap-2 text-sm text-ink-dim">
             <div className="flex justify-between gap-4">
               <dt className="text-ink-ghost">name</dt>
               <dd>{spec.name}</dd>
@@ -161,33 +161,33 @@ export default async function PipelineDetailPage({
               </div>
             ) : null}
           </dl>
-          <details className="border-t border-line pt-3 font-mono text-[11px] text-ink-dim">
+          <details className="border-t border-line pt-3 text-sm text-ink-dim">
             <summary className="cursor-pointer text-ink-ghost">prompt</summary>
             <pre className="mt-2 whitespace-pre-wrap text-ink-dim">{spec.prompt}</pre>
           </details>
         </aside>
       </div>
-    </section>
+    </PageFrame>
   );
 }
 
 function RunOutput({ output }: { output: PipelineRunOutput | null }) {
-  if (!output)
-    return <p className="font-mono text-sm text-ink-faint">(no output)</p>;
+  if (!output) {
+    return <p className="text-sm text-ink-faint">(no output)</p>;
+  }
 
   // Failed runs store { error } instead of a shaped output.
   const maybeError = (output as { error?: string }).error;
-  if (maybeError)
-    return <p className="font-mono text-sm text-brand">error: {maybeError}</p>;
+  if (maybeError) {
+    return <p className="text-sm text-brand">error: {maybeError}</p>;
+  }
 
   return (
     <div className="flex flex-col gap-3">
       <RunOutputBody output={output} />
       {output.forgotten ? (
         <div className="mt-1 border-l-2 border-brand/40 pl-3">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-brand">
-            forgotten
-          </p>
+          <p className="text-xs font-medium text-brand">Forgotten</p>
           <p className="text-ink-dim">
             {output.forgotten.title ?? "(untitled)"}
           </p>
@@ -233,5 +233,5 @@ function RunOutputBody({ output }: { output: PipelineRunOutput }) {
     );
   }
 
-  return <p className="font-mono text-sm text-ink-faint">(no output)</p>;
+  return <p className="text-sm text-ink-faint">(no output)</p>;
 }

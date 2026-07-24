@@ -1,8 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { Search } from "@carbon/icons-react";
+import {
+  DataList,
+  DataRow,
+  StatusIndicator,
+  type Status,
+} from "@/app/components/ui";
 
 export type Row = {
   id: string;
@@ -15,33 +20,31 @@ export type Row = {
 
 type SortKey = "added-desc" | "added-asc" | "title-asc" | "type-asc";
 
-const STATUS_CLASS: Record<string, string> = {
-  ready: "text-ink-dim",
-  processing: "text-ink-faint",
-  pending: "text-ink-faint",
-  failed: "text-brand",
-};
-
-const GRID = "grid grid-cols-[1fr_5rem_10rem_8rem_6rem] gap-4";
-
-function isUrl(s: string | null): s is string {
-  return !!s && /^https?:\/\//i.test(s);
+function isUrl(value: string | null): value is string {
+  return !!value && /^https?:\/\//i.test(value);
 }
 
-function name(r: Row): string {
-  return r.title ?? r.source ?? "(untitled)";
+function statusTone(status: string): Status {
+  if (status === "ready") return "success";
+  if (status === "failed") return "error";
+  if (status === "processing") return "active";
+  return "paused";
 }
 
-function sourceLabel(r: Row): string {
-  if (!r.source) return "—";
-  if (isUrl(r.source)) {
+function name(row: Row): string {
+  return row.title ?? row.source ?? "(untitled)";
+}
+
+function sourceLabel(row: Row): string {
+  if (!row.source) return "—";
+  if (isUrl(row.source)) {
     try {
-      return new URL(r.source).host;
+      return new URL(row.source).host;
     } catch {
-      return r.source;
+      return row.source;
     }
   }
-  return r.source;
+  return row.source;
 }
 
 function addedLabel(iso: string): string {
@@ -53,7 +56,7 @@ function addedLabel(iso: string): string {
 }
 
 const CONTROL =
-  "rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink transition-colors focus:border-line-strong hover:border-line-strong outline-none";
+  "rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink transition-colors outline-none hover:border-line-strong focus:border-line-strong";
 
 export function LibraryTable({
   slug,
@@ -71,17 +74,17 @@ export function LibraryTable({
 
   const types = useMemo(() => {
     const set = new Set<string>();
-    for (const it of items) set.add(it.type);
+    for (const item of items) set.add(item.type);
     return Array.from(set).sort();
   }, [items]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const rows = items.filter((r) => {
-      if (typeFilter !== "all" && r.type !== typeFilter) return false;
-      if (statusFilter !== "all" && r.status !== statusFilter) return false;
+    const rows = items.filter((row) => {
+      if (typeFilter !== "all" && row.type !== typeFilter) return false;
+      if (statusFilter !== "all" && row.status !== statusFilter) return false;
       if (q) {
-        const hay = `${r.title ?? ""} ${r.source ?? ""}`.toLowerCase();
+        const hay = `${row.title ?? ""} ${row.source ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -94,7 +97,7 @@ export function LibraryTable({
         break;
       case "title-asc":
         sorted.sort((a, b) =>
-          name(a).localeCompare(name(b), undefined, { sensitivity: "base" })
+          name(a).localeCompare(name(b), undefined, { sensitivity: "base" }),
         );
         break;
       case "type-asc":
@@ -117,7 +120,6 @@ export function LibraryTable({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[12rem] flex-1">
           <Search
@@ -144,9 +146,9 @@ export function LibraryTable({
           className={CONTROL}
         >
           <option value="all">All types</option>
-          {types.map((t) => (
-            <option key={t} value={t}>
-              {t}
+          {types.map((type) => (
+            <option key={type} value={type}>
+              {type}
             </option>
           ))}
         </select>
@@ -183,10 +185,9 @@ export function LibraryTable({
         </select>
       </div>
 
-      {/* Results */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-start gap-2 py-6">
-          <p className="font-mono text-sm text-ink-faint">no matches</p>
+          <p className="text-sm text-ink-faint">No matches.</p>
           <button
             type="button"
             onClick={clearFilters}
@@ -196,76 +197,36 @@ export function LibraryTable({
           </button>
         </div>
       ) : (
-        <>
-          <ul className="flex flex-col md:hidden">
-            {filtered.map((r) => (
-              <li key={r.id} className="border-b border-line last:border-b-0">
-                <Link
-                  href={`/p/${slug}/library/${r.id}`}
-                  className="flex flex-col gap-2 px-1 py-4 outline-none transition-colors hover:bg-ink/[0.015] focus:bg-ink/[0.03]"
-                >
-                  <span className="min-w-0 break-words text-sm font-medium text-ink">
-                    {name(r)}
+        <DataList>
+          {filtered.map((row) => (
+            <DataRow
+              key={row.id}
+              href={`/p/${slug}/library/${row.id}`}
+              selectLabel={`Open ${name(row)}`}
+              trailing={
+                <div className="flex flex-col items-end gap-1 text-right">
+                  <span className="font-mono text-xs text-ink-faint">
+                    {addedLabel(row.capturedAt)}
                   </span>
-                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-ink-faint">
-                    <span className="uppercase">{r.type}</span>
-                    <span className="max-w-full truncate">{sourceLabel(r)}</span>
-                    <span>{addedLabel(r.capturedAt)}</span>
-                    <span className={STATUS_CLASS[r.status] ?? "text-ink-dim"}>
-                      {r.status}
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-
-          <div className="hidden overflow-x-auto md:block">
-            <div className="min-w-[720px]">
-              {/* header */}
-              <div
-                className={`${GRID} border-b border-line px-4 py-3 text-sm font-medium text-ink`}
-              >
-                <span>Title</span>
-                <span>Type</span>
-                <span>Source</span>
-                <span>Added</span>
-                <span>Status</span>
+                  <StatusIndicator
+                    status={statusTone(row.status)}
+                    label={row.status}
+                  />
+                </div>
+              }
+            >
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="min-w-0 truncate text-sm font-medium text-ink">
+                  {name(row)}
+                </span>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-dim">
+                  <span className="uppercase">{row.type}</span>
+                  <span className="truncate">{sourceLabel(row)}</span>
+                </div>
               </div>
-              {/* rows */}
-              <ul>
-                {filtered.map((r) => (
-                  <li key={r.id}>
-                    <Link
-                      href={`/p/${slug}/library/${r.id}`}
-                      className={`${GRID} items-baseline border-b border-line px-4 py-3 transition-colors last:border-b-0 hover:bg-ink/[0.015] focus:bg-ink/[0.03] outline-none`}
-                    >
-                      <span className="min-w-0 truncate text-sm text-ink">
-                        {name(r)}
-                      </span>
-                      <span className="min-w-0 truncate font-mono text-[12px] uppercase text-ink-faint">
-                        {r.type}
-                      </span>
-                      <span className="min-w-0 truncate font-mono text-[12px] text-ink-faint">
-                        {sourceLabel(r)}
-                      </span>
-                      <span className="min-w-0 truncate font-mono text-[12px] text-ink-faint">
-                        {addedLabel(r.capturedAt)}
-                      </span>
-                      <span
-                        className={`min-w-0 truncate font-mono text-[12px] ${
-                          STATUS_CLASS[r.status] ?? "text-ink-dim"
-                        }`}
-                      >
-                        {r.status}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </>
+            </DataRow>
+          ))}
+        </DataList>
       )}
     </div>
   );

@@ -1,9 +1,15 @@
-import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq, desc, notInArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug, getProjectCounts } from "@/lib/projects";
+import {
+  PageFrame,
+  PageHeader,
+  Tabs,
+  EmptyState,
+  type LinkTabItem,
+} from "@/app/components/ui";
 import {
   listReviewItems,
   listTrashItems,
@@ -64,47 +70,30 @@ export default async function LibraryPage({
   }));
 
   const base = `/p/${project.slug}/library`;
-  const tabs: { key: View; label: string; count: number | null }[] = [
-    { key: "all", label: "all", count: null },
-    { key: "review", label: "review", count: reviewItems.length },
-    { key: "trash", label: "trash", count: trashItems.length },
+  const tabs: LinkTabItem[] = [
+    { key: "all", label: "all", href: base },
+    { key: "review", label: "review", href: `${base}?view=review`, count: reviewItems.length },
+    { key: "trash", label: "trash", href: `${base}?view=trash`, count: trashItems.length },
   ];
 
   return (
-    <section className="relative mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 pb-16 pt-16 md:px-10">
-      <header className="flex flex-col gap-3">
-        <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink-faint">
-          library · {counts.items} in {project.name}
-        </p>
-        <h1 className="text-3xl font-medium tracking-tight text-ink md:text-4xl">
-          Everything you kept.
-        </h1>
-        <nav className="mt-1 flex flex-wrap gap-2">
-          {tabs.map((t) => {
-            const active = t.key === view;
-            return (
-              <Link
-                key={t.key}
-                href={t.key === "all" ? base : `${base}?view=${t.key}`}
-                className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs uppercase tracking-wider transition-colors ${
-                  active
-                    ? "border-ink bg-ink text-canvas"
-                    : "border-line text-ink-dim hover:border-line-strong"
-                }`}
-              >
-                <span>{t.label}</span>
-                {t.count ? (
-                  <span
-                    className={`font-mono ${active ? "text-canvas/70" : "text-ink-faint"}`}
-                  >
-                    {t.count}
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
-        </nav>
-      </header>
+    <PageFrame maxWidth="5xl">
+      <PageHeader
+        title="Library"
+        description={
+          <span>
+            {counts.items} items in {project.name}. Review and trash are kept in
+            their own views.
+          </span>
+        }
+      />
+
+      <Tabs
+        label="Library views"
+        activeKey={view}
+        items={tabs}
+        className="mt-1"
+      />
 
       {view === "review" ? (
         <ReviewQueue
@@ -121,6 +110,7 @@ export default async function LibraryPage({
         />
       ) : view === "trash" ? (
         <TrashList
+          slug={project.slug}
           projectId={project.id}
           items={trashItems.map((it) => ({
             id: it.id,
@@ -132,14 +122,12 @@ export default async function LibraryPage({
           }))}
         />
       ) : items.length === 0 ? (
-        <p className="font-mono text-sm text-ink-faint">
-          nothing captured yet. drop something anywhere to begin.
-        </p>
+        <EmptyState message="Nothing captured yet." />
       ) : (
         <>
           {counts.items > items.length ? (
-            <p className="font-mono text-[11px] text-ink-faint">
-              showing the newest {items.length} items
+            <p className="text-sm text-ink-faint">
+              Showing the newest {items.length} items.
             </p>
           ) : null}
           <LibraryTable
@@ -149,6 +137,6 @@ export default async function LibraryPage({
           />
         </>
       )}
-    </section>
+    </PageFrame>
   );
 }

@@ -6,6 +6,7 @@ import { db, schema } from "@/lib/db";
 import { getProjectBySlug, getProjectCounts } from "@/lib/projects";
 import { WEEKLY_DIGEST_TEMPLATE_ID } from "@/lib/pipelines/templates";
 import { DashboardAsk } from "@/app/dashboard-ask";
+import { PageFrame, PageHeader, SectionHeader } from "@/app/components/ui";
 
 function Panel({
   title,
@@ -17,20 +18,20 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-line bg-paper p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-      <div className="flex items-center justify-between">
-        <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-          {title}
-        </h2>
-        {href ? (
-          <Link
-            href={href}
-            className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint transition-colors hover:text-ink"
-          >
-            all
-          </Link>
-        ) : null}
-      </div>
+    <div className="flex flex-col gap-3 rounded-lg border border-line bg-paper p-5">
+      <SectionHeader
+        title={title}
+        action={
+          href ? (
+            <Link
+              href={href}
+              className="text-xs text-ink-faint transition-colors hover:text-ink"
+            >
+              View all
+            </Link>
+          ) : undefined
+        }
+      />
       {children}
     </div>
   );
@@ -115,15 +116,11 @@ export default async function ProjectDashboard({
   }
 
   return (
-    <section className="relative mx-auto flex w-full max-w-4xl flex-col gap-10 px-6 pb-16 pt-16 md:px-10">
-      <header className="flex flex-col gap-1">
-        <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink-faint">
-          {project.name}
-        </p>
-        <h1 className="text-3xl font-medium tracking-tight text-ink md:text-4xl">
-          What do you want to know?
-        </h1>
-      </header>
+    <PageFrame maxWidth="4xl">
+      <PageHeader
+        title="What do you want to know?"
+        description={`Ask, or pick up where you left off in ${project.name}.`}
+      />
 
       <DashboardAsk slug={project.slug} />
 
@@ -131,7 +128,7 @@ export default async function ProjectDashboard({
         {/* Processing — the old Ingestions, now status not a destination */}
         <Panel title="Processing">
           {counts.processing === 0 ? (
-            <p className="text-sm text-ink-faint">nothing in flight.</p>
+            <p className="text-sm text-ink-faint">Nothing in flight.</p>
           ) : (
             <>
               <p className="text-sm text-ink-dim">
@@ -152,12 +149,12 @@ export default async function ProjectDashboard({
         {/* Just captured */}
         <Panel title="Just captured" href={`${base}/library`}>
           {recent.length === 0 ? (
-            <p className="text-sm text-ink-faint">nothing yet. drop something.</p>
+            <p className="text-sm text-ink-faint">Nothing yet. Drop something in.</p>
           ) : (
             <ul className="flex flex-col gap-1">
               {recent.slice(0, 5).map((it) => (
                 <li key={it.id} className="flex items-center gap-3 text-sm text-ink">
-                  <span className="w-7 shrink-0 font-mono text-[10px] uppercase text-ink-faint">
+                  <span className="w-7 shrink-0 font-mono text-xs uppercase text-ink-faint">
                     {TYPE_GLYPH[it.type] ?? it.type}
                   </span>
                   <span className="truncate">{label(it)}</span>
@@ -170,7 +167,7 @@ export default async function ProjectDashboard({
         {/* Sources health */}
         <Panel title="Sources health" href={`${base}/sources`}>
           {counts.sources === 0 ? (
-            <p className="text-sm text-ink-faint">no sources yet.</p>
+            <p className="text-sm text-ink-faint">No sources yet.</p>
           ) : (
             <p className="text-sm text-ink-dim">
               <span className="font-mono">{counts.sources - counts.sourceErrors}</span> ok
@@ -187,7 +184,7 @@ export default async function ProjectDashboard({
         {/* Latest digest */}
         <Panel title="Latest digest" href={`${base}/digest`}>
           {!digest ? (
-            <p className="text-sm text-ink-faint">no digest yet. runs weekly.</p>
+            <p className="text-sm text-ink-faint">No digest yet. Runs weekly.</p>
           ) : (
             <div className="flex flex-col gap-1.5">
               <p className="line-clamp-2 text-sm text-ink">{digest.summary ?? "—"}</p>
@@ -199,6 +196,6 @@ export default async function ProjectDashboard({
           )}
         </Panel>
       </div>
-    </section>
+    </PageFrame>
   );
 }

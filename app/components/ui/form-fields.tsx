@@ -139,7 +139,7 @@ export function Select({
       {label ? <FieldLabel htmlFor={id}>{label}</FieldLabel> : null}
       <select
         id={id}
-        className={cx(fieldBase, className)}
+        className={cx(fieldBase, "min-h-11 px-4 py-3 pr-12", className)}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy(error, errorId, ariaDescribedBy)}
         {...props}

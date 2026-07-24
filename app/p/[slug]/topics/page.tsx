@@ -4,6 +4,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug, getProjectCounts } from "@/lib/projects";
+import { EmptyState, PageFrame, PageHeader } from "@/app/components/ui";
 
 export default async function TopicsPage({
   params,
@@ -58,23 +59,14 @@ export default async function TopicsPage({
   const base = `/p/${project.slug}`;
 
   return (
-    <section className="relative mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 pb-16 pt-16 md:px-10">
-      <header className="flex flex-col gap-1">
-        <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-ink-faint">
-          topics · {counts.topics} in {project.name}
-        </p>
-        <h1 className="text-3xl font-medium tracking-tight text-ink md:text-4xl">
-          What connects.
-        </h1>
-        <p className="mt-1 max-w-xl text-sm text-ink-dim">
-          trove clusters what you save each night. these are the threads it found.
-        </p>
-      </header>
+    <PageFrame maxWidth="4xl">
+      <PageHeader
+        title="Topics"
+        description={`${counts.topics} clusters in ${project.name}. Trove groups related captures each night.`}
+      />
 
       {topics.length === 0 ? (
-        <p className="font-mono text-sm text-ink-faint">
-          nothing clustered yet. topics form overnight once a few related things pile up.
-        </p>
+        <EmptyState message="Nothing clustered yet. Topics form overnight once a few related captures pile up." />
       ) : (
         <ul className="flex flex-col gap-4">
           {topics.map((topic) => {
@@ -86,13 +78,13 @@ export default async function TopicsPage({
             return (
               <li
                 key={topic.id}
-                className="flex flex-col gap-3 rounded-2xl border border-line bg-paper p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+                className="flex flex-col gap-3 rounded-lg border border-line bg-paper p-6"
               >
                 <div className="flex items-baseline justify-between gap-4">
-                  <h2 className="text-lg font-medium tracking-tight text-ink">
+                  <h2 className="text-base font-medium text-ink">
                     {topic.name}
                   </h2>
-                  <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
+                  <span className="shrink-0 text-xs text-ink-faint">
                     {present.length} {present.length === 1 ? "item" : "items"}
                   </span>
                 </div>
@@ -120,6 +112,6 @@ export default async function TopicsPage({
           })}
         </ul>
       )}
-    </section>
+    </PageFrame>
   );
 }

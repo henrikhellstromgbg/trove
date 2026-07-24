@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { motion } from "motion/react";
+import { Button, DataList, DataRow } from "@/app/components/ui";
 
 export type ReviewRow = {
   id: string;
@@ -46,54 +46,59 @@ export function ReviewQueue({
 
   if (rows.length === 0) {
     return (
-      <p className="font-mono text-sm text-ink-faint">
-        nothing waiting. review rules hold matching items here before they reach the library.
+      <p className="text-sm text-ink-faint">
+        Nothing waiting. Review rules hold matching items here before they reach the library.
       </p>
     );
   }
 
   return (
-    <ul className="flex flex-col">
+    <DataList>
       {rows.map((r) => (
-        <li
+        <DataRow
           key={r.id}
-          className="flex items-center justify-between gap-4 border-b border-line py-4 last:border-b-0"
-        >
-          <div className="flex min-w-0 flex-col gap-1">
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-              <span>{r.type}</span>
-              <span>·</span>
-              <span>{fmtDate(r.capturedAt)}</span>
+          href={`/p/${slug}/library/${r.id}`}
+          selectLabel={`Open ${r.title ?? r.source ?? "(untitled)"}`}
+          leading={
+            <span className="font-mono text-xs text-ink-faint">
+              {r.type} · {fmtDate(r.capturedAt)}
+            </span>
+          }
+          trailing={
+            <div className="flex items-center gap-2">
+              <motion.div whileTap={{ scale: 0.97 }}>
+                <Button
+                  onClick={() => decide(r.id, "approve")}
+                  disabled={busy[r.id]}
+                  variant="secondary"
+                  className="px-3 py-1.5 text-xs"
+                >
+                  approve
+                </Button>
+              </motion.div>
+              <Button
+                onClick={() => decide(r.id, "reject")}
+                disabled={busy[r.id]}
+                variant="secondary"
+                className="px-3 py-1.5 text-xs"
+              >
+                reject
+              </Button>
             </div>
-            <Link
-              href={`/p/${slug}/library/${r.id}`}
-              className="truncate text-base font-medium text-ink transition-colors hover:text-brand"
-            >
+          }
+          >
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="truncate text-base font-medium text-ink transition-colors">
               {r.title ?? r.source ?? "(untitled)"}
-            </Link>
+            </span>
             {r.summary ? (
-              <p className="line-clamp-2 max-w-2xl text-sm text-ink-dim">{r.summary}</p>
+              <p className="line-clamp-2 max-w-2xl text-sm text-ink-dim">
+                {r.summary}
+              </p>
             ) : null}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <motion.button
-              onClick={() => decide(r.id, "approve")}
-              whileTap={{ scale: 0.97 }}
-              disabled={busy[r.id]}
-              className="rounded-lg border border-capture/50 bg-capture/[0.06] px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-capture disabled:opacity-40"
-            >
-              approve
-            </motion.button>
-            <button
-              onClick={() => decide(r.id, "reject")}
-              disabled={busy[r.id]}
-              className="rounded-lg border border-line px-3 py-1.5 text-xs text-ink-dim transition-colors hover:border-line-strong hover:text-ink disabled:opacity-40"
-            >
-              reject
-            </button>
-          </div>
-        </li>
+        </DataRow>
       ))}
-    </ul>
+    </DataList>
   );
 }

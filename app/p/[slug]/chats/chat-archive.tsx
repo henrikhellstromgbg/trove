@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { TrashCan } from "@carbon/icons-react";
+import { EmptyState } from "@/app/components/ui";
 
 type Row = {
   id: string;
@@ -27,9 +28,9 @@ function groupByDay(rows: Row[]): Group[] {
     else buckets.earlier.push(row);
   }
   return [
-    { label: "today", rows: buckets.today },
-    { label: "yesterday", rows: buckets.yesterday },
-    { label: "earlier", rows: buckets.earlier },
+    { label: "Today", rows: buckets.today },
+    { label: "Yesterday", rows: buckets.yesterday },
+    { label: "Earlier", rows: buckets.earlier },
   ].filter((g) => g.rows.length > 0);
 }
 
@@ -64,9 +65,7 @@ export function ChatArchive({
 
   if (rows.length === 0) {
     return (
-      <p className="font-mono text-sm text-ink-faint">
-        no conversations yet. ask something and it will be saved here.
-      </p>
+      <EmptyState message="No conversations yet. Ask something and it will be saved here." />
     );
   }
 
@@ -74,7 +73,7 @@ export function ChatArchive({
     <div className="flex flex-col gap-8">
       {groupByDay(rows).map((group) => (
         <div key={group.label} className="flex flex-col gap-1">
-          <span className="mb-1 font-mono text-[10px] uppercase tracking-[0.28em] text-ink-faint">
+          <span className="mb-1 text-xs font-medium text-ink-faint">
             {group.label}
           </span>
           <ul className="flex flex-col">
@@ -88,7 +87,7 @@ export function ChatArchive({
                   className="flex min-w-0 flex-1 items-baseline justify-between gap-4 py-4 transition-colors"
                 >
                   <span className="min-w-0 truncate text-base text-ink transition-colors group-hover:text-brand">
-                    {row.title?.trim() || "untitled"}
+                    {row.title?.trim() || "Untitled"}
                   </span>
                   <span className="shrink-0 font-mono text-[11px] text-ink-faint">
                     {timeLabel(row.createdAt)}

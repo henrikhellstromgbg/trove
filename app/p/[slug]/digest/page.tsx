@@ -4,6 +4,14 @@ import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug } from "@/lib/projects";
 import {
+  EmptyState,
+  PageFrame,
+  PageHeader,
+  SectionHeader,
+  DataList,
+  DataRow,
+} from "@/app/components/ui";
+import {
   PIPELINE_RUN_COMPLETED,
   PIPELINE_RUN_DELIVERY_ERROR,
 } from "@/lib/pipelines/types";
@@ -41,7 +49,7 @@ export default async function DigestPage({
     .from(schema.pipelineRun)
     .innerJoin(
       schema.pipeline,
-      eq(schema.pipelineRun.pipelineId, schema.pipeline.id)
+      eq(schema.pipelineRun.pipelineId, schema.pipeline.id),
     )
     .where(
       and(
@@ -53,8 +61,8 @@ export default async function DigestPage({
         inArray(schema.pipelineRun.status, [
           PIPELINE_RUN_COMPLETED,
           PIPELINE_RUN_DELIVERY_ERROR,
-        ])
-      )
+        ]),
+      ),
     )
     .orderBy(desc(schema.pipelineRun.startedAt))
     .limit(1);
@@ -71,25 +79,24 @@ export default async function DigestPage({
     : null;
 
   return (
-    <section className="relative flex flex-col gap-14 px-6 pb-12 pt-16 md:px-12 md:pt-24 lg:px-20">
-      <header className="flex flex-col gap-4">
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-faint">
-          weekly digest {dateLabel ? `· ${dateLabel}` : ""}
-        </p>
-        <h1 className="font-display text-5xl leading-[1.02] tracking-tight md:text-7xl">
-          the week, in slow focus.
-        </h1>
-      </header>
+    <PageFrame maxWidth="5xl">
+      <PageHeader
+        title="Digest"
+        description={
+          dateLabel ? (
+            <span>Weekly digest for {dateLabel}.</span>
+          ) : (
+            <span>The weekly digest shows the latest completed report.</span>
+          )
+        }
+      />
 
       {!run ? (
-        <p className="max-w-xl font-display text-2xl italic text-ink-faint">
-          no digest yet. one runs every sunday at 9am, once trove has things to
-          chew on.
-        </p>
+        <EmptyState message="No digest yet. One runs every Sunday at 09:00, once Trove has things to chew on." />
       ) : (
         <DigestBody output={output} />
       )}
-    </section>
+    </PageFrame>
   );
 }
 
@@ -99,53 +106,55 @@ function DigestBody({ output }: { output: DigestOutput | null }) {
   const forgotten = output?.forgotten ?? null;
 
   return (
-    <div className="grid grid-cols-1 gap-10 lg:grid-cols-[2fr,1fr]">
-      <div className="flex flex-col gap-12">
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="flex flex-col gap-8">
         {summary ? (
-          <section className="glass rounded-3xl p-8 md:p-10">
-            <p className="font-display text-2xl leading-snug text-ink md:text-3xl">
-              {summary}
-            </p>
+          <section className="flex flex-col gap-3">
+            <SectionHeader title="Summary" />
+            <div className="border border-line bg-paper p-6">
+              <p className="text-2xl leading-snug text-ink md:text-[28px]">
+                {summary}
+              </p>
+            </div>
           </section>
         ) : null}
 
         {highlights.length > 0 ? (
-          <section className="flex flex-col gap-4">
-            <h2 className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-faint">
-              highlights
-            </h2>
-            <ol className="flex flex-col">
-              {highlights.map((h, i) => (
-                <li
-                  key={i}
-                  className="flex items-start gap-6 border-b border-line py-5 last:border-b-0"
+          <section className="flex flex-col gap-3">
+            <SectionHeader title="Highlights" />
+            <DataList>
+              {highlights.map((highlight, index) => (
+                <DataRow
+                  key={index}
+                  leading={
+                    <span className="font-mono text-xs text-ink-faint">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                  }
                 >
-                  <span className="font-mono text-[11px] text-ink-ghost">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <p className="flex-1 font-display text-xl leading-snug text-ink">
-                    {h}
+                  <p className="text-base leading-relaxed text-ink">
+                    {highlight}
                   </p>
-                </li>
+                </DataRow>
               ))}
-            </ol>
+            </DataList>
           </section>
         ) : null}
       </div>
 
       {forgotten ? (
-        <aside className="glass-soft flex flex-col gap-3 self-start rounded-3xl p-6">
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ember">
-            forgotten
-          </p>
-          <p className="font-display text-2xl italic leading-snug text-ink">
-            {forgotten.title ?? "(untitled)"}
-          </p>
-          {forgotten.summary ? (
-            <p className="text-sm leading-relaxed text-ink-dim">
-              {forgotten.summary}
+        <aside className="flex flex-col gap-3">
+          <SectionHeader title="Forgotten" />
+          <div className="border border-line bg-paper p-6">
+            <p className="text-2xl italic leading-snug text-ink">
+              {forgotten.title ?? "(untitled)"}
             </p>
-          ) : null}
+            {forgotten.summary ? (
+              <p className="mt-3 text-sm leading-relaxed text-ink-dim">
+                {forgotten.summary}
+              </p>
+            ) : null}
+          </div>
         </aside>
       ) : null}
     </div>

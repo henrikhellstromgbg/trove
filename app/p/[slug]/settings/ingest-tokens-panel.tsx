@@ -1,8 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "motion/react";
 import { useProject } from "@/app/project-context";
+import {
+  Button,
+  DataList,
+  DataRow,
+  EmptyState,
+  InlineError,
+  Select,
+  TextField,
+} from "@/app/components/ui";
 
 type TokenRow = {
   id: string;
@@ -29,8 +37,6 @@ export function IngestTokensPanel() {
   const [tokens, setTokens] = useState<TokenRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [label, setLabel] = useState("");
-  // Default to the current project: a daemon token that lands everything in one
-  // project is the safe common case. Empty string means an unlocked token.
   const [lockProjectId, setLockProjectId] = useState<string>(project.id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -38,16 +44,22 @@ export function IngestTokensPanel() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    setLockProjectId(project.id);
+  }, [project.id]);
+
+  useEffect(() => {
     let alive = true;
+
     fetch("/api/ingest-tokens")
       .then((r) => (r.ok ? r.json() : { tokens: [] }))
-      .then((data) => {
+      .then((data: { tokens?: TokenRow[] }) => {
         if (alive) setTokens(data.tokens ?? []);
       })
       .catch(() => {})
       .finally(() => {
         if (alive) setLoading(false);
       });
+
     return () => {
       alive = false;
     };
@@ -60,40 +72,46 @@ export function IngestTokensPanel() {
 
   async function create() {
     if (busy) return;
+
     setBusy(true);
     setError("");
     setCopied(false);
 
-    const res = await fetch("/api/ingest-tokens", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        label: label.trim() || null,
-        projectId: lockProjectId || null,
-      }),
-    });
+    try {
+      const res = await fetch("/api/ingest-tokens", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label: label.trim() || null,
+          projectId: lockProjectId || null,
+        }),
+      });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error ?? `error ${res.status}`);
+      const data = (await res.json().catch(() => ({}))) as
+        | CreatedToken
+        | { error?: string };
+
+      if (!res.ok) {
+        setError((data as { error?: string }).error ?? `error ${res.status}`);
+        return;
+      }
+
+      const created = data as CreatedToken;
+      setJustCreated(created);
+      setTokens((prev) => [
+        {
+          id: created.id,
+          label: created.label,
+          projectId: created.projectId,
+          createdAt: created.createdAt,
+          revokedAt: null,
+        },
+        ...prev,
+      ]);
+      setLabel("");
+    } finally {
       setBusy(false);
-      return;
     }
-
-    const created: CreatedToken = await res.json();
-    setJustCreated(created);
-    setTokens((prev) => [
-      {
-        id: created.id,
-        label: created.label,
-        projectId: created.projectId,
-        createdAt: created.createdAt,
-        revokedAt: null,
-      },
-      ...prev,
-    ]);
-    setLabel("");
-    setBusy(false);
   }
 
   async function copyToken() {
@@ -111,141 +129,126 @@ export function IngestTokensPanel() {
     if (!res.ok) return;
     const { revokedAt } = await res.json();
     setTokens((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, revokedAt: revokedAt ?? new Date().toISOString() } : t))
+      prev.map((t) =>
+        t.id === id ? { ...t, revokedAt: revokedAt ?? new Date().toISOString() } : t
+      )
     );
   }
 
   return (
-    <div className="flex max-w-2xl flex-col gap-5 rounded-2xl border border-line bg-paper p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)] md:p-8">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-medium text-ink">Ingest tokens</h2>
-        <p className="text-sm text-ink-dim">
-          The desktop app and other server callers use these to send items into a
-          project. Lock a token to one project, or leave it open to all of yours.
-        </p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 border border-line bg-paper p-6">
+        <TextField
+          id="token-label"
+          label="Label, optional"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="my mac, the studio imac, whatever helps you remember"
+          containerClassName="gap-2"
+          className="bg-transparent text-base"
+        />
 
-      {/* create */}
-      <div className="flex flex-col gap-3 border-t border-line pt-5">
-        <label className="flex flex-col gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-            label, optional
-          </span>
-          <input
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="my mac, the studio imac, whatever helps you remember"
-            className="bg-transparent text-base text-ink placeholder:text-ink-faint"
-          />
-        </label>
+        <Select
+          id="token-scope"
+          label="Scope"
+          value={lockProjectId}
+          onChange={(e) => setLockProjectId(e.target.value)}
+          containerClassName="gap-2"
+        >
+          <option value="">Any project (unlocked)</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              Only {p.name}
+            </option>
+          ))}
+        </Select>
 
-        <label className="flex flex-col gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-            scope
-          </span>
-          <select
-            value={lockProjectId}
-            onChange={(e) => setLockProjectId(e.target.value)}
-            className="rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink"
-          >
-            <option value="">any project (unlocked)</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                only {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div className="flex items-center justify-between gap-4">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-            {busy ? "issuing" : error || "shown once, so keep it safe"}
-          </span>
-          <motion.button
-            onClick={create}
-            whileTap={{ scale: 0.97 }}
-            disabled={busy}
-            className="shrink-0 rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink disabled:opacity-40"
-          >
-            issue token
-          </motion.button>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line pt-4">
+          <p className="text-sm text-ink-dim">
+            {busy ? "Issuing..." : error || "Shown once, so keep it safe."}
+          </p>
+          <Button onClick={create} disabled={busy}>
+            Issue token
+          </Button>
         </div>
+
+        <InlineError message={error} />
       </div>
 
-      {/* the one-time reveal */}
       {justCreated ? (
-        <div className="flex flex-col gap-2 rounded-xl border border-capture/40 bg-capture/[0.06] p-4">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-dim">
-            new token · copy it now, you won&apos;t see it again
-          </span>
+        <div className="flex flex-col gap-3 border border-capture/40 bg-capture/[0.06] p-4">
+          <p className="text-sm font-medium text-ink-dim">
+            New token. Copy it now, you will not see it again.
+          </p>
           <code className="block break-all font-mono text-sm text-ink">
             {justCreated.token}
           </code>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={copyToken}
-              className="rounded-lg border border-line-strong bg-paper px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-ink"
-            >
-              {copied ? "copied" : "copy"}
-            </button>
-            <button
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="secondary" onClick={copyToken}>
+              {copied ? "Copied" : "Copy"}
+            </Button>
+            <Button
+              variant="secondary"
               onClick={() => {
                 setJustCreated(null);
                 setCopied(false);
               }}
-              className="text-xs text-ink-dim underline underline-offset-2 transition-colors hover:text-ink"
             >
-              done
-            </button>
+              Done
+            </Button>
           </div>
         </div>
       ) : null}
 
-      {/* existing tokens */}
-      <div className="flex flex-col gap-2 border-t border-line pt-5">
-        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-          your tokens
-        </span>
+      <div className="flex flex-col gap-4">
+        <h3 className="text-base font-medium text-ink">Your tokens</h3>
         {loading ? (
-          <p className="font-mono text-sm text-ink-faint">loading…</p>
+          <p className="text-sm text-ink-faint">Loading...</p>
         ) : tokens.length === 0 ? (
-          <p className="font-mono text-sm text-ink-faint">none yet.</p>
+          <EmptyState message="No tokens yet." />
         ) : (
-          <ul className="flex flex-col">
+          <DataList>
             {tokens.map((t) => {
               const revoked = t.revokedAt != null;
               return (
-                <li
+                <DataRow
                   key={t.id}
-                  className="flex items-center justify-between gap-4 border-b border-line py-3 last:border-b-0"
+                  leading={
+                    <span className="font-mono text-xs text-ink-faint">
+                      {fmtDate(t.createdAt)}
+                    </span>
+                  }
+                  trailing={
+                    revoked ? (
+                      <span className="text-xs font-medium text-ink-ghost">
+                        revoked
+                      </span>
+                    ) : (
+                      <Button
+                        variant="destructive"
+                        onClick={() => revoke(t.id)}
+                        className="px-3 py-1.5 text-xs"
+                      >
+                        Revoke
+                      </Button>
+                    )
+                  }
                 >
-                  <div className="flex min-w-0 flex-col">
+                  <div className="flex min-w-0 flex-col gap-1">
                     <span
                       className={`truncate text-sm ${revoked ? "text-ink-faint line-through" : "text-ink"}`}
                     >
-                      {t.label || "unlabelled token"}
+                      {t.label || "Unlabelled token"}
                     </span>
-                    <span className="font-mono text-xs text-ink-faint">
+                    <span className="text-xs text-ink-faint">
                       {projectName(t.projectId)} · issued {fmtDate(t.createdAt)}
                       {revoked ? " · revoked" : ""}
                     </span>
                   </div>
-                  {revoked ? (
-                    <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-ghost">
-                      revoked
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => revoke(t.id)}
-                      className="shrink-0 text-xs text-brand underline underline-offset-2 transition-colors hover:text-ink"
-                    >
-                      revoke
-                    </button>
-                  )}
-                </li>
+                </DataRow>
               );
             })}
-          </ul>
+          </DataList>
         )}
       </div>
     </div>

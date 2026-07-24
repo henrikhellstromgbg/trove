@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
+import { Button } from "@/app/components/ui";
 
 type OtherProject = { id: string; name: string; slug: string };
 
@@ -126,42 +126,50 @@ export function ItemActions({
     router.push(`/p/${slug}/library?view=trash`);
   }
 
-  const btn =
-    "rounded-lg border border-line px-3 py-1.5 text-xs uppercase tracking-wider text-ink-dim transition-colors hover:border-line-strong hover:text-ink disabled:opacity-40";
-
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-line bg-paper p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+    <div className="flex flex-col gap-4 border border-line bg-paper p-5">
       <div className="flex flex-wrap items-center gap-2">
-        <button onClick={() => setMode(mode === "rename" ? null : "rename")} className={btn}>
-          rename
-        </button>
-        <button onClick={() => setMode(mode === "tags" ? null : "tags")} className={btn}>
-          tags
-        </button>
+        <Button
+          onClick={() => setMode(mode === "rename" ? null : "rename")}
+          variant="secondary"
+          className="px-3 py-1.5 text-xs"
+        >
+          Rename
+        </Button>
+        <Button
+          onClick={() => setMode(mode === "tags" ? null : "tags")}
+          variant="secondary"
+          className="px-3 py-1.5 text-xs"
+        >
+          Tags
+        </Button>
         {canReprocess ? (
-          <button onClick={reprocess} disabled={busy} className={btn}>
-            reprocess
-          </button>
+          <Button onClick={reprocess} disabled={busy} variant="secondary" className="px-3 py-1.5 text-xs">
+            Reprocess
+          </Button>
         ) : null}
         {otherProjects.length > 0 ? (
-          <button onClick={() => setMode(mode === "move" ? null : "move")} className={btn}>
-            move
-          </button>
+          <Button
+            onClick={() => setMode(mode === "move" ? null : "move")}
+            variant="secondary"
+            className="px-3 py-1.5 text-xs"
+          >
+            Move
+          </Button>
         ) : null}
-        <button
+        <Button
           onClick={trash}
           disabled={busy}
-          className="ml-auto rounded-lg border border-line px-3 py-1.5 text-xs uppercase tracking-wider text-ink-dim transition-colors hover:border-brand/60 hover:text-brand disabled:opacity-40"
+          variant="destructive"
+          className="ml-auto px-3 py-1.5 text-xs"
         >
-          trash
-        </button>
+          Trash
+        </Button>
       </div>
 
       {mode === "rename" ? (
         <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-            title
-          </span>
+          <p className="text-xs font-medium text-ink-faint">Title</p>
           <input
             autoFocus
             value={title}
@@ -169,23 +177,16 @@ export function ItemActions({
             className="bg-transparent text-lg text-ink placeholder:text-ink-faint"
           />
           <div className="flex justify-end">
-            <motion.button
-              onClick={() => patch({ title })}
-              whileTap={{ scale: 0.97 }}
-              disabled={busy}
-              className="rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink disabled:opacity-40"
-            >
-              save
-            </motion.button>
+            <Button onClick={() => patch({ title })} disabled={busy} variant="secondary">
+              Save
+            </Button>
           </div>
         </div>
       ) : null}
 
       {mode === "tags" ? (
         <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-            tags, comma separated
-          </span>
+          <p className="text-xs font-medium text-ink-faint">Tags, comma separated</p>
           <input
             autoFocus
             value={tags}
@@ -194,23 +195,16 @@ export function ItemActions({
             className="bg-transparent font-mono text-sm text-ink placeholder:text-ink-faint"
           />
           <div className="flex justify-end">
-            <motion.button
-              onClick={() => patch({ tags: parseTags(tags) })}
-              whileTap={{ scale: 0.97 }}
-              disabled={busy}
-              className="rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink disabled:opacity-40"
-            >
-              save
-            </motion.button>
+            <Button onClick={() => patch({ tags: parseTags(tags) })} disabled={busy} variant="secondary">
+              Save
+            </Button>
           </div>
         </div>
       ) : null}
 
       {mode === "move" ? (
         <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-            move to project
-          </span>
+          <p className="text-xs font-medium text-ink-faint">Move to project</p>
           <select
             value={dest}
             onChange={(e) => setDest(e.target.value)}
@@ -226,14 +220,9 @@ export function ItemActions({
             a captured item moves; one that came from a source is copied instead, so the source keeps its own.
           </p>
           <div className="flex justify-end">
-            <motion.button
-              onClick={move}
-              whileTap={{ scale: 0.97 }}
-              disabled={busy}
-              className="rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink disabled:opacity-40"
-            >
-              move here
-            </motion.button>
+            <Button onClick={move} disabled={busy} variant="secondary">
+              Move here
+            </Button>
           </div>
         </div>
       ) : null}
