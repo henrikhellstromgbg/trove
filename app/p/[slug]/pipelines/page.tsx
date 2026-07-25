@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug } from "@/lib/projects";
 import {
+  Button,
   DataList,
   DataRow,
   EmptyState,
@@ -44,12 +45,9 @@ export default async function PipelinesPage({
         title="Pipelines"
         description="Standing instructions that run on a schedule."
         action={
-          <Link
-            href={`${base}/pipelines/new`}
-            className="inline-flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border-strong)]"
-          >
-            new pipeline
-          </Link>
+          <Button asChild variant="secondary">
+            <Link href={`${base}/pipelines/new`}>New pipeline</Link>
+          </Button>
         }
       />
 
@@ -62,15 +60,10 @@ export default async function PipelinesPage({
               key={pipeline.id}
               href={`${base}/pipelines/${pipeline.id}`}
               selectLabel={`Open pipeline ${pipeline.name}`}
-              leading={
-                <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
-                  {pipeline.cron ?? "manual"}
-                </span>
-              }
               trailing={
                 <StatusIndicator
                   status={pipeline.enabled ? "active" : "paused"}
-                  label={pipeline.enabled ? "active" : "paused"}
+                  label={pipeline.enabled ? "Active" : "Paused"}
                 />
               }
             >
@@ -80,6 +73,13 @@ export default async function PipelinesPage({
                 </span>
                 <span className="line-clamp-2 text-sm text-[var(--color-text-secondary)]">
                   {pipeline.description}
+                </span>
+                <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
+                  {pipeline.cron ?? "Manual"}
+                  {" · "}
+                  {pipeline.lastRunAt
+                    ? `last run ${pipeline.lastRunAt.toLocaleDateString("en-GB")}`
+                    : "no runs yet"}
                 </span>
               </div>
             </DataRow>
