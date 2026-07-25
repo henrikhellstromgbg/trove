@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug } from "@/lib/projects";
 import {
-  Button,
+  buttonVariants,
   DataList,
   DataRow,
   EmptyState,
@@ -45,9 +45,12 @@ export default async function PipelinesPage({
         title="Pipelines"
         description="Standing instructions that run on a schedule."
         action={
-          <Button asChild variant="secondary">
-            <Link href={`${base}/pipelines/new`}>New pipeline</Link>
-          </Button>
+          <Link
+            href={`${base}/pipelines/new`}
+            className={buttonVariants({ variant: "secondary" })}
+          >
+            New pipeline
+          </Link>
         }
       />
 
