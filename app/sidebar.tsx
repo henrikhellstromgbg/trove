@@ -9,14 +9,14 @@ import { useUser, useClerk } from "@clerk/nextjs";
 import {
   Add,
   Archive,
+  Catalog,
+  Categories,
   Chat,
   ChevronDown,
   Close,
   DataShare,
   Download,
-  Earth,
   FlowConnection,
-  Folder,
   Menu,
   Settings,
   UserAvatar,
@@ -26,6 +26,7 @@ import { trapFocus } from "./focus-trap";
 import {
   Button,
   IconButton,
+  StatusIndicator,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -34,6 +35,7 @@ import {
   TextField,
   FieldLabel,
 } from "@/components/ui";
+import type { ProjectCounts } from "@/lib/projects";
 
 // Numbers render with a space thousands separator, matching the sketch
 // ("16 789"). sv-SE locale gives exactly that.
@@ -48,8 +50,8 @@ type Destination = {
 };
 
 const DESTINATIONS: Destination[] = [
-  { seg: "library", label: "Library", Icon: Folder },
-  { seg: "topics", label: "Wiki", Icon: Earth },
+  { seg: "library", label: "Library", Icon: Catalog },
+  { seg: "topics", label: "Topics", Icon: Categories },
   { seg: "sources", label: "Sources", Icon: DataShare },
   { seg: "pipelines", label: "Pipelines", Icon: FlowConnection },
 ];
@@ -179,12 +181,12 @@ export function Sidebar() {
         id="project-navigation"
         inert={!desktopNav && !mobileOpen}
         aria-hidden={!desktopNav && !mobileOpen}
-        className={`fixed left-0 top-0 z-[var(--z-dialog)] flex h-[100dvh] w-[280px] flex-col overflow-y-auto border-r border-[var(--color-border-subtle)] bg-[var(--color-canvas)] px-5 py-5 transition-transform duration-150 md:translate-x-0 ${
+        className={`fixed left-0 top-0 z-[var(--z-dialog)] flex h-[100dvh] w-[280px] flex-col overflow-y-auto border-r border-[var(--color-border-subtle)] bg-[var(--color-canvas)] px-5 py-6 transition-transform duration-150 md:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* logo row — links home; close button on mobile */}
-        <div className="mb-5 flex items-center justify-between px-1">
+        <div className="mb-6 flex items-center justify-between px-1">
           <Link href={base} onClick={closeMobile} className="flex items-center">
             <Image src="/logo.svg" alt="Trove" width={78} height={20} priority />
           </Link>
@@ -201,7 +203,7 @@ export function Sidebar() {
         {/* project switcher — the chevron opens a plain list of projects; New
             project is the last item and opens a dialog (U6: a picker selects,
             it never also creates). */}
-        <div className="relative mb-4 grid">
+        <div className="relative mb-6 grid">
           <Button
             variant="secondary"
             onClick={() => setSwitcherOpen((o) => !o)}
@@ -322,61 +324,51 @@ export function Sidebar() {
         </Dialog>
 
         {/* destinations */}
-        <nav className="flex flex-col gap-px">
+        <nav className="flex flex-col gap-0.5">
           {/* Ask is the project home */}
           <Link
             href={base}
             onClick={closeMobile}
             aria-current={askActive ? "page" : undefined}
-            className={`flex items-center gap-3 rounded-lg px-3 py-1.5 text-[15px] transition-colors ${
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
               askActive ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
-            <Chat size={18} className="shrink-0 text-[var(--color-text-secondary)]" />
+            <Chat size={18} className={`shrink-0 ${askActive ? "text-[var(--color-brand)]" : "text-[var(--color-text-secondary)]"}`} />
             <span className="min-w-0 truncate">Ask</span>
           </Link>
           <Link
             href={`${base}/chats`}
             onClick={closeMobile}
             aria-current={isActive("chats") ? "page" : undefined}
-            className={`flex items-center gap-3 rounded-lg px-3 py-1.5 text-[15px] transition-colors ${
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
               isActive("chats") ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
-            <Archive size={18} className="shrink-0 text-[var(--color-text-secondary)]" />
+            <Archive size={18} className={`shrink-0 ${isActive("chats") ? "text-[var(--color-brand)]" : "text-[var(--color-text-secondary)]"}`} />
             <span className="min-w-0 truncate">Chat archive</span>
           </Link>
           {DESTINATIONS.map(({ seg, label, Icon }) => {
-            const countClassName = "font-mono tabular-nums text-sm text-[var(--color-text-tertiary)]";
+            const countClassName = "font-mono text-sm text-[var(--color-text-tertiary)]";
             const count =
               seg === "library" ? (
                 <span className="inline-flex items-center gap-2">
                   {counts.items ? <span className={countClassName}>{fmt(counts.items)}</span> : null}
                   {counts.reviewPending > 0 ? (
-                    <span
-                      className="font-mono tabular-nums text-sm text-[var(--color-status-error-text)]"
-                      aria-label={`${fmt(counts.reviewPending)} items to review`}
-                    >
-                      ({fmt(counts.reviewPending)})
-                    </span>
+                    <StatusIndicator status="review" label="To review" count={counts.reviewPending} className="text-sm" />
                   ) : null}
                 </span>
               ) : seg === "topics" ? (
                 counts.topics ? <span className={countClassName}>{fmt(counts.topics)}</span> : null
               ) : seg === "pipelines" ? (
                 counts.pipelinesActive ? (
-                  <span className={countClassName}>{fmt(counts.pipelinesActive)} active</span>
+                  <StatusIndicator status="active" label="Active" count={counts.pipelinesActive} className="text-sm" />
                 ) : null
               ) : (
                 <span className="inline-flex items-center gap-2">
                   {counts.sources > 0 ? <span className={countClassName}>{fmt(counts.sources)}</span> : null}
                   {counts.sourceErrors > 0 ? (
-                    <span
-                      className="font-mono tabular-nums text-sm text-[var(--color-status-error-text)]"
-                      aria-label={`${fmt(counts.sourceErrors)} source errors`}
-                    >
-                      ({fmt(counts.sourceErrors)})
-                    </span>
+                    <StatusIndicator status="error" label="Errors" count={counts.sourceErrors} className="text-sm" />
                   ) : null}
                 </span>
               );
@@ -387,11 +379,11 @@ export function Sidebar() {
                 href={`${base}/${seg}`}
                 onClick={closeMobile}
                 aria-current={isActive(seg) ? "page" : undefined}
-                className={`flex items-center gap-3 rounded-lg px-3 py-1.5 text-[15px] transition-colors ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
                   isActive(seg) ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
                 }`}
               >
-                <Icon size={18} className="shrink-0 text-[var(--color-text-secondary)]" />
+                <Icon size={18} className={`shrink-0 ${isActive(seg) ? "text-[var(--color-brand)]" : "text-[var(--color-text-secondary)]"}`} />
                 <span className="min-w-0 truncate">{label}</span>
                 <span className="ml-auto shrink-0">{count}</span>
               </Link>
@@ -400,7 +392,7 @@ export function Sidebar() {
         </nav>
 
         {/* capture */}
-        <div className="mt-4 flex flex-col gap-px border-t border-[var(--color-border-subtle)] pt-4">
+        <div className="mt-6 flex flex-col gap-0.5 border-t border-[var(--color-border-subtle)] pt-6">
           <Button
             variant="ghost"
             onClick={openCapture}
@@ -411,20 +403,20 @@ export function Sidebar() {
         </div>
 
         {/* settings + account */}
-        <div className="mt-auto flex flex-col gap-px border-t border-[var(--color-border-subtle)] pt-4">
+        <div className="mt-auto flex flex-col gap-0.5 border-t border-[var(--color-border-subtle)] pt-6">
           <Link
             href={`${base}/settings`}
             onClick={closeMobile}
             aria-current={isActive("settings") ? "page" : undefined}
-            className={`flex items-center gap-3 rounded-lg px-3 py-1.5 text-[15px] transition-colors ${
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
               isActive("settings") ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
-            <Settings size={18} className="shrink-0 text-[var(--color-text-secondary)]" />
+            <Settings size={18} className={`shrink-0 ${isActive("settings") ? "text-[var(--color-brand)]" : "text-[var(--color-text-secondary)]"}`} />
             <span className="min-w-0 truncate">Settings</span>
           </Link>
 
-          <div className="flex items-start gap-3 px-3 pt-4">
+          <div className="flex items-start gap-3 px-3 pt-6">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)]">
               <UserAvatar size={14} />
             </div>
