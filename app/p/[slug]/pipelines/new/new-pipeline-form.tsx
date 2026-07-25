@@ -6,9 +6,9 @@ import { useProject } from "@/app/project-context";
 import { Button, InlineError, TextArea } from "@/components/ui";
 
 const EXAMPLES = [
-  "every sunday at 9am, summarize my newsletters into three highlights",
-  "every morning, list new articles I tagged 'design' yesterday",
-  "monthly on first, write a short summary of everything I saved last month",
+  "Every Sunday at 9am, summarize my newsletters into three highlights",
+  "Every morning, list new articles I tagged 'design' yesterday",
+  "Monthly on the first, write a short summary of everything I saved last month",
 ];
 
 export function NewPipelineForm() {
@@ -57,7 +57,7 @@ export function NewPipelineForm() {
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
           }}
-          placeholder="Every Monday, summarise what's new in my sources."
+          placeholder="Every Monday, summarize what's new in my sources."
           rows={9}
           className="min-h-[220px] resize-none border-0 bg-transparent p-0 text-base leading-relaxed text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus-visible:ring-0"
           containerClassName="gap-2"

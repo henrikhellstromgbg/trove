@@ -58,7 +58,7 @@ export function TemplatePicker() {
       } catch {
         if (!alive) return;
         setTemplates([]);
-        setError("could not load templates");
+        setError("Could not load templates.");
       }
     }
 
@@ -103,7 +103,7 @@ export function TemplatePicker() {
   }
 
   if (templates === null) {
-    return <p className="font-mono text-sm text-[var(--color-text-tertiary)]">loading templates…</p>;
+    return <p className="font-mono text-sm text-[var(--color-text-tertiary)]">Loading templates…</p>;
   }
 
   if (templates.length === 0) {
@@ -138,7 +138,7 @@ export function TemplatePicker() {
                       href={`/p/${project.slug}/pipelines/${template.installedPipelineId}`}
                       className="text-sm font-medium text-[var(--color-text-secondary)] underline underline-offset-2 transition-colors hover:text-[var(--color-text-primary)]"
                     >
-                      open
+                      Open
                     </Link>
                   ) : null}
                 </div>
@@ -155,7 +155,7 @@ export function TemplatePicker() {
                         }))
                       }
                     />
-                    email me result
+                    Email me the result
                   </label>
                   <Button
                     variant="secondary"
@@ -163,7 +163,7 @@ export function TemplatePicker() {
                     disabled={busyId === template.id}
                     className="px-3 py-1.5 text-sm"
                   >
-                    {busyId === template.id ? "adding" : "add"}
+                    {busyId === template.id ? "Adding" : "Add"}
                   </Button>
                 </div>
               )

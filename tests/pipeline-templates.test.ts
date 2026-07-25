@@ -254,7 +254,7 @@ test("POST /api/pipelines/templates validates template ids", async () => {
 
 function templatesDescription(kind: "morning") {
   if (kind === "morning") {
-    return "weekday morning brief of what landed in the project over the last day";
+    return "Weekday morning brief of what landed in the project over the last day";
   }
   return "";
 }
