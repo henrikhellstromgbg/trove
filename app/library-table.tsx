@@ -1,9 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search } from "@/components/icons";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Search } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { DataList, DataRow } from "@/components/ui/data-list";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+} from "@/components/ui/pagination";
 import {
   InputGroup,
   InputGroupAddon,
@@ -63,19 +69,36 @@ function addedLabel(iso: string): string {
   });
 }
 
+const PAGE_SIZE = 50;
+
+// Page numbers to render, with "gap" markers where pages are elided. Always
+// shows first, last, and the current page with a neighbour on each side.
+function pageWindow(current: number, total: number): Array<number | "gap"> {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const out: Array<number | "gap"> = [1];
+  const from = Math.max(2, current - 1);
+  const to = Math.min(total - 1, current + 1);
+  if (from > 2) out.push("gap");
+  for (let p = from; p <= to; p++) out.push(p);
+  if (to < total - 1) out.push("gap");
+  out.push(total);
+  return out;
+}
+
 export function LibraryTable({
   slug,
   items,
-  limited = false,
 }: {
   slug: string;
   items: Row[];
-  limited?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sort, setSort] = useState<SortKey>("added-desc");
+  const [page, setPage] = useState(1);
 
   const types = useMemo(() => {
     const set = new Set<string>();
@@ -116,11 +139,25 @@ export function LibraryTable({
     return sorted;
   }, [items, query, typeFilter, statusFilter, sort]);
 
+  // Reset to the first page whenever the result set changes, so the user is
+  // never stranded on a page that no longer exists (U8).
+  useEffect(() => {
+    setPage(1);
+  }, [query, typeFilter, statusFilter, sort]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const start = (safePage - 1) * PAGE_SIZE;
+  const pageRows = filtered.slice(start, start + PAGE_SIZE);
+  const rangeStart = filtered.length === 0 ? 0 : start + 1;
+  const rangeEnd = start + pageRows.length;
+
   function clearFilters() {
     setQuery("");
     setTypeFilter("all");
     setStatusFilter("all");
     setSort("added-desc");
+    setPage(1);
   }
 
   return (
@@ -137,8 +174,8 @@ export function LibraryTable({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={limited ? "Search newest 200 items" : "Search title or source"}
-              aria-label={limited ? "Search newest 200 library items" : "Search library"}
+              placeholder="Search title or source"
+              aria-label="Search library"
             />
           </InputGroup>
         </div>
@@ -197,36 +234,99 @@ export function LibraryTable({
           </Button>
         </div>
       ) : (
-        <DataList>
-          {filtered.map((row) => (
-            <DataRow
-              key={row.id}
-              href={`/p/${slug}/library/${row.id}`}
-              selectLabel={`Open ${name(row)}`}
-              trailing={
-                <div className="flex flex-col items-end gap-1 text-right">
-                  <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
-                    {addedLabel(row.capturedAt)}
+        <>
+          <p
+            className="text-sm text-[var(--color-text-tertiary)]"
+            aria-live="polite"
+          >
+            Showing {rangeStart.toLocaleString("en-GB")} to{" "}
+            {rangeEnd.toLocaleString("en-GB")} of{" "}
+            {filtered.length.toLocaleString("en-GB")}
+          </p>
+
+          <DataList>
+            {pageRows.map((row) => (
+              <DataRow
+                key={row.id}
+                href={`/p/${slug}/library/${row.id}`}
+                selectLabel={`Open ${name(row)}`}
+                trailing={
+                  <div className="flex flex-col items-end gap-1 text-right">
+                    <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
+                      {addedLabel(row.capturedAt)}
+                    </span>
+                    <StatusIndicator
+                      status={statusTone(row.status)}
+                      label={statusLabel(row.status)}
+                    />
+                  </div>
+                }
+              >
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="min-w-0 truncate text-sm font-medium text-[var(--color-text-primary)]">
+                    {name(row)}
                   </span>
-                  <StatusIndicator
-                    status={statusTone(row.status)}
-                    label={statusLabel(row.status)}
-                  />
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--color-text-secondary)]">
+                    <span>{row.type}</span>
+                    <span className="truncate">{sourceLabel(row)}</span>
+                  </div>
                 </div>
-              }
-            >
-              <div className="flex min-w-0 flex-col gap-1">
-                <span className="min-w-0 truncate text-sm font-medium text-[var(--color-text-primary)]">
-                  {name(row)}
-                </span>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--color-text-secondary)]">
-                  <span>{row.type}</span>
-                  <span className="truncate">{sourceLabel(row)}</span>
-                </div>
-              </div>
-            </DataRow>
-          ))}
-        </DataList>
+              </DataRow>
+            ))}
+          </DataList>
+
+          {pageCount > 1 ? (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    onClick={() => setPage(safePage - 1)}
+                    disabled={safePage === 1}
+                    aria-label="Go to previous page"
+                  >
+                    <ChevronLeft size={16} aria-hidden="true" />
+                    <span className="hidden sm:block">Previous</span>
+                  </Button>
+                </PaginationItem>
+
+                {pageWindow(safePage, pageCount).map((p, i) =>
+                  p === "gap" ? (
+                    <PaginationItem key={`gap-${i}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={p}>
+                      <Button
+                        variant={p === safePage ? "secondary" : "ghost"}
+                        size="icon"
+                        aria-label={`Go to page ${p}`}
+                        aria-current={p === safePage ? "page" : undefined}
+                        onClick={() => setPage(p)}
+                      >
+                        {p}
+                      </Button>
+                    </PaginationItem>
+                  ),
+                )}
+
+                <PaginationItem>
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    onClick={() => setPage(safePage + 1)}
+                    disabled={safePage === pageCount}
+                    aria-label="Go to next page"
+                  >
+                    <span className="hidden sm:block">Next</span>
+                    <ChevronRight size={16} aria-hidden="true" />
+                  </Button>
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          ) : null}
+        </>
       )}
     </div>
   );

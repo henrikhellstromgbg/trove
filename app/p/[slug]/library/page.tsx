@@ -43,8 +43,18 @@ export default async function LibraryPage({
   if (!project) notFound();
 
   const [items, counts, reviewItems, trashItems] = await Promise.all([
+    // Only the columns the table shows. Selecting * would pull rawText for
+    // every item (tens of MB across the corpus); the six display fields keep
+    // the full unpaginated fetch small enough to page on the client.
     db
-      .select()
+      .select({
+        id: schema.item.id,
+        title: schema.item.title,
+        type: schema.item.type,
+        source: schema.item.source,
+        status: schema.item.status,
+        capturedAt: schema.item.capturedAt,
+      })
       .from(schema.item)
       .where(
         and(
@@ -53,8 +63,7 @@ export default async function LibraryPage({
           notInArray(schema.item.status, ASIDE_STATUSES)
         )
       )
-      .orderBy(desc(schema.item.capturedAt))
-      .limit(200),
+      .orderBy(desc(schema.item.capturedAt)),
     getProjectCounts(userId, project.id),
     listReviewItems(userId, project.id),
     listTrashItems(userId, project.id),
@@ -124,18 +133,7 @@ export default async function LibraryPage({
       ) : items.length === 0 ? (
         <EmptyState message="Nothing captured yet." />
       ) : (
-        <>
-          {counts.items > items.length ? (
-            <p className="text-sm text-[var(--color-text-tertiary)]">
-              Showing the newest {items.length} items.
-            </p>
-          ) : null}
-          <LibraryTable
-            slug={project.slug}
-            items={rows}
-            limited={counts.items > items.length}
-          />
-        </>
+        <LibraryTable slug={project.slug} items={rows} />
       )}
     </PageFrame>
   );
