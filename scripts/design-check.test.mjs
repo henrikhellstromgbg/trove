@@ -94,10 +94,11 @@ export function Fixture() {
     <div className="px-[var(--space-2)] hover:bg-[var(--color-surface-hover)]">Weekly digest</div>
     <div className="animate-pulse bg-[var(--color-surface-active)]" />
     <span className="size-11 bg-[var(--color-surface-hover)]">1</span>
+    <span className="h-11 w-11 hover:bg-[var(--color-surface-hover)]">2</span>
     <table><tbody><tr className="hover:bg-[var(--color-surface-hover)]"><td className="px-4">a</td></tr></tbody></table>
   </>;
 }
-`), 'A15 padded row, childless block, fixed square, and delegating table row');
+`), 'A15 padded row, childless block, fixed squares (size- and h-/w- pair), and delegating table row');
 
 // ---- N15: no hand-built clickables in a view ------------------------------
 

@@ -153,7 +153,9 @@ function classNamesFor(opening, declarations) {
 const INTERACTIVE_PRIMITIVE = /\.(Trigger|Close|Item|Action|Cancel|Thumb|Tab|Link)$/;
 const NON_INTERACTIVE_TAG = /^(div|span|li|tr|td|th|p|section|article|header|footer|aside|nav|ul|ol|figure|img|svg)$/;
 const PADDING = /(?:^|\s)!?(?:p|px|pl|pr)-/;
-const FIXED_SQUARE = /(?:^|\s)!?size-/;
+// A fixed box centres its content, so the background cannot sit flush against
+// it. `size-11` and the equivalent `h-11 w-11` pair both count.
+const FIXED_SQUARE = /(?:^|\s)!?size-|(?:^|\s)!?h-\d.*(?:^|\s)!?w-\d|(?:^|\s)!?w-\d.*(?:^|\s)!?h-\d/s;
 // A background that hugs its text: state-prefixed, or one of the tokens that
 // only ever paints a chip, row or hover surface.
 const HUGGING_BG = /(?:^|\s)[^\s]*:bg-|bg-\[var\(--color-(?:surface-hover|surface-active|brand-subtle|status-\w+-bg)\)\]/;
