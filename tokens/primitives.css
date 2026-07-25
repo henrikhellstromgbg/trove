@@ -65,12 +65,14 @@
   --info-text-dark:   oklch(0.90 0.11 240);
 
   /* ---- Brand slots (overridden per project in theme.css) ---- */
-  /* Defaults are neutral so an unthemed project still ships accessible UI. */
-  --brand-primary:        var(--gray-900);
-  --brand-primary-hover:  var(--gray-800);
-  --brand-primary-text:   var(--white);     /* text ON primary — verify APCA when overriding */
-  --brand-accent:         oklch(0.62 0.14 240);
-  --brand-accent-subtle:  oklch(0.96 0.035 240);
+  /* Defaults are neutral so an unthemed project still ships accessible UI.
+     Two roles, deliberately separate: action is what the user clicks, base is
+     what the brand looks like. They are often not the same color. */
+  --brand-action:        var(--gray-900);
+  --brand-action-hover:  var(--gray-800);
+  --brand-action-text:   var(--white);     /* text ON the action color, verify APCA when overriding */
+  --brand-base:          oklch(0.62 0.14 240);
+  --brand-base-subtle:   oklch(0.96 0.035 240);
 
   /* ---- Type scale (px values via rem, 14px floor is LAW — see RULES.md N2) ---- */
   --font-sans: system-ui, -apple-system, sans-serif;   /* overridden in theme.css */
@@ -134,9 +136,9 @@
    (.dark block). semantic.css consumes var(--brand-*) in BOTH modes, so
    contrast-check verifies pairs that are actually rendered. */
 .dark {
-  --brand-primary:       var(--gray-50);
-  --brand-primary-hover: var(--gray-200);
-  --brand-primary-text:  var(--gray-950);
-  --brand-accent:        oklch(0.72 0.14 240);
-  --brand-accent-subtle: oklch(0.24 0.049 240);
+  --brand-action:       var(--gray-50);
+  --brand-action-hover: var(--gray-200);
+  --brand-action-text:  var(--gray-950);
+  --brand-base:        oklch(0.72 0.14 240);
+  --brand-base-subtle: oklch(0.24 0.049 240);
 }

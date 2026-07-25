@@ -1,10 +1,13 @@
-import type { HTMLAttributes } from 'react';
-import { cn } from '@/lib/cn';
+// Light coloured-text status label, not a filled badge. Use Badge when the
+// status needs to read as a discrete chip; use StatusIndicator inside dense
+// lists and tables where a filled chip per row would be visual noise.
+//
+// Colour is always paired with the text label, so N9 holds. Error and review
+// use the darker --color-status-*-text tokens so the label clears the Lc 75
+// body-text tier; the lighter --color-status-* base tier is icon-only (Lc 45).
 
-// Light coloured-text status label (not a filled badge — Phase 3 decision).
-// Colour is always paired with the text label, so N9 holds. Reds use the
-// darker --color-status-*-text tokens so the label clears the 75 APCA text
-// tier; brand red #E4130E as text would only reach ~70.
+import * as React from 'react';
+import { cn } from '@/lib/cn';
 
 export type Status =
   | 'active'
@@ -14,7 +17,7 @@ export type Status =
   | 'success'
   | 'approved';
 
-export interface StatusIndicatorProps extends HTMLAttributes<HTMLSpanElement> {
+export interface StatusIndicatorProps extends React.HTMLAttributes<HTMLSpanElement> {
   status: Status;
   label: string;
   count?: number;
@@ -29,26 +32,22 @@ const statusText: Record<Status, string> = {
   approved: 'text-[var(--color-status-success-text)]',
 };
 
-export function StatusIndicator({
-  status,
-  label,
-  count,
-  className,
-  ...props
-}: StatusIndicatorProps) {
+function StatusIndicator({ status, label, count, className, ...props }: StatusIndicatorProps) {
   return (
     <span
       className={cn(
         'inline-flex items-center gap-1 text-[length:var(--text-sm)]',
         statusText[status],
-        className,
+        className
       )}
       {...props}
     >
-      {count !== undefined ? (
+      {count !== undefined && (
         <span className="font-mono tabular-nums text-[length:var(--text-sm)]">{count}</span>
-      ) : null}
+      )}
       <span>{label}</span>
     </span>
   );
 }
+
+export { StatusIndicator };

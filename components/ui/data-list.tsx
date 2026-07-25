@@ -1,14 +1,18 @@
-import type { HTMLAttributes, ReactNode } from 'react';
+// Vertical list of item rows: the list equivalent of Table, for content that
+// is not tabular. A row is static, a link, or a button. When interactive, a
+// stretched overlay makes the whole row the click target while trailing
+// controls stay clickable (z-10), so a row never nests a button inside a link.
+//
+// The row owns its own inner padding (A15): the hover surface must not sit
+// flush against the text. Views pass content, never row layout (A16).
+
+import * as React from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/cn';
 
-// Vertical list of item rows. A row can be static, a link, or a button; when
-// interactive, a stretched overlay makes the whole row the click target while
-// keeping trailing controls clickable (z-10). Focus shows an inset token ring.
+export type DataListProps = React.HTMLAttributes<HTMLDivElement>;
 
-export type DataListProps = HTMLAttributes<HTMLDivElement>;
-
-export function DataList({ className, ...props }: DataListProps) {
+function DataList({ className, ...props }: DataListProps) {
   return (
     <div
       role="list"
@@ -18,9 +22,9 @@ export function DataList({ className, ...props }: DataListProps) {
   );
 }
 
-interface DataRowCommonProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onSelect'> {
-  leading?: ReactNode;
-  trailing?: ReactNode;
+interface DataRowCommonProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onSelect'> {
+  leading?: React.ReactNode;
+  trailing?: React.ReactNode;
 }
 
 interface StaticDataRowProps extends DataRowCommonProps {
@@ -33,7 +37,7 @@ interface LinkDataRowProps extends DataRowCommonProps {
   /** Makes the row a link; the row content becomes the click target via a stretched overlay. */
   href: string;
   onSelect?: undefined;
-  /** Accessible name for the overlay control — the visible text sits outside it. */
+  /** Accessible name for the overlay control, since the visible text sits outside it. */
   selectLabel: string;
 }
 
@@ -41,16 +45,19 @@ interface ButtonDataRowProps extends DataRowCommonProps {
   href?: undefined;
   /** Makes the row a button; the row content becomes the click target via a stretched overlay. */
   onSelect: () => void;
-  /** Accessible name for the overlay control — the visible text sits outside it. */
+  /** Accessible name for the overlay control, since the visible text sits outside it. */
   selectLabel: string;
 }
 
 export type DataRowProps = StaticDataRowProps | LinkDataRowProps | ButtonDataRowProps;
 
-const overlay =
-  'absolute inset-0 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)]';
+const overlay = [
+  'absolute inset-0 cursor-pointer rounded-[inherit]',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset',
+  'focus-visible:ring-[var(--color-focus-ring)]',
+].join(' ');
 
-export function DataRow({
+function DataRow({
   href,
   onSelect,
   selectLabel,
@@ -66,17 +73,21 @@ export function DataRow({
     <div
       role="listitem"
       className={cn(
-        'relative flex items-center gap-3 py-3 first:pt-0 last:pb-0',
-        interactive && 'transition-colors hover:bg-[var(--color-surface-hover)]',
-        className,
+        'relative flex items-center gap-[var(--space-3)]',
+        'px-[var(--space-2)] py-[var(--space-3)]',
+        interactive && [
+          'rounded-[var(--radius-sm)] transition-colors duration-[var(--duration-fast)]',
+          'hover:bg-[var(--color-surface-hover)]',
+        ],
+        className
       )}
       {...props}
     >
-      {leading ? <span className="shrink-0">{leading}</span> : null}
+      {leading && <span className="shrink-0">{leading}</span>}
       <div className="min-w-0 flex-1 text-[length:var(--text-sm)] text-[var(--color-text-primary)]">
         {children}
       </div>
-      {trailing ? <span className="relative z-10 shrink-0">{trailing}</span> : null}
+      {trailing && <span className="relative z-10 shrink-0">{trailing}</span>}
       {href ? (
         <Link href={href} className={overlay}>
           <span className="sr-only">{selectLabel}</span>
@@ -87,3 +98,5 @@ export function DataRow({
     </div>
   );
 }
+
+export { DataList, DataRow };

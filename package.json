@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "design-check": "node scripts/design-check.mjs",
+    "test:design-check": "node scripts/design-check.test.mjs",
     "contrast-check": "node scripts/contrast-check.mjs",
     "verify-scales": "node tools/generate-scales.mjs",
     "dev": "next dev",

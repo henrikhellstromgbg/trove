@@ -77,9 +77,11 @@ near-zero), so migrating Trove views onto `--color-*` is essentially lossless.
 ## Phase 3 — migration (in progress, 2026-07-24)
 
 Confirmed with Henrik (gate 2 batch):
-- **Primary button = ink**, not red. `theme.css` now: `--brand-primary` ink
-  (#111, lightening hover to #444), `--brand-accent` red #E4130E. Red is accent
-  and brand only, never a filled button surface. contrast-check green.
+- **Filled button = ink**, not red. `theme.css` now: `--brand-action` ink
+  (#111, lightening hover to #444), `--brand-base` red #E4130E. Red is the brand
+  identity only, never a filled button surface. contrast-check green.
+  (Named `--brand-primary`/`--brand-accent` at the time; renamed when base-ds
+  1.2.0 split the action role from the brand role. See MIGRATING.md.)
 - **StatusIndicator**: keep the light coloured-text label (rebuilt on tokens),
   not a filled Badge.
 - **Select**: Radix Select (new dep `@radix-ui/react-select`).

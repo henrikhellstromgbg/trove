@@ -88,8 +88,8 @@ for (const sname of ['canvas', 'surface', 'raised', 'sunken'])
 
 add('LIGHT separator (border-subtle, decorative use only, exempt) vs surface', hex(light, '--color-border-subtle'), L.surface, 0);
 add('LIGHT input border (border-strong) vs surface', hex(light, '--color-border-strong'), L.surface, 30);
-add('LIGHT text on primary button', hex(light, '--color-primary-text'), hex(light, '--color-primary'), 90);
-add('LIGHT text on primary button hover', hex(light, '--color-primary-text'), hex(light, '--color-primary-hover'), 90);
+add('LIGHT text on action button', hex(light, '--color-action-text'), hex(light, '--color-action'), 90);
+add('LIGHT text on action button hover', hex(light, '--color-action-text'), hex(light, '--color-action-hover'), 90);
 
 for (const s of ['error', 'warning', 'success', 'info']) {
   const text = hex(light, `--color-status-${s}-text`);
@@ -122,8 +122,8 @@ for (const sname of ['canvas', 'surface', 'raised', 'sunken'])
 
 add('DARK separator (border-subtle, decorative use only, exempt) vs surface', hex(dark, '--color-border-subtle'), D.surface, 0);
 add('DARK input border (border-strong) vs surface', hex(dark, '--color-border-strong'), D.surface, 30);
-add('DARK text on primary button', hex(dark, '--color-primary-text'), hex(dark, '--color-primary'), 90);
-add('DARK text on primary button hover', hex(dark, '--color-primary-text'), hex(dark, '--color-primary-hover'), 90);
+add('DARK text on action button', hex(dark, '--color-action-text'), hex(dark, '--color-action'), 90);
+add('DARK text on action button hover', hex(dark, '--color-action-text'), hex(dark, '--color-action-hover'), 90);
 
 for (const s of ['error', 'warning', 'success', 'info']) {
   const text = hex(dark, `--color-status-${s}-text`);

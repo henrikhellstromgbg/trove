@@ -185,7 +185,7 @@ export default async function SourceDetailPage({
             <dd
               className={
                 source.lastStatus === "error"
-                  ? "text-sm text-[var(--color-accent)]"
+                  ? "text-sm text-[var(--color-brand)]"
                   : "text-sm text-[var(--color-text-primary)]"
               }
             >
@@ -211,7 +211,7 @@ export default async function SourceDetailPage({
       </div>
 
       {source.lastError ? (
-        <p className="-mt-4 text-sm text-[var(--color-accent)]">{source.lastError}</p>
+        <p className="-mt-4 text-sm text-[var(--color-brand)]">{source.lastError}</p>
       ) : null}
 
       <section className="flex flex-col gap-4">
@@ -265,7 +265,7 @@ export default async function SourceDetailPage({
                       {run.itemCount === 1 ? "item" : "items"}
                     </span>
                     {run.error ? (
-                      <span className="text-sm text-[var(--color-accent)]">{run.error}</span>
+                      <span className="text-sm text-[var(--color-brand)]">{run.error}</span>
                     ) : null}
                   </div>
                 </DataRow>

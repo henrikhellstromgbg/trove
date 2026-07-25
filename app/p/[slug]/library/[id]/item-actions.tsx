@@ -228,7 +228,7 @@ export function ItemActions({
       ) : null}
 
       {error ? (
-        <p className="border-t border-[var(--color-border-subtle)] pt-3 text-sm text-[var(--color-accent)]">{error}</p>
+        <p className="border-t border-[var(--color-border-subtle)] pt-3 text-sm text-[var(--color-brand)]">{error}</p>
       ) : null}
     </div>
   );

@@ -1,20 +1,21 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { useRef } from 'react';
+// Confirmation dialog on Radix AlertDialog: role=alertdialog, focus trap, focus
+// return, Escape, and no dismiss-on-outside-click, so a destructive action
+// cannot be confirmed or lost by a stray click (U1, N9).
+//
+// Controlled: the consumer owns `open` and flips it in the handlers. onCancel
+// fires on Cancel, Escape, and programmatic close, but never after onConfirm.
+
+import * as React from 'react';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 import { cn } from '@/lib/cn';
 import { Button } from '@/components/ui/button';
 
-// Confirmation dialog on Radix AlertDialog (role=alertdialog, focus trap,
-// focus return, Escape, no dismiss-on-outside-click). Keeps Trove's
-// ConfirmDialog API. Controlled via `open`; the consumer flips it in the
-// handlers. onCancel fires on Cancel, Escape, or programmatic close.
-
 export interface AlertDialogProps {
   open: boolean;
   title: string;
-  description?: ReactNode;
+  description?: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
@@ -24,7 +25,7 @@ export interface AlertDialogProps {
   className?: string;
 }
 
-export function AlertDialog({
+function AlertDialog({
   open,
   title,
   description,
@@ -36,7 +37,7 @@ export function AlertDialog({
   onCancel,
   className,
 }: AlertDialogProps) {
-  const confirming = useRef(false);
+  const confirming = React.useRef(false);
 
   return (
     <AlertDialogPrimitive.Root
@@ -53,7 +54,7 @@ export function AlertDialog({
           className={cn(
             'fixed inset-0 z-[var(--z-overlay)] bg-[var(--color-overlay)]',
             'data-[state=open]:animate-in data-[state=open]:fade-in-0',
-            'data-[state=closed]:animate-out data-[state=closed]:fade-out-0',
+            'data-[state=closed]:animate-out data-[state=closed]:fade-out-0'
           )}
         />
         <AlertDialogPrimitive.Content
@@ -63,17 +64,17 @@ export function AlertDialog({
             'p-[var(--space-6)] shadow-[var(--shadow-lg)] duration-[var(--duration-slow)]',
             'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
             'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
-            className,
+            className
           )}
         >
           <AlertDialogPrimitive.Title className="text-[length:var(--text-base)] font-semibold text-[var(--color-text-primary)]">
             {title}
           </AlertDialogPrimitive.Title>
-          {description ? (
+          {description && (
             <AlertDialogPrimitive.Description className="mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
               {description}
             </AlertDialogPrimitive.Description>
-          ) : null}
+          )}
           <div className="mt-[var(--space-6)] flex items-center justify-end gap-[var(--space-3)]">
             <AlertDialogPrimitive.Cancel asChild>
               <Button variant="secondary">{cancelLabel}</Button>
@@ -96,3 +97,5 @@ export function AlertDialog({
     </AlertDialogPrimitive.Root>
   );
 }
+
+export { AlertDialog };

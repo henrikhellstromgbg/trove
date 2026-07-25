@@ -13,6 +13,7 @@ export {
   ChevronSort,
   Close,
   Copy,
+  Document,
   Download,
   Edit,
   ErrorFilled,

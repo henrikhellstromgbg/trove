@@ -86,7 +86,7 @@ export function ChatArchive({
                   href={`/p/${slug}/ask?conversation=${row.id}`}
                   className="flex min-w-0 flex-1 items-baseline justify-between gap-4 py-4 transition-colors"
                 >
-                  <span className="min-w-0 truncate text-base text-[var(--color-text-primary)] transition-colors group-hover:text-[var(--color-accent)]">
+                  <span className="min-w-0 truncate text-base text-[var(--color-text-primary)] transition-colors group-hover:text-[var(--color-brand)]">
                     {row.title?.trim() || "Untitled"}
                   </span>
                   <span className="shrink-0 font-mono text-sm text-[var(--color-text-tertiary)]">
@@ -96,7 +96,7 @@ export function ChatArchive({
                 <button
                   onClick={() => remove(row.id)}
                   aria-label="delete conversation"
-                  className="shrink-0 rounded-md p-1.5 text-[var(--color-text-tertiary)] opacity-0 transition-opacity hover:text-[var(--color-accent)] focus:opacity-100 group-hover:opacity-100"
+                  className="shrink-0 rounded-md p-1.5 text-[var(--color-text-tertiary)] opacity-0 transition-opacity hover:text-[var(--color-brand)] focus:opacity-100 group-hover:opacity-100"
                 >
                   <TrashCan size={16} />
                 </button>

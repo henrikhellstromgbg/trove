@@ -35,7 +35,7 @@ export function DashboardAsk({ slug }: { slug: string }) {
       />
       <button
         onClick={go}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary)] text-[var(--color-text-inverse)] transition-opacity hover:opacity-90"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-action)] text-[var(--color-text-inverse)] transition-opacity hover:opacity-90"
         aria-label="Ask"
       >
         <ArrowUp size={18} />

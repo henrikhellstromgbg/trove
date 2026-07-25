@@ -143,7 +143,7 @@ export function CaptureOverlay() {
                 id="capture-dialog-title"
                 className="font-mono text-sm text-[var(--color-text-tertiary)]"
               >
-                capture into <span className="text-[var(--color-accent)]">{project.name}</span>
+                capture into <span className="text-[var(--color-brand)]">{project.name}</span>
               </p>
               <button
                 onClick={() => setModalOpen(false)}

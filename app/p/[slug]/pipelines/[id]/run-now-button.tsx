@@ -38,7 +38,7 @@ export function RunNowButton({ id }: { id: string }) {
       >
         {busy ? "running" : "run now"}
       </Button>
-      {error ? <span className="text-sm text-[var(--color-accent)]">{error}</span> : null}
+      {error ? <span className="text-sm text-[var(--color-brand)]">{error}</span> : null}
     </div>
   );
 }

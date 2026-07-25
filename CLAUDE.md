@@ -163,9 +163,15 @@ your job is composition, not invention.
 
 - Constraints: `design-rules/RULES.md` (numbered rules, single source of truth).
 - Components: `components/ui/README.md` (the component inventory).
+- Patterns: `.claude/skills/ux-patterns/SKILL.md` (which surface, which control).
 - Checks: `npm run design-check`, `npm run contrast-check`, `npm run verify-scales`.
+- Upgrades: `MIGRATING.md` (one section per breaking change in base-ds).
 
 Before styling any new UI, check components/ui/README.md for an existing
 component and RULES.md for constraints. If neither covers the case, stop and
 ask instead of inventing.
+
+Before building any new view, flow, or overlay, and before adding any form,
+read the ux-patterns skill. RULES.md governs how UI looks; ux-patterns governs
+what shape it takes. Same standing as the stop-and-ask rule above.
 <!-- /base-ds:adopt -->

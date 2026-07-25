@@ -136,7 +136,7 @@ export function CaptureForm() {
 
       {/* centered drop affordance: plus + mono headline + mono subline */}
       <div className="flex flex-col items-center text-center">
-        <Add size={40} className="text-[var(--color-accent)]" />
+        <Add size={40} className="text-[var(--color-brand)]" />
         <p className="mt-6 max-w-xl font-mono text-[15px] font-semibold text-[var(--color-text-primary)]">
           PDF, DOCX, XLSX, JPG, PNG, TXT… anything really.
         </p>

@@ -1,16 +1,21 @@
 'use client';
 
-import type { HTMLAttributes, KeyboardEvent } from 'react';
-import { useRef } from 'react';
+// Tabs in two modes behind one API and one set of styles:
+//  - link tabs (`href`) render a <nav> of <Link>s, for tabs that are really
+//    navigation (?view=, /settings/billing). The URL is the state.
+//  - button tabs (`tabId`/`panelId`) render a roving-tabindex tablist with
+//    Arrow/Home/End keys, controlling panels rendered anywhere on the page.
+//
+// Radix Tabs is deliberately NOT used here. Its Root/List/Trigger/Content model
+// owns both the state and the panels, which rules out the two cases above:
+// link-nav tabs (Radix renders triggers, not links, and does not drive routing)
+// and externally rendered panels (Content must be a descendant of Root). Radix
+// remains correct for a self-contained tab group that owns its own panels; this
+// component is the reference for the other two. See components/ui/README.md.
+
+import * as React from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/cn';
-
-// Two modes share one API and styling:
-//  - link tabs (href) render as a <nav> of <Link>s (e.g. ?view=).
-//  - button tabs (tabId/panelId) render a roving-tabindex tablist with
-//    Arrow/Home/End keys, controlling panels rendered elsewhere.
-// Radix Tabs is intentionally not used: its coupled Root/List/Content model
-// cannot express link-nav tabs or externally-rendered panels.
 
 interface TabItemBase {
   key: string;
@@ -18,12 +23,12 @@ interface TabItemBase {
   count?: number;
 }
 
-/** Link-driven tab (e.g. `?view=`). */
+/** Link-driven tab: navigation, the URL holds the state. */
 export interface LinkTabItem extends TabItemBase {
   href: string;
 }
 
-/** Button/state-driven tab. */
+/** Button-driven tab: local state, panels rendered by the consumer. */
 export interface ButtonTabItem extends TabItemBase {
   href?: never;
   tabId: string;
@@ -32,8 +37,9 @@ export interface ButtonTabItem extends TabItemBase {
 
 export type TabItem = LinkTabItem | ButtonTabItem;
 
-interface TabsCommonProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onSelect'> {
+interface TabsCommonProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onSelect'> {
   activeKey: string;
+  /** Accessible name for the tablist or nav landmark. */
   label: string;
 }
 
@@ -44,28 +50,37 @@ export interface LinkTabsProps extends TabsCommonProps {
 
 export interface ButtonTabsProps extends TabsCommonProps {
   items: ButtonTabItem[];
-  /** Required for button/state-driven tabs — called with the selected tab's key. */
+  /** Required for button-driven tabs, called with the selected tab's key. */
   onSelect: (key: string) => void;
 }
 
 export type TabsProps = LinkTabsProps | ButtonTabsProps;
 
-const rail =
-  'flex items-center gap-6 overflow-x-auto overflow-y-hidden whitespace-nowrap border-b border-[var(--color-border)]';
+const rail = [
+  'flex items-center gap-[var(--space-6)] overflow-x-auto overflow-y-hidden whitespace-nowrap',
+  'border-b border-[var(--color-border)]',
+].join(' ');
 
-const tabBase =
-  'inline-flex items-center gap-1.5 border-b-2 border-transparent px-1 pb-2 text-[length:var(--text-sm)] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]';
+const tabBase = [
+  'inline-flex cursor-pointer items-center gap-1.5 border-b-2 border-transparent',
+  'px-1 pb-[var(--space-2)] text-[length:var(--text-sm)] font-medium',
+  'transition-colors duration-[var(--duration-fast)]',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]',
+  'focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]',
+].join(' ');
 
 const activeClasses = 'border-[var(--color-text-primary)] text-[var(--color-text-primary)]';
-const inactiveClasses =
-  'text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]';
+const inactiveClasses = [
+  'text-[var(--color-text-secondary)]',
+  'hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]',
+].join(' ');
 
 function TabCount({ count, active }: { count: number; active: boolean }) {
   return (
     <span
       className={cn(
-        'font-mono text-[length:var(--text-sm)]',
-        active ? 'text-[var(--color-text-secondary)]' : 'text-[var(--color-text-tertiary)]',
+        'font-mono tabular-nums text-[length:var(--text-sm)]',
+        active ? 'text-[var(--color-text-secondary)]' : 'text-[var(--color-text-tertiary)]'
       )}
     >
       {count}
@@ -77,9 +92,9 @@ function isLinkDriven(items: TabItem[]): items is LinkTabItem[] {
   return items.every((item) => item.href !== undefined);
 }
 
-export function Tabs(props: TabsProps) {
+function Tabs(props: TabsProps) {
   const { items, activeKey, label, className, onSelect, ...rest } = props;
-  const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const buttonRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
 
   if (isLinkDriven(items)) {
     return (
@@ -94,7 +109,7 @@ export function Tabs(props: TabsProps) {
               className={cn(tabBase, active ? activeClasses : inactiveClasses)}
             >
               <span>{item.label}</span>
-              {item.count !== undefined ? <TabCount count={item.count} active={active} /> : null}
+              {item.count !== undefined && <TabCount count={item.count} active={active} />}
             </Link>
           );
         })}
@@ -111,7 +126,7 @@ export function Tabs(props: TabsProps) {
     handleSelect(items[nextIndex].key);
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+  function handleKeyDown(event: React.KeyboardEvent<HTMLButtonElement>, index: number) {
     switch (event.key) {
       case 'ArrowRight':
         event.preventDefault();
@@ -135,7 +150,13 @@ export function Tabs(props: TabsProps) {
   }
 
   return (
-    <div role="tablist" aria-label={label} aria-orientation="horizontal" className={cn(rail, className)} {...rest}>
+    <div
+      role="tablist"
+      aria-label={label}
+      aria-orientation="horizontal"
+      className={cn(rail, className)}
+      {...rest}
+    >
       {items.map((item, index) => {
         const active = item.key === activeKey;
         return (
@@ -155,10 +176,12 @@ export function Tabs(props: TabsProps) {
             className={cn(tabBase, active ? activeClasses : inactiveClasses)}
           >
             <span>{item.label}</span>
-            {item.count !== undefined ? <TabCount count={item.count} active={active} /> : null}
+            {item.count !== undefined && <TabCount count={item.count} active={active} />}
           </button>
         );
       })}
     </div>
   );
 }
+
+export { Tabs };

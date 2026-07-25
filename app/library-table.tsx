@@ -191,7 +191,7 @@ export function LibraryTable({
           <button
             type="button"
             onClick={clearFilters}
-            className="text-sm font-medium text-[var(--color-text-primary)] underline underline-offset-2 transition-colors hover:text-[var(--color-accent)] focus:text-[var(--color-accent)]"
+            className="text-sm font-medium text-[var(--color-text-primary)] underline underline-offset-2 transition-colors hover:text-[var(--color-brand)] focus:text-[var(--color-brand)]"
           >
             clear filters
           </button>

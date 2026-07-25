@@ -174,7 +174,7 @@ export default async function ItemDetail({
           ) : null}
 
           {item.status === "failed" ? (
-            <p className="text-sm text-[var(--color-accent)]">Processing failed for this item.</p>
+            <p className="text-sm text-[var(--color-brand)]">Processing failed for this item.</p>
           ) : null}
         </div>
       </div>

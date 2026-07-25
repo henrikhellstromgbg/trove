@@ -117,7 +117,7 @@ export function NewSourceForm() {
                 className={cx(
                   "rounded-lg border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]",
                   active
-                    ? "border-[var(--color-border-strong)] bg-[var(--color-primary)] text-[var(--color-text-inverse)]"
+                    ? "border-[var(--color-border-strong)] bg-[var(--color-action)] text-[var(--color-text-inverse)]"
                     : "border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] hover:border-[var(--color-border)]"
                 )}
               >

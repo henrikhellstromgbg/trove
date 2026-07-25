@@ -5,6 +5,8 @@
 // - semantic tokens only, via arbitrary-value classes bound to CSS vars
 // - all states: hover, focus-visible (global ring), active, disabled, loading
 // - min touch target 44px (A3)
+// - cursor-pointer is explicit (A14): Tailwind v4's preflight sets buttons to
+//   cursor: default, so every interactive component must opt back in
 
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
@@ -14,9 +16,9 @@ import { cn } from '@/lib/cn';
 const buttonVariants = cva(
   [
     'inline-flex items-center justify-center gap-2 whitespace-nowrap select-none',
-    'rounded-[var(--radius-md)] font-medium',
+    'cursor-pointer rounded-[var(--radius-md)] font-medium',
     'transition-colors duration-[var(--duration-fast)]',
-    'disabled:pointer-events-none disabled:opacity-50',
+    'disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
     'min-h-[var(--touch-target-min)]',
     '[&_svg]:shrink-0',
   ],
@@ -24,8 +26,8 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: [
-          'bg-[var(--color-primary)] text-[var(--color-primary-text)]',
-          'hover:bg-[var(--color-primary-hover)]',
+          'bg-[var(--color-action)] text-[var(--color-action-text)]',
+          'hover:bg-[var(--color-action-hover)]',
           'active:opacity-90',
         ],
         secondary: [

@@ -59,7 +59,7 @@ export default async function PipelineDetailPage({
           action={
             <Link
               href={`${base}/pipelines`}
-              className="text-sm font-medium text-[var(--color-text-primary)] underline underline-offset-2 transition-colors hover:text-[var(--color-accent)]"
+              className="text-sm font-medium text-[var(--color-text-primary)] underline underline-offset-2 transition-colors hover:text-[var(--color-brand)]"
             >
               back to pipelines
             </Link>
@@ -179,15 +179,15 @@ function RunOutput({ output }: { output: PipelineRunOutput | null }) {
   // Failed runs store { error } instead of a shaped output.
   const maybeError = (output as { error?: string }).error;
   if (maybeError) {
-    return <p className="text-sm text-[var(--color-accent)]">error: {maybeError}</p>;
+    return <p className="text-sm text-[var(--color-brand)]">error: {maybeError}</p>;
   }
 
   return (
     <div className="flex flex-col gap-3">
       <RunOutputBody output={output} />
       {output.forgotten ? (
-        <div className="mt-1 border-l-2 border-[var(--color-accent)] pl-3">
-          <p className="text-sm font-medium text-[var(--color-accent)]">Forgotten</p>
+        <div className="mt-1 border-l-2 border-[var(--color-brand)] pl-3">
+          <p className="text-sm font-medium text-[var(--color-brand)]">Forgotten</p>
           <p className="text-[var(--color-text-secondary)]">
             {output.forgotten.title ?? "(untitled)"}
           </p>

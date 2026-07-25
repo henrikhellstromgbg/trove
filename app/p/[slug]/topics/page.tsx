@@ -99,7 +99,7 @@ export default async function TopicsPage({
                       <li key={entry.id}>
                         <Link
                           href={`${base}/library/${entry.id}`}
-                          className="block truncate text-sm text-[var(--color-text-secondary)] underline-offset-2 transition-colors hover:text-[var(--color-accent)] hover:underline"
+                          className="block truncate text-sm text-[var(--color-text-secondary)] underline-offset-2 transition-colors hover:text-[var(--color-brand)] hover:underline"
                         >
                           {entry.title}
                         </Link>

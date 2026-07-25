@@ -182,7 +182,7 @@ export function Sidebar() {
             <Image src="/logo.svg" alt="Trove" width={78} height={20} priority />
           </Link>
         </div>
-        <span className="min-w-0 truncate text-center text-sm font-medium text-[var(--color-accent)]">
+        <span className="min-w-0 truncate text-center text-sm font-medium text-[var(--color-brand)]">
           {project.name}
         </span>
         <div className="flex items-center justify-self-end">
@@ -244,7 +244,7 @@ export function Sidebar() {
               <span className="text-sm text-[var(--color-text-tertiary)]">Project</span>
               <ChevronDown size={16} className="text-[var(--color-text-tertiary)]" />
             </span>
-            <span className="truncate text-[15px] font-medium text-[var(--color-accent)]">
+            <span className="truncate text-[15px] font-medium text-[var(--color-brand)]">
               {project.name}
             </span>
           </button>
@@ -269,7 +269,7 @@ export function Sidebar() {
                           closeMobile();
                         }}
                         className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-[var(--color-surface-hover)] ${
-                          p.id === project.id ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"
+                          p.id === project.id ? "text-[var(--color-brand)]" : "text-[var(--color-text-secondary)]"
                         }`}
                       >
                         <span
@@ -304,7 +304,7 @@ export function Sidebar() {
                             onClick={() => setKind(k)}
                             aria-pressed={kind === k}
                             className={`rounded px-2 py-1 ${
-                              kind === k ? "bg-[var(--color-primary)] text-[var(--color-text-inverse)]" : "text-[var(--color-text-tertiary)]"
+                              kind === k ? "bg-[var(--color-action)] text-[var(--color-text-inverse)]" : "text-[var(--color-text-tertiary)]"
                             }`}
                           >
                             {k === "personal" ? "Personal" : "Client"}
@@ -346,7 +346,7 @@ export function Sidebar() {
               isActive("ask") ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
-            <Chat size={18} className={`shrink-0 ${isActive("ask") ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"}`} />
+            <Chat size={18} className={`shrink-0 ${isActive("ask") ? "text-[var(--color-brand)]" : "text-[var(--color-text-secondary)]"}`} />
             <span className="min-w-0 truncate">Ask</span>
           </Link>
           <Link
@@ -357,7 +357,7 @@ export function Sidebar() {
               isActive("chats") ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
-            <Archive size={18} className={`shrink-0 ${isActive("chats") ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"}`} />
+            <Archive size={18} className={`shrink-0 ${isActive("chats") ? "text-[var(--color-brand)]" : "text-[var(--color-text-secondary)]"}`} />
             <span className="min-w-0 truncate">Chat archive</span>
           </Link>
           {DESTINATIONS.map(({ seg, label, Icon }) => (
@@ -370,7 +370,7 @@ export function Sidebar() {
                 isActive(seg) ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
               }`}
             >
-              <Icon size={18} className={`shrink-0 ${isActive(seg) ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"}`} />
+              <Icon size={18} className={`shrink-0 ${isActive(seg) ? "text-[var(--color-brand)]" : "text-[var(--color-text-secondary)]"}`} />
               <span className="min-w-0 truncate">{label}</span>
               <span className="ml-auto shrink-0">
                 <CountFor seg={seg} counts={counts} />
@@ -401,7 +401,7 @@ export function Sidebar() {
               isActive("settings") ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
-            <Settings size={18} className={`shrink-0 ${isActive("settings") ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"}`} />
+            <Settings size={18} className={`shrink-0 ${isActive("settings") ? "text-[var(--color-brand)]" : "text-[var(--color-text-secondary)]"}`} />
             <span className="min-w-0 truncate">Settings</span>
           </Link>
 

@@ -28,12 +28,16 @@
   --color-border-subtle:   var(--gray-200);
   --color-border-strong:   var(--gray-400);
 
-  /* ---- Interactive ---- */
-  --color-primary:         var(--brand-primary);
-  --color-primary-hover:   var(--brand-primary-hover);
-  --color-primary-text:    var(--brand-primary-text);
-  --color-accent:          var(--brand-accent);
-  --color-accent-subtle:   var(--brand-accent-subtle);
+  /* ---- Interactive ----
+     action = what the user clicks (filled buttons, primary CTAs).
+     brand  = the brand's identity color (selection tints, highlights).
+     These are named by role, not by rank. A brand color mapped onto
+     buttons because it was called "primary" is a real bug we have shipped. */
+  --color-action:          var(--brand-action);
+  --color-action-hover:    var(--brand-action-hover);
+  --color-action-text:     var(--brand-action-text);
+  --color-brand:           var(--brand-base);
+  --color-brand-subtle:    var(--brand-base-subtle);
   --color-focus-ring:      var(--info-base);
   --color-text-on-status:  var(--white);     /* text on solid status colors (destructive buttons) */
   --color-overlay:         var(--overlay-50); /* dialog/sheet scrim */

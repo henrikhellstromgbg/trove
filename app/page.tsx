@@ -28,7 +28,7 @@ export default async function Home() {
       <div className="mt-10 flex items-center gap-4">
         <Link
           href="/sign-in"
-          className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm text-[var(--color-text-inverse)]"
+          className="rounded-full bg-[var(--color-action)] px-5 py-2 text-sm text-[var(--color-text-inverse)]"
         >
           sign in
         </Link>

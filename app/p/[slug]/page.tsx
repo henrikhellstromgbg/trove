@@ -132,7 +132,7 @@ export default async function ProjectDashboard({
           ) : (
             <>
               <p className="text-sm text-[var(--color-text-secondary)]">
-                <span className="font-mono text-[var(--color-accent)]">{counts.processing}</span> in flight
+                <span className="font-mono text-[var(--color-brand)]">{counts.processing}</span> in flight
               </p>
               <ul className="flex flex-col gap-1">
                 {processingItems.map((it) => (
@@ -174,7 +174,7 @@ export default async function ProjectDashboard({
               {counts.sourceErrors > 0 ? (
                 <>
                   {" · "}
-                  <span className="font-mono text-[var(--color-accent)]">{counts.sourceErrors} error</span>
+                  <span className="font-mono text-[var(--color-brand)]">{counts.sourceErrors} error</span>
                 </>
               ) : null}
             </p>

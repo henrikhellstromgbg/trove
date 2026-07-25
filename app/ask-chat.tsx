@@ -285,7 +285,7 @@ export function AskChat({
                         <p className="text-base text-[var(--color-text-primary)]">{m.question}</p>
                       </div>
                       {m.error ? (
-                        <p className="text-sm text-[var(--color-accent)]">{m.error}</p>
+                        <p className="text-sm text-[var(--color-brand)]">{m.error}</p>
                       ) : (
                         <p className="whitespace-pre-wrap text-base leading-relaxed text-[var(--color-text-primary)]">
                           {m.answer}
@@ -320,7 +320,7 @@ export function AskChat({
                 onClick={() => submit(input)}
                 disabled={!canSend}
                 label="Send question"
-                className="absolute right-3 top-3 bg-[var(--color-primary)] text-[var(--color-text-inverse)] hover:bg-[var(--color-primary-hover)] hover:text-[var(--color-text-inverse)] disabled:opacity-30"
+                className="absolute right-3 top-3 bg-[var(--color-action)] text-[var(--color-text-inverse)] hover:bg-[var(--color-action-hover)] hover:text-[var(--color-text-inverse)] disabled:opacity-30"
               >
                 <ArrowUp size={18} />
               </IconButton>

@@ -12,12 +12,14 @@ maintain a separate list here.
 ## Process
 
 1. Run `npm run design-check` first. Report and fix all machine-caught violations.
-2. Read `design-rules/RULES.md` and walk every rule (N*, A*, P*) against the code manually. The `[lint]` rules are already covered by step 1; focus manual attention on the untagged ones.
+2. Read `design-rules/RULES.md` and walk every rule (N*, A*, C*, P*) against the code manually. The `[lint]` rules are already covered by step 1; focus manual attention on the untagged ones.
 3. Pay extra attention to the rules machines cannot catch:
    - A6: are ALL states implemented (hover, focus-visible, active, disabled, loading, error, empty)?
+   - A16: does the view hand-build the inside of a row, card, or header? That layout belongs in the component
    - N8/A4: does every input have a visible label, and are errors wired via aria-describedby?
    - N9: is any state communicated by color alone?
-   - N10/A1: is all copy sentence case?
+   - C2: is there an eyebrow label above a heading?
+   - C3: does the microcopy say something concrete, without filler or exclamation marks?
    - A10/A11: do actions say what they do, do errors say how to recover?
    - N5/A7/P4: were any components created outside components/ui/?
 4. Check both light and dark mode if the change touches colors or surfaces.

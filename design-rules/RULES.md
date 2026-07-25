@@ -20,15 +20,16 @@ number. Done. It is immediately active in Claude Code, Codex, and reviews.
 - N7: Never remove focus outlines without an equal or better replacement. `outline-none` without `focus-visible:` styling is banned `[lint]`
 - N8: Never use placeholder text as a label. Every input has a visible `<Label>`
 - N9: Never rely on color alone to convey state. Error/warning/success always pair color with icon and/or text
-- N10: Never use `title` case in UI copy. Sentence case everywhere: buttons, headings, labels, menu items
-- N11: Never use corporate filler copy ("Empower your workflow", "Seamlessly manage"). Plain verbs, specific nouns
+- N10: Never use `title` case in UI copy. Sentence case everywhere: buttons, headings, labels, menu items. Machine-checked as C1
+- N11: Never use corporate filler copy ("Empower your workflow", "Seamlessly manage"). Plain verbs, specific nouns. See C3
 - N12: Never add animation without checking `prefers-reduced-motion` (handled globally in semantic.css, do not add JS-driven animation that bypasses it)
 - N13: Never use icons from any library except `@carbon/icons-react` `[lint]`
 - N14: Never use `z-index` values outside the `--z-*` scale `[lint]`
+- N15: Never hand-build a clickable element in a view. No `onClick` on a `div` or `span`, no raw `<button>` with its own classes. Clickable things are system components: `Button`, `DataRow`, `Tabs` `[lint]`
 
 ## Always
 
-- A1: Always sentence case in all UI copy, including buttons and headings
+- A1: Always sentence case in all UI copy, including buttons and headings. Machine-checked as C1
 - A2: Always use semantic tokens for every color, spacing, radius, shadow, and motion value
 - A3: Always give interactive elements a minimum 44x44px touch target (`--touch-target-min`)
 - A4: Always connect inputs to labels (`htmlFor`/`id`) and errors via `aria-describedby` (FormField handles this, use it)
@@ -41,6 +42,15 @@ number. Done. It is immediately active in Claude Code, Codex, and reviews.
 - A11: Always write error messages that say what went wrong and how to fix it. No apologies, no vagueness
 - A12: Always support keyboard navigation: dialogs trap focus and return it on close, menus use arrow keys (Radix handles this, do not fight it)
 - A13: Always use text-primary or text-secondary on hover/active surfaces. text-tertiary is meta-tier (hints, timestamps, placeholders) and only on static surfaces, never for body copy
+- A14: Always set `cursor-pointer` on interactive elements. Tailwind v4's preflight sets buttons to `cursor: default`, so every clickable surface has to opt back in. Pair it with `disabled:cursor-not-allowed` where a disabled state exists `[lint]`
+- A15: Always give an element with its own background its own inner padding, minimum `var(--space-2)` horizontal. Chips, rows, pills, hover and selection surfaces all count. A background flush against its text is a bug `[lint]`
+- A16: Always let the component own its inner layout. List rows, cards, chips, and page or section headers get their padding, gaps, and alignment from the component, never from the view. The view passes content into slots and nothing else. If a view is reaching for `flex` and `gap` to lay out the inside of a row, the row is the wrong shape: fix the component
+
+## Copy
+
+- C1: Sentence case everywhere: buttons, headings, labels, menu items, empty states. Never Title Case, never ALL CAPS as text, never an all-lowercase label `[lint]`
+- C2: No eyebrow labels. Small text above a heading is a heading that was not written properly. Use the heading
+- C3: Microcopy is direct and concrete. No corporate filler, no exclamation marks in system text
 
 ## Process
 
@@ -48,3 +58,4 @@ number. Done. It is immediately active in Claude Code, Codex, and reviews.
 - P2: New components go through the new-component skill: check composability first, build in `components/ui/`, add to examples, sync back to base-ds if generally useful
 - P3: Before marking any view as done, run the design-review skill checklist and `npm run design-check`
 - P4: Views are built ONLY from `components/ui/` plus layout primitives (div/flex/grid with token-based spacing)
+- P5: A rule that genuinely cannot be followed is exempted in the file, never by editing the checker. Put `/* design-check-exempt: <reason> */` in the first 10 lines to exempt the whole file, or directly above the line to exempt that line. The reason is mandatory, and `design-check` prints every exemption on every run. If a hardcoded skip list appears in `scripts/design-check.mjs`, that is the bug

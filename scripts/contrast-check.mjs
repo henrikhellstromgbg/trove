@@ -68,22 +68,22 @@ for (const mode of ['light', 'dark']) {
     ['canvas', 'surface', 'surface-raised', 'surface-sunken', 'surface-hover', 'surface-active']
       .map((name) => [name.replace('surface-', ''), toHex(vars, `--color-${name}`)])
   );
-  const primary = toHex(vars, '--color-primary');
-  const primaryHover = toHex(vars, '--color-primary-hover');
-  const primaryText = toHex(vars, '--color-primary-text');
-  const accentSubtle = toHex(vars, '--color-accent-subtle');
+  const action = toHex(vars, '--color-action');
+  const actionHover = toHex(vars, '--color-action-hover');
+  const actionText = toHex(vars, '--color-action-text');
+  const brandSubtle = toHex(vars, '--color-brand-subtle');
 
-  add(`${mode}: primary button text`, primaryText, primary, 75);
-  add(`${mode}: primary button text on hover`, primaryText, primaryHover, 75);
+  add(`${mode}: action button text`, actionText, action, 75);
+  add(`${mode}: action button text on hover`, actionText, actionHover, 75);
 
   for (const [surface, background] of Object.entries(surfaces)) {
-    add(`${mode}: primary button on ${surface}`, primary, background, 45);
-    add(`${mode}: primary button hover on ${surface}`, primaryHover, background, 45);
+    add(`${mode}: action button on ${surface}`, action, background, 45);
+    add(`${mode}: action button hover on ${surface}`, actionHover, background, 45);
   }
 
-  add(`${mode}: primary text on selected accent-subtle row`, toHex(vars, '--color-text-primary'), accentSubtle, 90);
-  add(`${mode}: secondary text on selected accent-subtle row`, toHex(vars, '--color-text-secondary'), accentSubtle, 75);
-  add(`${mode}: tertiary text on selected accent-subtle row`, toHex(vars, '--color-text-tertiary'), accentSubtle, 60);
+  add(`${mode}: primary text on selected brand-subtle row`, toHex(vars, '--color-text-primary'), brandSubtle, 90);
+  add(`${mode}: secondary text on selected brand-subtle row`, toHex(vars, '--color-text-secondary'), brandSubtle, 75);
+  add(`${mode}: tertiary text on selected brand-subtle row`, toHex(vars, '--color-text-tertiary'), brandSubtle, 60);
 
   const focus = toHex(vars, '--color-focus-ring');
   for (const [surface, background] of Object.entries(surfaces)) {
