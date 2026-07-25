@@ -180,14 +180,14 @@ export function Sidebar() {
         id="project-navigation"
         inert={!desktopNav && !mobileOpen}
         aria-hidden={!desktopNav && !mobileOpen}
-        className={`fixed left-0 top-0 z-[var(--z-dialog)] flex h-[100dvh] w-[475px] flex-col overflow-y-auto border-r border-[var(--color-border-subtle)] bg-[var(--color-canvas)] px-7 py-10 transition-transform duration-150 md:translate-x-0 ${
+        className={`fixed left-0 top-0 z-[var(--z-dialog)] flex h-[100dvh] w-[280px] flex-col overflow-y-auto border-r border-[var(--color-border-subtle)] bg-[var(--color-canvas)] px-5 py-5 transition-transform duration-150 md:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* logo row — links home; close button on mobile */}
-        <div className="mb-9 flex items-center justify-between px-1">
+        <div className="mb-5 flex items-center justify-between px-1">
           <Link href={base} onClick={closeMobile} className="flex items-center">
-            <Image src="/logo.svg" alt="Trove" width={185} height={48} priority />
+            <Image src="/logo.svg" alt="Trove" width={78} height={20} priority />
           </Link>
           <IconButton
             ref={closeButtonRef}
@@ -202,22 +202,24 @@ export function Sidebar() {
         {/* project switcher — the chevron opens a plain list of projects; New
             project is the last item and opens a dialog (U6: a picker selects,
             it never also creates). */}
-        <div className="relative mb-7 grid [&>button]:min-h-[80px] [&>button]:justify-start">
+        <div className="relative mb-4 grid [&>button]:justify-start">
           <Button
             variant="secondary"
-            size="lg"
             onClick={() => setSwitcherOpen((o) => !o)}
             aria-expanded={switcherOpen}
             aria-haspopup="menu"
             aria-controls="project-switcher-popup"
           >
-            <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
-              <span className="font-mono text-base text-[var(--color-text-tertiary)]">Project</span>
-              <span className="truncate text-2xl font-medium text-[var(--color-brand)]">
+            <span className="flex min-w-0 items-center gap-2">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ background: project.color ?? "var(--color-ink-ghost)" }}
+              />
+              <span className="truncate text-[15px] font-medium text-[var(--color-brand)]">
                 {project.name}
               </span>
             </span>
-            <ChevronDown size={20} className="ml-auto shrink-0 text-[var(--color-text-primary)]" />
+            <ChevronDown size={16} className="shrink-0 text-[var(--color-text-tertiary)]" />
           </Button>
 
           <AnimatePresence>
@@ -327,16 +329,16 @@ export function Sidebar() {
             href={base}
             onClick={closeMobile}
             aria-current={askActive ? "page" : undefined}
-            className={`flex items-center gap-6 rounded-lg px-3 py-4 text-xl transition-colors ${
+            className={`flex items-center gap-3 rounded-lg px-3 py-1.5 text-[15px] transition-colors ${
               askActive ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
-            <Chat size={24} className="shrink-0 text-[var(--color-text-primary)]" />
+            <Chat size={18} className="shrink-0 text-[var(--color-text-secondary)]" />
             <span className="min-w-0 truncate">Ask</span>
           </Link>
-          <div className="grid [&>button]:gap-6 [&>button]:justify-start">
+          <div className="grid [&>button]:gap-3 [&>button]:justify-start">
             <Button variant="ghost" onClick={openCapture}>
-              <Download size={24} className="shrink-0 text-[var(--color-text-primary)]" />
+              <Download size={18} className="shrink-0 text-[var(--color-text-secondary)]" />
               <span className="min-w-0 truncate">Capture</span>
             </Button>
           </div>
@@ -390,11 +392,11 @@ export function Sidebar() {
                 href={seg === "ingestions" ? `${base}#processing` : `${base}/${seg}`}
                 onClick={closeMobile}
                 aria-current={seg !== "ingestions" && isActive(seg) ? "page" : undefined}
-                className={`flex items-center gap-6 rounded-lg px-3 py-4 text-xl transition-colors ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-1.5 text-[15px] transition-colors ${
                   isActive(seg) ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
                 }`}
               >
-                <Icon size={24} className="shrink-0 text-[var(--color-text-primary)]" />
+                <Icon size={18} className="shrink-0 text-[var(--color-text-secondary)]" />
                 <span className="min-w-0 truncate">{label}</span>
                 <span className="ml-auto shrink-0">{count}</span>
               </Link>
@@ -408,11 +410,11 @@ export function Sidebar() {
             href={`${base}/settings`}
             onClick={closeMobile}
             aria-current={isActive("settings") ? "page" : undefined}
-            className={`flex items-center gap-6 rounded-lg px-3 py-4 text-xl transition-colors ${
+            className={`flex items-center gap-3 rounded-lg px-3 py-1.5 text-[15px] transition-colors ${
               isActive("settings") ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
-            <Settings size={24} className="shrink-0 text-[var(--color-text-primary)]" />
+            <Settings size={18} className="shrink-0 text-[var(--color-text-secondary)]" />
             <span className="min-w-0 truncate">Settings</span>
           </Link>
 
