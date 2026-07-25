@@ -132,7 +132,7 @@ export function TemplatePicker() {
             trailing={
               template.installed ? (
                 <div className="flex items-center gap-3">
-                  <StatusIndicator status="approved" label="added" />
+                  <StatusIndicator status="approved" label="Added" />
                   {template.installedPipelineId ? (
                     <Link
                       href={`/p/${project.slug}/pipelines/${template.installedPipelineId}`}

@@ -10,7 +10,7 @@ export function AccountButton() {
 
   return (
     <Button onClick={() => openUserProfile()} variant="secondary">
-      manage account and security
+      Manage account and security
     </Button>
   );
 }

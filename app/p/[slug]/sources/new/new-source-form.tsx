@@ -11,7 +11,6 @@ import {
   TextArea,
   Select,
   SelectItem,
-  cx,
 } from "@/components/ui";
 import { requestJson } from "../request-json";
 import {
@@ -109,20 +108,16 @@ export function NewSourceForm() {
           {SOURCE_KIND_OPTIONS.map((k) => {
             const active = kind === k.value;
             return (
-              <button
+              <Button
                 key={k.value}
                 type="button"
+                size="sm"
+                variant={active ? "primary" : "secondary"}
                 aria-pressed={active}
                 onClick={() => setKind(k.value)}
-                className={cx(
-                  "rounded-lg border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]",
-                  active
-                    ? "border-[var(--color-border-strong)] bg-[var(--color-action)] text-[var(--color-text-inverse)]"
-                    : "border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] hover:border-[var(--color-border)]"
-                )}
               >
                 {k.label}
-              </button>
+              </Button>
             );
           })}
         </div>

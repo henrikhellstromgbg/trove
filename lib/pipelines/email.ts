@@ -1,3 +1,8 @@
+/* design-check-exempt: this file builds email HTML, not app UI. Email clients
+   do not resolve CSS custom properties or rem units, and Gmail strips <style>,
+   so every value has to be a literal in an inline style attribute. The token
+   system cannot reach here. Keep the palette visually in step with
+   tokens/theme.css by hand when the theme changes. */
 import { Resend } from "resend";
 import { clerkClient } from "@clerk/nextjs/server";
 import type { PipelineDelivery, PipelineSpec, PipelineRunOutput } from "./types";

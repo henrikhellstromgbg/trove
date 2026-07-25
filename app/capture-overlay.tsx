@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Close, Add } from "@carbon/icons-react";
+import { Add } from "@carbon/icons-react";
 import { useProject } from "./project-context";
 import { CaptureForm } from "./capture-form";
-import { trapFocus } from "./focus-trap";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui";
 
 // Ambient capture (option B). Drop a file anywhere in the app and it is
 // captured straight away — no page to visit. The dedicated form (URL/text
@@ -18,32 +18,15 @@ export function CaptureOverlay() {
   const [dragging, setDragging] = useState(false);
   const [flash, setFlash] = useState<string>("");
   const [, startTransition] = useTransition();
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
 
-  // Modal open via the sidebar button.
+  // Modal open via the sidebar button. Radix Dialog owns focus trap, focus
+  // return, Escape and scroll lock once open, so nothing else to wire here.
   useEffect(() => {
     function onOpen() {
       setModalOpen(true);
     }
     window.addEventListener("trove:open-capture", onOpen);
     return () => window.removeEventListener("trove:open-capture", onOpen);
-  }, []);
-
-  useEffect(() => {
-    if (!modalOpen) return;
-    previousFocusRef.current = document.activeElement as HTMLElement | null;
-    dialogRef.current?.focus();
-    return () => previousFocusRef.current?.focus();
-  }, [modalOpen]);
-
-  // Escape closes the modal.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setModalOpen(false);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   const uploadFile = useCallback(
@@ -124,39 +107,17 @@ export function CaptureOverlay() {
         </div>
       ) : null}
 
-      {/* dedicated capture modal (URL / text / attach) — plain, no motion:
-          nesting framer-motion here pegged the main thread. */}
-      {modalOpen ? (
-        <div
-          onClick={() => setModalOpen(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="capture-dialog-title"
-          ref={dialogRef}
-          tabIndex={-1}
-          onKeyDown={(event) => trapFocus(event, dialogRef.current!)}
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--color-overlay)] px-4 py-12 backdrop-blur-sm sm:px-6 sm:pt-24"
-        >
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl">
-            <div className="mb-3 flex items-center justify-between">
-              <p
-                id="capture-dialog-title"
-                className="font-mono text-sm text-[var(--color-text-tertiary)]"
-              >
-                capture into <span className="text-[var(--color-brand)]">{project.name}</span>
-              </p>
-              <button
-                onClick={() => setModalOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]"
-                aria-label="close"
-              >
-                <Close size={16} />
-              </button>
-            </div>
-            <CaptureForm />
-          </div>
-        </div>
-      ) : null}
+      {/* dedicated capture modal (URL / text / attach). The mono title line is
+          visual chrome; the Dialog's own title is kept for screen readers. */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="top-20 max-h-[calc(100dvh-7rem)] w-full max-w-2xl translate-y-0 overflow-y-auto border-0 bg-transparent p-0 shadow-none">
+          <DialogTitle className="sr-only">Capture into {project.name}</DialogTitle>
+          <p className="mb-3 pr-10 font-mono text-sm text-[var(--color-text-tertiary)]">
+            capture into <span className="text-[var(--color-brand)]">{project.name}</span>
+          </p>
+          <CaptureForm />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

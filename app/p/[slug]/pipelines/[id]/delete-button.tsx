@@ -31,7 +31,7 @@ export function DeletePipelineButton({ id }: { id: string }) {
   return (
     <>
       <Button variant="destructive" onClick={() => setOpen(true)}>
-        delete
+        Delete
       </Button>
       <ConfirmDialog
         open={open}

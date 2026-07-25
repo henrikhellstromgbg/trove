@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUp } from "@carbon/icons-react";
+import { IconButton } from "@/components/ui";
 
 // The dashboard hero is now a launcher, not a full chat. Asking here hands
 // the question off to the dedicated Ask workspace at /p/[slug]/ask, which
@@ -33,13 +34,13 @@ export function DashboardAsk({ slug }: { slug: string }) {
         placeholder="Ask anything in this project…"
         className="flex-1 bg-transparent text-lg text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
       />
-      <button
+      <IconButton
         onClick={go}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-action)] text-[var(--color-text-inverse)] transition-opacity hover:opacity-90"
-        aria-label="Ask"
+        label="Ask"
+        className="bg-[var(--color-action)] text-[var(--color-text-inverse)] hover:bg-[var(--color-action-hover)] hover:text-[var(--color-text-inverse)]"
       >
         <ArrowUp size={18} />
-      </button>
+      </IconButton>
     </div>
   );
 }

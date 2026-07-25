@@ -54,7 +54,7 @@ function CountFor({ seg, counts }: { seg: string; counts: ProjectCounts }) {
         {counts.reviewPending > 0 ? (
           <StatusIndicator
             status="review"
-            label="to review"
+            label="To review"
             count={counts.reviewPending}
             className="text-sm"
           />
@@ -67,7 +67,7 @@ function CountFor({ seg, counts }: { seg: string; counts: ProjectCounts }) {
     return counts.pipelinesActive ? (
       <StatusIndicator
         status="active"
-        label="active"
+        label="Active"
         count={counts.pipelinesActive}
         className="text-sm"
       />
@@ -79,7 +79,7 @@ function CountFor({ seg, counts }: { seg: string; counts: ProjectCounts }) {
         {counts.sourceErrors > 0 ? (
           <StatusIndicator
             status="error"
-            label="errors"
+            label="Errors"
             count={counts.sourceErrors}
             className="text-sm"
           />
@@ -204,7 +204,7 @@ export function Sidebar() {
           type="button"
           onClick={closeMobile}
           aria-label="Close menu"
-          className="fixed inset-0 z-30 bg-[var(--color-overlay)] md:hidden"
+          className="fixed inset-0 z-30 cursor-pointer bg-[var(--color-overlay)] md:hidden"
         />
       ) : null}
 
@@ -381,14 +381,14 @@ export function Sidebar() {
 
         {/* capture */}
         <div className="mt-6 flex flex-col gap-0.5 border-t border-[var(--color-border-subtle)] pt-6">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             onClick={openCapture}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
+            className="w-full justify-start gap-3 px-3 text-[15px] font-normal text-[var(--color-text-primary)]"
           >
             <Download size={18} className="shrink-0 text-[var(--color-text-secondary)]" />
             <span className="min-w-0 truncate">Capture</span>
-          </button>
+          </Button>
         </div>
 
         {/* settings + account */}
@@ -413,13 +413,14 @@ export function Sidebar() {
               <span className="truncate text-sm text-[var(--color-text-primary)]">
                 {user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? "Account"}
               </span>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => signOut()}
-                className="self-start text-sm text-[var(--color-text-secondary)] underline underline-offset-2 transition-colors hover:text-[var(--color-text-primary)]"
+                className="-ml-3 self-start font-normal text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
               >
                 Log out
-              </button>
+              </Button>
             </div>
           </div>
         </div>

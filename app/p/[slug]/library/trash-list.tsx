@@ -104,7 +104,7 @@ export function TrashList({
                           variant="secondary"
                           className="px-3 py-1.5 text-sm"
                         >
-                          restore
+                          Restore
                         </Button>
                       </motion.div>
                       <Button
@@ -113,7 +113,7 @@ export function TrashList({
                         variant="destructive"
                         className="px-3 py-1.5 text-sm"
                       >
-                        delete
+                        Delete
                       </Button>
                     </>
                   )}

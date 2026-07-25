@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "@carbon/icons-react";
 import {
+  Button,
   DataList,
   DataRow,
   StatusIndicator,
@@ -188,13 +189,9 @@ export function LibraryTable({
       {filtered.length === 0 ? (
         <div className="flex flex-col items-start gap-2 py-6">
           <p className="text-sm text-[var(--color-text-tertiary)]">No matches.</p>
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="text-sm font-medium text-[var(--color-text-primary)] underline underline-offset-2 transition-colors hover:text-[var(--color-brand)] focus:text-[var(--color-brand)]"
-          >
-            clear filters
-          </button>
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="-ml-3">
+            Clear filters
+          </Button>
         </div>
       ) : (
         <DataList>

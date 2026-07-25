@@ -73,7 +73,7 @@ export function ReviewQueue({
                   variant="secondary"
                   className="px-3 py-1.5 text-sm"
                 >
-                  approve
+                  Approve
                 </Button>
               </motion.div>
               <Button
@@ -82,7 +82,7 @@ export function ReviewQueue({
                 variant="secondary"
                 className="px-3 py-1.5 text-sm"
               >
-                reject
+                Reject
               </Button>
             </div>
           }

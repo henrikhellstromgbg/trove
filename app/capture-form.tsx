@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Add } from "@carbon/icons-react";
 import { runOnce } from "@/lib/submission-lock";
 import { useProject } from "./project-context";
+import { Button } from "@/components/ui";
 
 export function CaptureForm() {
   const { project } = useProject();
@@ -168,16 +169,18 @@ export function CaptureForm() {
         {file ? (
           <div className="mt-3 flex items-center justify-between rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-canvas)]/40 px-4 py-3 font-mono text-sm text-[var(--color-text-secondary)]">
             <span className="truncate">{file.name}</span>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
+              className="-mr-2 ml-3 shrink-0"
               onClick={() => {
                 setFile(null);
                 setStatus("");
               }}
-              className="ml-3 text-[var(--color-text-tertiary)] transition-colors hover:text-[var(--color-text-primary)]"
-              aria-label="remove file"
+              aria-label="Remove file"
             >
-              remove
-            </button>
+              Remove
+            </Button>
           </div>
         ) : null}
 
@@ -203,20 +206,20 @@ export function CaptureForm() {
                 e.target.value = "";
               }}
             />
-            <button
+            <Button
+              variant="secondary"
               onClick={() => inputRef.current?.click()}
               disabled={submitting}
-              className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)] disabled:opacity-40"
             >
-              attach
-            </button>
-            <button
+              Attach
+            </Button>
+            <Button
+              variant="primary"
               onClick={submit}
               disabled={!ready}
-              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border-strong)] disabled:opacity-40 disabled:hover:border-[var(--color-border)]"
             >
-              capture
-            </button>
+              Capture
+            </Button>
           </div>
         </div>
       </div>

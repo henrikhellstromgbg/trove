@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { TrashCan } from "@carbon/icons-react";
-import { EmptyState } from "@/components/ui";
+import { EmptyState, IconButton } from "@/components/ui";
 
 type Row = {
   id: string;
@@ -93,13 +93,13 @@ export function ChatArchive({
                     {timeLabel(row.createdAt)}
                   </span>
                 </Link>
-                <button
+                <IconButton
                   onClick={() => remove(row.id)}
-                  aria-label="delete conversation"
-                  className="shrink-0 rounded-md p-1.5 text-[var(--color-text-tertiary)] opacity-0 transition-opacity hover:text-[var(--color-brand)] focus:opacity-100 group-hover:opacity-100"
+                  label="Delete conversation"
+                  className="shrink-0 text-[var(--color-text-tertiary)] opacity-0 transition-opacity hover:text-[var(--color-brand)] focus:opacity-100 group-hover:opacity-100"
                 >
                   <TrashCan size={16} />
-                </button>
+                </IconButton>
               </li>
             ))}
           </ul>

@@ -26,7 +26,7 @@ export function IconButton({
       aria-label={label}
       title={title ?? label}
       className={cn(
-        'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)]',
+        'inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-[var(--radius-md)]',
         'text-[var(--color-text-secondary)] transition-colors duration-[var(--duration-fast)]',
         'hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
         'disabled:cursor-not-allowed disabled:opacity-50 md:h-9 md:w-9',
