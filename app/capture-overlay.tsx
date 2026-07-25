@@ -110,9 +110,9 @@ export function CaptureOverlay() {
       {/* dedicated capture modal (URL / text / attach). The mono title line is
           visual chrome; the Dialog's own title is kept for screen readers. */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="top-20 max-h-[calc(100dvh-7rem)] w-full max-w-2xl translate-y-0 overflow-y-auto border-0 bg-transparent p-0 shadow-none">
+        <DialogContent className="top-16 max-h-[calc(100dvh-6rem)] w-full max-w-2xl translate-y-0 overflow-y-auto rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-0">
           <DialogTitle className="sr-only">Capture into {project.name}</DialogTitle>
-          <p className="mb-3 pr-10 font-mono text-sm text-[var(--color-text-tertiary)]">
+          <p className="px-5 pr-14 pt-5 font-mono text-sm text-[var(--color-text-tertiary)] sm:px-8 sm:pr-14">
             capture into <span className="text-[var(--color-brand)]">{project.name}</span>
           </p>
           <CaptureForm />

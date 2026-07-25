@@ -125,7 +125,7 @@ export function CaptureForm() {
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className={`relative flex w-full flex-col overflow-hidden rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-5 py-8 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors sm:px-8 sm:py-14 ${
+      className={`relative flex w-full flex-col overflow-hidden px-5 pb-8 pt-4 transition-colors sm:px-8 sm:pb-14 sm:pt-6 ${
         isDragging ? "ring-1 ring-[var(--color-status-success)]" : ""
       }`}
     >
