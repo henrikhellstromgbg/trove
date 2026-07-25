@@ -4,7 +4,7 @@ import { JSDOM } from "jsdom";
 import * as React from "react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { ConfirmDialog, Tabs, DataRow, type ButtonTabItem } from "../components/ui";
+import { Button, ConfirmDialog, Tabs, DataRow, type ButtonTabItem } from "../components/ui";
 
 type GlobalPatch = Record<string, unknown>;
 
@@ -241,6 +241,46 @@ test("DataRow renders block children inside a block content wrapper", () => {
     const child = view.container.querySelector("[data-testid='block-child']");
     assert.ok(child);
     assert.equal(child.parentElement?.tagName, "DIV");
+
+    view.unmount();
+  });
+});
+
+test("Button asChild slots a single link child even though a loading sibling exists", () => {
+  withDom(() => {
+    // Regression: Button always renders a loading-spinner sibling before its
+    // children. Without a Slottable marker, asChild handed Radix Slot two
+    // children and threw. This must render the link and merge the classes onto
+    // it, not crash.
+    const view = renderComponent(
+      React.createElement(
+        Button,
+        { asChild: true, variant: "secondary" },
+        React.createElement("a", { href: "/x" }, "New pipeline"),
+      ),
+    );
+
+    const link = view.container.querySelector("a[href='/x']");
+    assert.ok(link, "expected the link to render as the slotted element");
+    assert.equal(link.textContent, "New pipeline");
+    assert.ok(
+      Array.from((link as HTMLAnchorElement).classList).includes("cursor-pointer"),
+      "expected buttonVariants classes to merge onto the link",
+    );
+
+    view.unmount();
+  });
+});
+
+test("Button renders a plain button when not slotting", () => {
+  withDom(() => {
+    const view = renderComponent(
+      React.createElement(Button, {}, "Save changes"),
+    );
+
+    const button = view.container.querySelector("button");
+    assert.ok(button, "expected a native button");
+    assert.equal(button.textContent, "Save changes");
 
     view.unmount();
   });

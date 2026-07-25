@@ -9,7 +9,7 @@
 //   cursor: default, so every interactive component must opt back in
 
 import * as React from 'react';
-import { Slot } from '@radix-ui/react-slot';
+import { Slot, Slottable } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/cn';
 
@@ -81,7 +81,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent"
           />
         )}
-        {children}
+        {/* Slottable marks which child Slot merges into when asChild, so the
+            loading sibling above no longer breaks the single-child rule. */}
+        <Slottable>{children}</Slottable>
       </Comp>
     );
   }
