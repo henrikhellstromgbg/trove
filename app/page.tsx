@@ -14,29 +14,29 @@ export default async function Home() {
   return (
     <section className="relative flex min-h-screen flex-col justify-center px-10 py-20 md:px-20">
       <p className="font-mono text-sm text-[var(--color-text-tertiary)]">
-        trove, a calmer archive
+        Trove, a calmer archive
       </p>
       <h1 className="mt-6 font-display text-6xl leading-[1.02] tracking-tight md:text-8xl">
-        drop anything in.
+        Drop anything in.
         <br />
-        ask it anything later.
+        Ask it anything later.
       </h1>
       <p className="mt-8 max-w-lg text-base text-[var(--color-text-secondary)]">
-        a knowledge base for people drowning in inputs. one place for the links,
-        the pdfs, the half thoughts. sign in to begin.
+        A knowledge base for people drowning in inputs. One place for the links,
+        the PDFs, the half thoughts. Sign in to begin.
       </p>
       <div className="mt-10 flex items-center gap-4">
         <Link
           href="/sign-in"
           className="rounded-full bg-[var(--color-action)] px-5 py-2 text-sm text-[var(--color-text-inverse)]"
         >
-          sign in
+          Sign in
         </Link>
         <Link
           href="/sign-up"
           className="rounded-full border border-[var(--color-border)] px-5 py-2 text-sm text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]"
         >
-          create account
+          Create account
         </Link>
       </div>
     </section>

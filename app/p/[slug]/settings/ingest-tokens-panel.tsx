@@ -68,8 +68,8 @@ export function IngestTokensPanel() {
   }, []);
 
   function projectName(projectId: string | null): string {
-    if (!projectId) return "any project";
-    return projects.find((p) => p.id === projectId)?.name ?? "unknown project";
+    if (!projectId) return "Any project";
+    return projects.find((p) => p.id === projectId)?.name ?? "Unknown project";
   }
 
   async function create() {
@@ -94,7 +94,7 @@ export function IngestTokensPanel() {
         | { error?: string };
 
       if (!res.ok) {
-        setError((data as { error?: string }).error ?? `error ${res.status}`);
+        setError((data as { error?: string }).error ?? `Error ${res.status}`);
         return;
       }
 
@@ -145,7 +145,7 @@ export function IngestTokensPanel() {
           label="Label, optional"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="my mac, the studio imac, whatever helps you remember"
+          placeholder="My Mac, the studio iMac, whatever helps you remember"
           containerClassName="gap-2"
           className="bg-transparent text-base"
         />
@@ -224,7 +224,7 @@ export function IngestTokensPanel() {
                   trailing={
                     revoked ? (
                       <span className="text-sm font-medium text-[var(--color-text-tertiary)]">
-                        revoked
+                        Revoked
                       </span>
                     ) : (
                       <Button
@@ -241,7 +241,7 @@ export function IngestTokensPanel() {
                     <span
                       className={`truncate text-sm ${revoked ? "text-[var(--color-text-tertiary)] line-through" : "text-[var(--color-text-primary)]"}`}
                     >
-                      {t.label || "Unlabelled token"}
+                      {t.label || "Unlabeled token"}
                     </span>
                     <span className="text-sm text-[var(--color-text-tertiary)]">
                       {projectName(t.projectId)} · issued {fmtDate(t.createdAt)}

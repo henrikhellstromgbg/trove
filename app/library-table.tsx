@@ -9,6 +9,7 @@ import {
   StatusIndicator,
   type Status,
 } from "@/components/ui";
+import { statusLabel } from "@/lib/status-label";
 
 export type Row = {
   id: string;
@@ -33,7 +34,7 @@ function statusTone(status: string): Status {
 }
 
 function name(row: Row): string {
-  return row.title ?? row.source ?? "(untitled)";
+  return row.title ?? row.source ?? "(Untitled)";
 }
 
 function sourceLabel(row: Row): string {
@@ -207,7 +208,7 @@ export function LibraryTable({
                   </span>
                   <StatusIndicator
                     status={statusTone(row.status)}
-                    label={row.status}
+                    label={statusLabel(row.status)}
                   />
                 </div>
               }

@@ -83,17 +83,17 @@ export function TrashList({
             <DataRow
               key={r.id}
               href={`/p/${slug}/library/${r.id}`}
-              selectLabel={`Open ${r.title ?? r.source ?? "(untitled)"}`}
+              selectLabel={`Open ${r.title ?? r.source ?? "(Untitled)"}`}
               leading={
                 <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
-                  {r.type} · {deleting ? "deleting" : `clears ${fmtDate(r.deleteAfterAt)}`}
+                  {r.type} · {deleting ? "Deleting" : `Clears ${fmtDate(r.deleteAfterAt)}`}
                 </span>
               }
               trailing={
                 <div className="flex items-center gap-2">
                   {deleting ? (
                     <span className="text-sm font-medium text-[var(--color-text-tertiary)]">
-                      in progress
+                      In progress
                     </span>
                   ) : (
                     <>
@@ -122,7 +122,7 @@ export function TrashList({
             >
               <div className="flex min-w-0 flex-col gap-1">
                 <span className="truncate text-base font-medium text-[var(--color-text-secondary)]">
-                  {r.title ?? r.source ?? "(untitled)"}
+                  {r.title ?? r.source ?? "(Untitled)"}
                 </span>
               </div>
             </DataRow>

@@ -71,9 +71,9 @@ export default async function LibraryPage({
 
   const base = `/p/${project.slug}/library`;
   const tabs: LinkTabItem[] = [
-    { key: "all", label: "all", href: base },
-    { key: "review", label: "review", href: `${base}?view=review`, count: reviewItems.length },
-    { key: "trash", label: "trash", href: `${base}?view=trash`, count: trashItems.length },
+    { key: "all", label: "All", href: base },
+    { key: "review", label: "Review", href: `${base}?view=review`, count: reviewItems.length },
+    { key: "trash", label: "Trash", href: `${base}?view=trash`, count: trashItems.length },
   ];
 
   return (

@@ -53,7 +53,7 @@ export function TemplatePicker() {
         );
 
         if (!res.ok) {
-          setError((data as { error?: string }).error ?? `error ${res.status}`);
+          setError((data as { error?: string }).error ?? `Error ${res.status}`);
         }
       } catch {
         if (!alive) return;
@@ -90,7 +90,7 @@ export function TemplatePicker() {
       };
 
       if (!res.ok) {
-        setError(data.error ?? `error ${res.status}`);
+        setError(data.error ?? `Error ${res.status}`);
         return;
       }
 

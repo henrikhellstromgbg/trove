@@ -112,7 +112,7 @@ export default async function ProjectDashboard({
   const digest = (digestRun[0]?.output ?? null) as DigestOutput | null;
 
   function label(it: { title: string | null; source: string | null }): string {
-    return it.title ?? it.source ?? "(untitled)";
+    return it.title ?? it.source ?? "(Untitled)";
   }
 
   return (
@@ -170,7 +170,7 @@ export default async function ProjectDashboard({
             <p className="text-sm text-[var(--color-text-tertiary)]">No sources yet.</p>
           ) : (
             <p className="text-sm text-[var(--color-text-secondary)]">
-              <span className="font-mono">{counts.sources - counts.sourceErrors}</span> ok
+              <span className="font-mono">{counts.sources - counts.sourceErrors}</span> OK
               {counts.sourceErrors > 0 ? (
                 <>
                   {" · "}

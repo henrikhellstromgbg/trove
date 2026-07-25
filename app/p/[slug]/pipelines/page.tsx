@@ -78,8 +78,8 @@ export default async function PipelinesPage({
                   {pipeline.cron ?? "Manual"}
                   {" · "}
                   {pipeline.lastRunAt
-                    ? `last run ${pipeline.lastRunAt.toLocaleDateString("en-GB")}`
-                    : "no runs yet"}
+                    ? `Last run ${pipeline.lastRunAt.toLocaleDateString("en-GB")}`
+                    : "No runs yet"}
                 </span>
               </div>
             </DataRow>

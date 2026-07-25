@@ -4,6 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug } from "@/lib/projects";
+import { statusLabel } from "@/lib/status-label";
 import {
   PageFrame,
   PageHeader,
@@ -34,13 +35,13 @@ function sourceStatus(source: {
 function itemStatus(status: string): { status: Status; label: string } {
   if (status === "failed") return { status: "error", label: "Failed" };
   if (status === "ready") return { status: "success", label: "Ready" };
-  return { status: "paused", label: status };
+  return { status: "paused", label: statusLabel(status) };
 }
 
 function runStatus(status: string): { status: Status; label: string } {
   if (status === "error") return { status: "error", label: "Error" };
   if (status === "ok") return { status: "success", label: "OK" };
-  return { status: "paused", label: status };
+  return { status: "paused", label: statusLabel(status) };
 }
 
 export default async function SourceDetailPage({
@@ -129,7 +130,7 @@ export default async function SourceDetailPage({
     config.url ??
     config.mboxPath ??
     config.folderPath ??
-    (config.channelId ? `channel ${config.channelId}` : null);
+    (config.channelId ? `Channel ${config.channelId}` : null);
 
   const scheduleLabel = isLocal
     ? "Desktop app"
@@ -189,7 +190,7 @@ export default async function SourceDetailPage({
                   : "text-sm text-[var(--color-text-primary)]"
               }
             >
-              {source.lastStatus ?? "Not run yet"}
+              {source.lastStatus ? statusLabel(source.lastStatus) : "Not run yet"}
             </dd>
           </div>
           {source.nextRunAt ? (
@@ -229,7 +230,7 @@ export default async function SourceDetailPage({
                 >
                   <div className="flex min-w-0 flex-col gap-0.5">
                     <span className="truncate font-medium text-[var(--color-text-primary)]">
-                      {it.title ?? it.source ?? "(untitled)"}
+                      {it.title ?? it.source ?? "(Untitled)"}
                     </span>
                     <span className="text-sm text-[var(--color-text-secondary)]">
                       {fmt(it.capturedAt)}
@@ -258,7 +259,7 @@ export default async function SourceDetailPage({
                   <div className="flex min-w-0 flex-col gap-0.5">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
                       <span className="text-[var(--color-text-primary)]">{fmt(run.startedAt)}</span>
-                      <span className="text-sm text-[var(--color-text-secondary)]">{run.trigger}</span>
+                      <span className="text-sm text-[var(--color-text-secondary)]">{statusLabel(run.trigger)}</span>
                     </div>
                     <span className="text-sm text-[var(--color-text-secondary)]">
                       {run.itemCount} new{" "}

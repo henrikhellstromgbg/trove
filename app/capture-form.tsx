@@ -6,6 +6,7 @@ import { Add } from "@carbon/icons-react";
 import { runOnce } from "@/lib/submission-lock";
 import { useProject } from "./project-context";
 import { Button } from "@/components/ui";
+import { statusLabel } from "@/lib/status-label";
 
 export function CaptureForm() {
   const { project } = useProject();
@@ -131,7 +132,7 @@ export function CaptureForm() {
     >
       {isDragging ? (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[var(--color-canvas)]/60 backdrop-blur-sm">
-          <p className="font-mono text-sm text-[var(--color-text-secondary)]">release to keep</p>
+          <p className="font-mono text-sm text-[var(--color-text-secondary)]">Release to keep</p>
         </div>
       ) : null}
 
@@ -158,8 +159,8 @@ export function CaptureForm() {
           }}
           placeholder={
             file
-              ? "a file is waiting. press capture."
-              : "paste a link or type a thought, or just drop a file above."
+              ? "A file is waiting. Press capture."
+              : "Paste a link or type a thought, or just drop a file above."
           }
           disabled={!!file || submitting}
           rows={1}
@@ -187,7 +188,7 @@ export function CaptureForm() {
         <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3 font-mono text-sm text-[var(--color-text-tertiary)]">
             <span className={status === "saved" ? "text-[var(--color-status-success-text)]" : ""}>
-              {pending ? "settling" : status || "ready"}
+              {pending ? "Settling" : statusLabel(status) || "Ready"}
             </span>
           </div>
           <div className="flex items-center gap-2">

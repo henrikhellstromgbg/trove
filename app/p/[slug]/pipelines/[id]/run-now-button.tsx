@@ -25,7 +25,7 @@ export function RunNowButton({ id }: { id: string }) {
       router.refresh();
     } else {
       const err = await res.json().catch(() => ({}));
-      setError(err.error ?? `error ${res.status}`);
+      setError(err.error ?? `Error ${res.status}`);
     }
     setBusy(false);
   }
@@ -36,7 +36,7 @@ export function RunNowButton({ id }: { id: string }) {
         onClick={run}
         variant="secondary"
       >
-        {busy ? "running" : "run now"}
+        {busy ? "Running" : "Run now"}
       </Button>
       {error ? <span className="text-sm text-[var(--color-brand)]">{error}</span> : null}
     </div>

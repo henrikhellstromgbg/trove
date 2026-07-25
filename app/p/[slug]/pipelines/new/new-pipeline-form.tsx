@@ -34,7 +34,7 @@ export function NewPipelineForm() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setError(err.error ?? `error ${res.status}`);
+        setError(err.error ?? `Error ${res.status}`);
         return;
       }
 

@@ -6,6 +6,7 @@ import { ArrowLeft, Launch } from "@carbon/icons-react";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug, listProjects } from "@/lib/projects";
 import { itemOriginalUrl } from "@/lib/item-url";
+import { statusLabel } from "@/lib/status-label";
 import {
   PageFrame,
   PageHeader,
@@ -87,7 +88,7 @@ export default async function ItemDetail({
         className="inline-flex w-fit items-center gap-1.5 text-sm text-[var(--color-text-tertiary)] transition-colors hover:text-[var(--color-text-primary)] focus:text-[var(--color-text-primary)]"
       >
         <ArrowLeft size={16} />
-        back to library
+        Back to library
       </Link>
 
       <PageHeader
@@ -97,7 +98,7 @@ export default async function ItemDetail({
             <span>{item.type}</span>
             <StatusIndicator
               status={statusTone(item.status)}
-              label={item.status}
+              label={statusLabel(item.status)}
             />
             <span>Added {added}</span>
             {sourceLabel ? <span>Source: {sourceLabel}</span> : null}
@@ -112,7 +113,7 @@ export default async function ItemDetail({
               className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border-strong)]"
             >
               <Launch size={16} />
-              open original
+              Open original
             </a>
           ) : null
         }

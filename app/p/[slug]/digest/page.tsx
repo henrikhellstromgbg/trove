@@ -147,7 +147,7 @@ function DigestBody({ output }: { output: DigestOutput | null }) {
           <SectionHeader title="Forgotten" />
           <div className="border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-6">
             <p className="text-2xl italic leading-snug text-[var(--color-text-primary)]">
-              {forgotten.title ?? "(untitled)"}
+              {forgotten.title ?? "(Untitled)"}
             </p>
             {forgotten.summary ? (
               <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-secondary)]">

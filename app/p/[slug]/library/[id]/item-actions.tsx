@@ -57,7 +57,7 @@ export function ItemActions({
     setBusy(false);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      setError(err.error ?? `error ${res.status}`);
+      setError(err.error ?? `Error ${res.status}`);
       return false;
     }
     setMode(null);
@@ -76,7 +76,7 @@ export function ItemActions({
     setBusy(false);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      setError(err.error ?? `error ${res.status}`);
+      setError(err.error ?? `Error ${res.status}`);
       return;
     }
     router.refresh();
@@ -94,7 +94,7 @@ export function ItemActions({
     setBusy(false);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      setError(err.error ?? `error ${res.status}`);
+      setError(err.error ?? `Error ${res.status}`);
       return;
     }
     const result = await res.json();
@@ -120,7 +120,7 @@ export function ItemActions({
     setBusy(false);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      setError(err.error ?? `error ${res.status}`);
+      setError(err.error ?? `Error ${res.status}`);
       return;
     }
     router.push(`/p/${slug}/library?view=trash`);
@@ -217,7 +217,7 @@ export function ItemActions({
             ))}
           </select>
           <p className="text-sm text-[var(--color-text-tertiary)]">
-            a captured item moves; one that came from a source is copied instead, so the source keeps its own.
+            A captured item moves; one that came from a source is copied instead, so the source keeps its own.
           </p>
           <div className="flex justify-end">
             <Button onClick={move} disabled={busy} variant="secondary">

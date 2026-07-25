@@ -58,7 +58,7 @@ export function ReviewQueue({
         <DataRow
           key={r.id}
           href={`/p/${slug}/library/${r.id}`}
-          selectLabel={`Open ${r.title ?? r.source ?? "(untitled)"}`}
+          selectLabel={`Open ${r.title ?? r.source ?? "(Untitled)"}`}
           leading={
             <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
               {r.type} · {fmtDate(r.capturedAt)}
@@ -89,7 +89,7 @@ export function ReviewQueue({
           >
           <div className="flex min-w-0 flex-col gap-1">
             <span className="truncate text-base font-medium text-[var(--color-text-primary)] transition-colors">
-              {r.title ?? r.source ?? "(untitled)"}
+              {r.title ?? r.source ?? "(Untitled)"}
             </span>
             {r.summary ? (
               <p className="line-clamp-2 max-w-2xl text-sm text-[var(--color-text-secondary)]">

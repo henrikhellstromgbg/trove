@@ -31,7 +31,7 @@ type ChatMessage = {
 
 const STARTERS = [
   "What did I capture recently?",
-  "Summarise the key themes across my sources.",
+  "Summarize the key themes across my sources.",
   "What should I revisit that I might have forgotten?",
   "Which sources are most relevant to my current focus?",
 ];
@@ -274,7 +274,7 @@ export function AskChat({
                     key={i}
                     leading={
                       <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
-                        {i === messages.length - 1 && m.loading ? "now" : "message"}
+                        {i === messages.length - 1 && m.loading ? "Now" : "Message"}
                       </span>
                     }
                     className="items-start py-0"
@@ -290,7 +290,7 @@ export function AskChat({
                         <p className="whitespace-pre-wrap text-base leading-relaxed text-[var(--color-text-primary)]">
                           {m.answer}
                           {m.loading && !m.answer ? (
-                            <span className="text-[var(--color-text-tertiary)]">thinking…</span>
+                            <span className="text-[var(--color-text-tertiary)]">Thinking…</span>
                           ) : null}
                         </p>
                       )}

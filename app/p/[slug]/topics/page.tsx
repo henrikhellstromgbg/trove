@@ -54,7 +54,7 @@ export default async function TopicsPage({
           )
         )
     : [];
-  const titleById = new Map(items.map((it) => [it.id, it.title ?? it.source ?? "(untitled)"]));
+  const titleById = new Map(items.map((it) => [it.id, it.title ?? it.source ?? "(Untitled)"]));
 
   const base = `/p/${project.slug}`;
 

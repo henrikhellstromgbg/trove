@@ -34,14 +34,14 @@ export function CaptureOverlay() {
       const form = new FormData();
       form.append("file", file);
       form.append("projectId", project.id);
-      setFlash(`capturing ${file.name}…`);
+      setFlash(`Capturing ${file.name}…`);
       const res = await fetch("/api/ingest", { method: "POST", body: form });
       if (res.ok) {
-        setFlash(`captured ${file.name} into ${project.name}`);
+        setFlash(`Captured ${file.name} into ${project.name}`);
         startTransition(() => router.refresh());
       } else {
         const err = await res.json().catch(() => ({}));
-        setFlash(`error: ${err.error ?? res.status}`);
+        setFlash(`Error: ${err.error ?? res.status}`);
       }
       setTimeout(() => setFlash(""), 2600);
     },
@@ -95,7 +95,7 @@ export function CaptureOverlay() {
         <div className="pointer-events-none fixed inset-3 z-50 flex items-center justify-center rounded-3xl border-2 border-dashed border-[var(--color-status-success-border)] bg-[var(--color-canvas)]/70 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3 text-[var(--color-status-success-text)]">
             <Add size={40} />
-            <p className="font-mono text-sm">drop into {project.name}</p>
+            <p className="font-mono text-sm">Drop into {project.name}</p>
           </div>
         </div>
       ) : null}
@@ -113,7 +113,7 @@ export function CaptureOverlay() {
         <DialogContent className="top-16 max-h-[calc(100dvh-6rem)] w-full max-w-2xl translate-y-0 overflow-y-auto rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-0">
           <DialogTitle className="sr-only">Capture into {project.name}</DialogTitle>
           <p className="px-5 pr-14 pt-5 font-mono text-sm text-[var(--color-text-tertiary)] sm:px-8 sm:pr-14">
-            capture into <span className="text-[var(--color-brand)]">{project.name}</span>
+            Capture into <span className="text-[var(--color-brand)]">{project.name}</span>
           </p>
           <CaptureForm />
         </DialogContent>
