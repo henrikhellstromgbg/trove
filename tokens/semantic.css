@@ -6,7 +6,7 @@
 
 :root {
   /* ---- Surfaces ---- */
-  --color-canvas:          var(--gray-50);    /* app background */
+  --color-canvas:          var(--gray-25);    /* app background */
   --color-surface:         var(--white);      /* cards, panels */
   --color-surface-raised:  var(--white);      /* dialogs, popovers (pairs with shadow) */
   --color-surface-sunken:  var(--gray-100);   /* wells, code blocks, table headers */

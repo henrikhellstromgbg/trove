@@ -6,6 +6,7 @@
 
 :root {
   /* ---- Gray scale (OKLCH, hue 260, chroma 0.005) ---- */
+  --gray-25:  oklch(0.992 0.003 260);
   --gray-50:  oklch(0.985 0.005 260);
   --gray-100: oklch(0.967 0.005 260);
   --gray-200: oklch(0.922 0.005 260);
