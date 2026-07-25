@@ -20,6 +20,7 @@ export {
   Close,
   Copy,
   DataShare,
+  DocumentDownload,
   Document,
   Download,
   Earth,
