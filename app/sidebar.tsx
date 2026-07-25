@@ -255,18 +255,15 @@ export function Sidebar() {
             aria-expanded={switcherOpen}
             aria-haspopup="menu"
             aria-controls="project-switcher-popup"
-            className="w-full justify-between gap-2 px-3 font-normal"
+            className="min-h-16 w-full justify-between gap-2 rounded-[var(--radius-lg)] px-3 py-2.5 font-normal"
           >
-            <span className="flex min-w-0 items-center gap-2">
-              <span
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ background: project.color ?? "var(--color-ink-ghost)" }}
-              />
-              <span className="truncate text-[15px] font-medium text-[var(--color-brand)]">
+            <span className="flex min-w-0 flex-col items-start gap-0.5">
+              <span className="font-mono text-[12px] text-[var(--color-text-tertiary)]">Project</span>
+              <span className="truncate text-[16px] font-medium leading-tight text-[var(--color-brand)]">
                 {project.name}
               </span>
             </span>
-            <ChevronDown size={16} className="shrink-0 text-[var(--color-text-tertiary)]" />
+            <ChevronDown size={18} className="shrink-0 text-[var(--color-text-primary)]" />
           </Button>
 
           <AnimatePresence>
