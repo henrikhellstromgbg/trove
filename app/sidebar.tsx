@@ -336,7 +336,7 @@ export function Sidebar() {
             <Chat size={18} className="shrink-0 text-[var(--color-text-secondary)]" />
             <span className="min-w-0 truncate">Ask</span>
           </Link>
-          <div className="grid [&>button]:gap-3 [&>button]:justify-start">
+          <div className="grid [&>button]:w-full [&>button]:justify-start [&>button]:gap-3 [&>button]:rounded-lg [&>button]:px-3 [&>button]:py-1.5 [&>button]:text-[15px]">
             <Button variant="ghost" onClick={openCapture}>
               <Download size={18} className="shrink-0 text-[var(--color-text-secondary)]" />
               <span className="min-w-0 truncate">Capture</span>
