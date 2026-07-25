@@ -13,7 +13,6 @@ import {
   ChevronDown,
   Close,
   DataShare,
-  DocumentDownload,
   Download,
   Earth,
   FlowConnection,
@@ -53,7 +52,6 @@ const DESTINATIONS: Destination[] = [
   { seg: "topics", label: "Wiki", Icon: Earth },
   { seg: "sources", label: "Sources", Icon: DataShare },
   { seg: "pipelines", label: "Pipelines", Icon: FlowConnection },
-  { seg: "ingestions", label: "Ingestions", Icon: DocumentDownload },
 ];
 
 export function Sidebar() {
@@ -369,15 +367,6 @@ export function Sidebar() {
                 counts.pipelinesActive ? (
                   <span className={countClassName}>{fmt(counts.pipelinesActive)} active</span>
                 ) : null
-              ) : seg === "ingestions" ? (
-                counts.processing > 0 ? (
-                  <span
-                    className="font-mono tabular-nums text-sm text-[var(--color-status-error-text)]"
-                    aria-label={`${fmt(counts.processing)} items processing`}
-                  >
-                    ({fmt(counts.processing)})
-                  </span>
-                ) : null
               ) : (
                 <span className="inline-flex items-center gap-2">
                   {counts.sources > 0 ? <span className={countClassName}>{fmt(counts.sources)}</span> : null}
@@ -395,9 +384,9 @@ export function Sidebar() {
             return (
               <Link
                 key={seg}
-                href={seg === "ingestions" ? `${base}#processing` : `${base}/${seg}`}
+                href={`${base}/${seg}`}
                 onClick={closeMobile}
-                aria-current={seg !== "ingestions" && isActive(seg) ? "page" : undefined}
+                aria-current={isActive(seg) ? "page" : undefined}
                 className={`flex items-center gap-3 rounded-lg px-3 py-1.5 text-[15px] transition-colors ${
                   isActive(seg) ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
                 }`}
@@ -411,7 +400,7 @@ export function Sidebar() {
         </nav>
 
         {/* capture */}
-        <div className="mt-4 flex flex-col items-center gap-px border-t border-[var(--color-border-subtle)] pt-4">
+        <div className="mt-4 flex flex-col gap-px border-t border-[var(--color-border-subtle)] pt-4">
           <Button
             variant="ghost"
             onClick={openCapture}

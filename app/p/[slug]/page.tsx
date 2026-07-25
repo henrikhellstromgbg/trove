@@ -90,7 +90,7 @@ export default async function ProjectDashboard({
   const overview = (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Processing — the old Ingestions, now status not a destination */}
-        <Card id="processing">
+        <Card>
           <CardHeader>
             <SectionHeader title="Processing" />
           </CardHeader>
