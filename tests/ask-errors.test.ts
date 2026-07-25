@@ -183,8 +183,17 @@ test("embedding failure returns a stable retryable stream error", async () => {
 
 test("AI stream failure returns a stable retryable error and saves no partial answer", async () => {
   const db = new AskDb();
+  // Two-phase retrieval: first the id+embedding scan, then the text fetch for
+  // the winning chunk ids.
   db.selectResults.push([
     {
+      chunkId: "chunk-1",
+      itemId: "44444444-4444-4444-8444-444444444444",
+    },
+  ]);
+  db.selectResults.push([
+    {
+      chunkId: "chunk-1",
       chunkText: "Saved evidence",
       itemId: "44444444-4444-4444-8444-444444444444",
       title: "Evidence",

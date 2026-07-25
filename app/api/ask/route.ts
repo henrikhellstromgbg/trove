@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { schema } from "@/lib/db";
 import { rankByEmbedding } from "@/lib/db/vector";
 import { MODELS } from "@/lib/ai/models";
@@ -258,16 +258,16 @@ export async function POST(req: Request) {
         const queryVec = await askDeps.embedQuery(question);
         failureCode = "ASK_RETRIEVAL_FAILED";
 
-        // Brute-force vector search: pull the project's ready chunks and rank
-        // them by cosine similarity in JS (see lib/db/vector.ts). The LIMIT is
-        // effectively unbounded at personal scale — it just keeps the terminal
-        // the injected test db expects.
-        const candidates = await askDeps.db
+        // Brute-force vector search in two phases so memory stays flat as the
+        // corpus grows: first scan ids + embeddings only and rank in JS (see
+        // lib/db/vector.ts), then fetch text for just the winning chunks.
+        // Selecting chunk.text for every row would materialise the whole
+        // project's text on every query. The LIMIT is effectively unbounded at
+        // personal scale; ranking and top-K happen in rankByEmbedding.
+        const ranked = await askDeps.db
           .select({
-            chunkText: schema.chunk.text,
+            chunkId: schema.chunk.id,
             itemId: schema.chunk.itemId,
-            title: schema.item.title,
-            source: schema.item.source,
             embedding: schema.chunk.embedding,
           })
           .from(schema.chunk)
@@ -281,7 +281,35 @@ export async function POST(req: Request) {
           )
           .limit(1_000_000);
 
-        const matches = rankByEmbedding(candidates, queryVec, 12);
+        const top = rankByEmbedding(ranked, queryVec, 12);
+
+        // Fetch text + item metadata for only the winners, then restore rank
+        // order (a SQL IN does not preserve it).
+        const winners =
+          top.length === 0
+            ? []
+            : await askDeps.db
+                .select({
+                  chunkId: schema.chunk.id,
+                  chunkText: schema.chunk.text,
+                  itemId: schema.chunk.itemId,
+                  title: schema.item.title,
+                  source: schema.item.source,
+                })
+                .from(schema.chunk)
+                .innerJoin(schema.item, eq(schema.chunk.itemId, schema.item.id))
+                .where(
+                  inArray(
+                    schema.chunk.id,
+                    top.map((t) => t.chunkId)
+                  )
+                )
+                .limit(top.length);
+
+        const winnerById = new Map(winners.map((w) => [w.chunkId, w]));
+        const matches = top
+          .map((t) => winnerById.get(t.chunkId))
+          .filter((m): m is (typeof winners)[number] => m != null);
 
         type GroupedItem = {
           n: number;

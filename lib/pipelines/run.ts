@@ -106,14 +106,16 @@ async function loadRetrievalContext(
 
   const queryVec = await embedQuery(query);
 
-  // Brute-force vector search over the already-filtered items, ranked in JS
-  // (see lib/db/vector.ts). The LIMIT is effectively unbounded at personal
-  // scale; ranking and top-K happen in rankByEmbedding.
-  const candidates = await db
+  // Brute-force vector search in two phases so memory stays flat as the corpus
+  // grows: first scan ids + embeddings only and rank in JS (see
+  // lib/db/vector.ts), then fetch text for just the winning chunks. Selecting
+  // chunk.text for every row would materialise every filtered item's text on
+  // every run. The LIMIT is effectively unbounded; top-K happens in
+  // rankByEmbedding.
+  const ranked = await db
     .select({
-      chunkText: schema.chunk.text,
+      chunkId: schema.chunk.id,
       itemId: schema.chunk.itemId,
-      title: schema.item.title,
       embedding: schema.chunk.embedding,
     })
     .from(schema.chunk)
@@ -127,7 +129,34 @@ async function loadRetrievalContext(
     )
     .limit(1_000_000);
 
-  const matches = rankByEmbedding(candidates, queryVec, MAX_RETRIEVAL_CHUNKS);
+  const top = rankByEmbedding(ranked, queryVec, MAX_RETRIEVAL_CHUNKS);
+
+  // Fetch text + title for only the winners, then restore rank order (a SQL IN
+  // does not preserve it).
+  const winners =
+    top.length === 0
+      ? []
+      : await db
+          .select({
+            chunkId: schema.chunk.id,
+            chunkText: schema.chunk.text,
+            itemId: schema.chunk.itemId,
+            title: schema.item.title,
+          })
+          .from(schema.chunk)
+          .innerJoin(schema.item, eq(schema.chunk.itemId, schema.item.id))
+          .where(
+            inArray(
+              schema.chunk.id,
+              top.map((t) => t.chunkId)
+            )
+          )
+          .limit(top.length);
+
+  const winnerById = new Map(winners.map((w) => [w.chunkId, w]));
+  const matches = top
+    .map((t) => winnerById.get(t.chunkId))
+    .filter((m): m is (typeof winners)[number] => m != null);
 
   const grouped = new Map<string, { title: string | null; chunks: string[] }>();
   for (const m of matches) {
