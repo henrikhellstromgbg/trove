@@ -83,7 +83,7 @@ export function NewPipelineForm() {
               key={example}
               variant="secondary"
               onClick={() => setDescription(example)}
-              className="justify-start px-4 py-3 text-left"
+              className="h-auto min-h-11 items-start justify-start px-4 py-3 text-left"
             >
               <span className="whitespace-normal text-sm leading-relaxed">
                 {example}
