@@ -18,12 +18,24 @@ import {
   ChevronDown,
   Menu,
   Close,
+  Add,
   UserAvatar,
   type CarbonIconType,
 } from "@carbon/icons-react";
 import { useProject } from "./project-context";
 import { trapFocus } from "./focus-trap";
-import { Button, IconButton, StatusIndicator } from "@/components/ui";
+import {
+  Button,
+  IconButton,
+  StatusIndicator,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  TextField,
+  FieldLabel,
+} from "@/components/ui";
 import type { ProjectCounts } from "@/lib/projects";
 
 // Numbers render with a space thousands separator, matching the sketch
@@ -97,7 +109,7 @@ export function Sidebar() {
   const { signOut } = useClerk();
 
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
   const [kind, setKind] = useState<"personal" | "client">("personal");
   const [busy, setBusy] = useState(false);
@@ -158,7 +170,7 @@ export function Sidebar() {
     if (res.ok) {
       const { project: created } = await res.json();
       setName("");
-      setCreating(false);
+      setCreateOpen(false);
       setSwitcherOpen(false);
       closeMobile();
       router.push(`/p/${created.slug}`);
@@ -231,28 +243,35 @@ export function Sidebar() {
           </IconButton>
         </div>
 
-        {/* project switcher — always shows the active project */}
+        {/* project switcher — the chevron opens a plain list of projects; New
+            project is the last item and opens a dialog (U6: a picker selects,
+            it never also creates). */}
         <div className="relative mb-6">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={() => setSwitcherOpen((o) => !o)}
-            className="flex w-full flex-col gap-0.5 rounded-lg border border-[var(--color-border-subtle)] px-3 py-2 text-left transition-colors hover:border-[var(--color-border)]"
             aria-expanded={switcherOpen}
+            aria-haspopup="menu"
             aria-controls="project-switcher-popup"
+            className="w-full justify-between gap-2 px-3 font-normal"
           >
-            <span className="flex items-center justify-between">
-              <span className="text-sm text-[var(--color-text-tertiary)]">Project</span>
-              <ChevronDown size={16} className="text-[var(--color-text-tertiary)]" />
+            <span className="flex min-w-0 items-center gap-2">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ background: project.color ?? "var(--color-ink-ghost)" }}
+              />
+              <span className="truncate text-[15px] font-medium text-[var(--color-brand)]">
+                {project.name}
+              </span>
             </span>
-            <span className="truncate text-[15px] font-medium text-[var(--color-brand)]">
-              {project.name}
-            </span>
-          </button>
+            <ChevronDown size={16} className="shrink-0 text-[var(--color-text-tertiary)]" />
+          </Button>
 
           <AnimatePresence>
             {switcherOpen ? (
               <motion.div
                 id="project-switcher-popup"
+                role="menu"
                 initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
@@ -264,6 +283,7 @@ export function Sidebar() {
                     <li key={p.id}>
                       <Link
                         href={`/p/${p.slug}`}
+                        role="menuitem"
                         onClick={() => {
                           setSwitcherOpen(false);
                           closeMobile();
@@ -283,57 +303,70 @@ export function Sidebar() {
                 </ul>
 
                 <div className="mt-1 border-t border-[var(--color-border-subtle)] pt-1">
-                  {creating ? (
-                    <div className="flex flex-col gap-2 p-2">
-                      <input
-                        autoFocus
-                        aria-label="Project name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") create();
-                        }}
-                        placeholder="project name"
-                        className="w-full bg-transparent text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
-                      />
-                      <div className="flex items-center gap-1 font-mono text-sm">
-                        {(["personal", "client"] as const).map((k) => (
-                          <button
-                            key={k}
-                            type="button"
-                            onClick={() => setKind(k)}
-                            aria-pressed={kind === k}
-                            className={`rounded px-2 py-1 ${
-                              kind === k ? "bg-[var(--color-action)] text-[var(--color-text-inverse)]" : "text-[var(--color-text-tertiary)]"
-                            }`}
-                          >
-                            {k === "personal" ? "Personal" : "Client"}
-                          </button>
-                        ))}
-                        <Button
-                          variant="secondary"
-                          onClick={create}
-                          disabled={busy}
-                          className="ml-auto"
-                        >
-                          {busy ? "…" : "Create"}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setCreating(true)}
-                      className="w-full rounded-md px-2 py-1.5 text-left text-sm text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
-                    >
-                      + New project
-                    </button>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSwitcherOpen(false);
+                      setCreateOpen(true);
+                    }}
+                    className="w-full justify-start gap-2 px-2 font-normal text-[var(--color-text-secondary)]"
+                  >
+                    <Add size={16} className="shrink-0" />
+                    New project
+                  </Button>
                 </div>
               </motion.div>
             ) : null}
           </AnimatePresence>
         </div>
+
+        {/* create-project dialog, opened from the switcher's last item */}
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>New project</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-5">
+              <TextField
+                id="new-project-name"
+                label="Project name"
+                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") create();
+                }}
+                placeholder="Acme retainer, personal research…"
+              />
+              <div className="flex flex-col gap-2">
+                <FieldLabel htmlFor="new-project-kind">Kind</FieldLabel>
+                <div id="new-project-kind" className="flex gap-2">
+                  {(["personal", "client"] as const).map((k) => (
+                    <Button
+                      key={k}
+                      type="button"
+                      size="sm"
+                      variant={kind === k ? "primary" : "secondary"}
+                      aria-pressed={kind === k}
+                      onClick={() => setKind(k)}
+                    >
+                      {k === "personal" ? "Personal" : "Client"}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setCreateOpen(false)} disabled={busy}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={create} loading={busy} disabled={name.trim().length === 0}>
+                Create
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* destinations */}
         <nav className="flex flex-col gap-0.5">
