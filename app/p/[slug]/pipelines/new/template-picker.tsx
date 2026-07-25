@@ -121,14 +121,6 @@ export function TemplatePicker() {
         {templates.map((template) => (
           <DataRow
             key={template.id}
-            leading={
-              <span
-                className="text-sm font-medium text-[var(--color-text-secondary)]"
-                title={template.cron}
-              >
-                {describeStarterPipelineSchedule(template.cron)}
-              </span>
-            }
             trailing={
               template.installed ? (
                 <div className="flex items-center gap-3">
@@ -176,8 +168,11 @@ export function TemplatePicker() {
               <span className="line-clamp-2 text-sm text-[var(--color-text-secondary)]">
                 {template.description}
               </span>
-              <span className="text-sm text-[var(--color-text-tertiary)]">
-                {template.pipelineName}
+              <span
+                className="font-mono text-sm text-[var(--color-text-tertiary)]"
+                title={template.cron}
+              >
+                {describeStarterPipelineSchedule(template.cron)}
               </span>
             </div>
           </DataRow>
