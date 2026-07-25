@@ -4,7 +4,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug, getProjectCounts } from "@/lib/projects";
-import { EmptyState, PageFrame, PageHeader } from "@/app/components/ui";
+import { EmptyState, PageFrame, PageHeader } from "@/components/ui";
 
 export default async function TopicsPage({
   params,
@@ -78,28 +78,28 @@ export default async function TopicsPage({
             return (
               <li
                 key={topic.id}
-                className="flex flex-col gap-3 rounded-lg border border-line bg-paper p-6"
+                className="flex flex-col gap-3 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-6"
               >
                 <div className="flex items-baseline justify-between gap-4">
-                  <h2 className="text-base font-medium text-ink">
+                  <h2 className="text-base font-medium text-[var(--color-text-primary)]">
                     {topic.name}
                   </h2>
-                  <span className="shrink-0 text-xs text-ink-faint">
+                  <span className="shrink-0 text-sm text-[var(--color-text-tertiary)]">
                     {present.length} {present.length === 1 ? "item" : "items"}
                   </span>
                 </div>
                 {topic.summary ? (
-                  <p className="text-sm leading-relaxed text-ink-dim">
+                  <p className="text-sm leading-relaxed text-[var(--color-text-secondary)]">
                     {topic.summary}
                   </p>
                 ) : null}
                 {present.length > 0 ? (
-                  <ul className="flex flex-col gap-1 border-t border-line pt-3">
+                  <ul className="flex flex-col gap-1 border-t border-[var(--color-border-subtle)] pt-3">
                     {present.map((entry) => (
                       <li key={entry.id}>
                         <Link
                           href={`${base}/library/${entry.id}`}
-                          className="block truncate text-sm text-ink-dim underline-offset-2 transition-colors hover:text-brand hover:underline"
+                          className="block truncate text-sm text-[var(--color-text-secondary)] underline-offset-2 transition-colors hover:text-[var(--color-accent)] hover:underline"
                         >
                           {entry.title}
                         </Link>

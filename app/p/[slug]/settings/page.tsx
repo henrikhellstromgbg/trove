@@ -5,7 +5,7 @@ import {
   PageFrame,
   PageHeader,
   SectionHeader,
-} from "@/app/components/ui";
+} from "@/components/ui";
 import { IngestTokensPanel } from "./ingest-tokens-panel";
 import { AccountButton } from "./account-button";
 
@@ -36,8 +36,8 @@ export default async function SettingsPage({
 
         <section className="flex flex-col gap-4">
           <SectionHeader title="Account and security" />
-          <div className="flex flex-col gap-4 border border-line bg-paper p-6">
-            <p className="text-sm text-ink-dim">
+          <div className="flex flex-col gap-4 border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-6">
+            <p className="text-sm text-[var(--color-text-secondary)]">
               Email, sign-in, and security are handled by our auth provider.
             </p>
             <AccountButton />

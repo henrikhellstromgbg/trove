@@ -1,0 +1,142 @@
+/* ==========================================================================
+   PRIMITIVES — raw values. Never referenced directly by components.
+   Components use semantic tokens (semantic.css) only.
+   All color pairs below are APCA-verified. Regenerate: node tools/generate-scales.mjs
+   ========================================================================== */
+
+:root {
+  /* ---- Gray scale (OKLCH, hue 260, chroma 0.005) ---- */
+  --gray-50:  oklch(0.985 0.005 260);
+  --gray-100: oklch(0.967 0.005 260);
+  --gray-200: oklch(0.922 0.005 260);
+  --gray-300: oklch(0.869 0.005 260);
+  --gray-400: oklch(0.788 0.005 260);
+  --gray-500: oklch(0.582 0.005 260);
+  --gray-600: oklch(0.446 0.005 260);
+  --gray-700: oklch(0.373 0.005 260);
+  --gray-750: oklch(0.325 0.005 260);
+  --gray-800: oklch(0.279 0.005 260);
+  --gray-900: oklch(0.208 0.005 260);
+  --gray-925: oklch(0.175 0.005 260);
+  --gray-950: oklch(0.137 0.005 260);
+
+  --white: oklch(1 0 0);
+  --black: oklch(0 0 0);
+  --overlay-50: oklch(0 0 0 / 0.5);
+
+  /* ---- Status: error (hue 25) ---- */
+  --error-bg:          oklch(0.96 0.0475 25);
+  --error-border:      oklch(0.85 0.095 25);
+  --error-base:        oklch(0.59 0.19 25);
+  --error-text:        oklch(0.37 0.19 25);
+  --error-bg-dark:     oklch(0.22 0.0665 25);
+  --error-border-dark: oklch(0.34 0.095 25);
+  --error-base-dark:   oklch(0.96 0.12 25);
+  --error-text-dark:   oklch(0.98 0.12 25);
+
+  /* ---- Status: warning (hue 75) ---- */
+  --warning-bg:          oklch(0.96 0.0375 75);
+  --warning-border:      oklch(0.85 0.075 75);
+  --warning-base:        oklch(0.62 0.15 75);
+  --warning-text:        oklch(0.40 0.15 75);
+  --warning-bg-dark:     oklch(0.22 0.0525 75);
+  --warning-border-dark: oklch(0.34 0.075 75);
+  --warning-base-dark:   oklch(0.72 0.15 75);
+  --warning-text-dark:   oklch(0.90 0.11 75);
+
+  /* ---- Status: success (hue 150) ---- */
+  --success-bg:          oklch(0.96 0.03 150);
+  --success-border:      oklch(0.85 0.06 150);
+  --success-base:        oklch(0.62 0.12 150);
+  --success-text:        oklch(0.38 0.12 150);
+  --success-bg-dark:     oklch(0.22 0.042 150);
+  --success-border-dark: oklch(0.34 0.06 150);
+  --success-base-dark:   oklch(0.72 0.12 150);
+  --success-text-dark:   oklch(0.88 0.10 150);
+
+  /* ---- Status: info (hue 240) ---- */
+  --info-bg:          oklch(0.96 0.035 240);
+  --info-border:      oklch(0.85 0.07 240);
+  --info-base:        oklch(0.62 0.14 240);
+  --info-text:        oklch(0.38 0.14 240);
+  --info-bg-dark:     oklch(0.22 0.049 240);
+  --info-border-dark: oklch(0.34 0.07 240);
+  --info-base-dark:   oklch(0.72 0.14 240);
+  --info-text-dark:   oklch(0.90 0.11 240);
+
+  /* ---- Brand slots (overridden per project in theme.css) ---- */
+  /* Defaults are neutral so an unthemed project still ships accessible UI. */
+  --brand-primary:        var(--gray-900);
+  --brand-primary-hover:  var(--gray-800);
+  --brand-primary-text:   var(--white);     /* text ON primary — verify APCA when overriding */
+  --brand-accent:         oklch(0.62 0.14 240);
+  --brand-accent-subtle:  oklch(0.96 0.035 240);
+
+  /* ---- Type scale (px values via rem, 14px floor is LAW — see RULES.md N2) ---- */
+  --font-sans: system-ui, -apple-system, sans-serif;   /* overridden in theme.css */
+  --font-mono: ui-monospace, 'SF Mono', monospace;
+
+  --text-sm:   0.875rem;   /* 14px — MINIMUM. Nothing smaller exists. */
+  --text-base: 1rem;       /* 16px */
+  --text-lg:   1.125rem;   /* 18px */
+  --text-xl:   1.25rem;    /* 20px */
+  --text-2xl:  1.5rem;     /* 24px */
+  --text-3xl:  1.875rem;   /* 30px */
+  --text-4xl:  2.25rem;    /* 36px */
+
+  --leading-sm:   1.5;     /* for text-sm/base */
+  --leading-md:   1.4;     /* for text-lg/xl */
+  --leading-tight: 1.2;    /* for headings 2xl+ */
+
+  --tracking-normal: 0;
+  --tracking-tight: -0.01em;  /* headings only */
+  /* No wide/uppercase tracking token exists on purpose. See RULES.md N1. */
+
+  /* ---- Spacing (4px base) ---- */
+  --space-1: 0.25rem;  --space-2: 0.5rem;   --space-3: 0.75rem;
+  --space-4: 1rem;     --space-5: 1.25rem;  --space-6: 1.5rem;
+  --space-8: 2rem;     --space-10: 2.5rem;  --space-12: 3rem;
+  --space-16: 4rem;    --space-20: 5rem;    --space-24: 6rem;
+
+  /* ---- Radius ---- */
+  --radius-sm: 0.375rem;  /* 6px — inputs, small controls */
+  --radius-md: 0.5rem;    /* 8px — buttons, cards */
+  --radius-lg: 0.75rem;   /* 12px — dialogs, large surfaces */
+  --radius-full: 9999px;
+
+  /* ---- Elevation ---- */
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.05);
+  --shadow-md: 0 2px 8px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.04);
+  --shadow-lg: 0 8px 24px oklch(0 0 0 / 0.12), 0 2px 6px oklch(0 0 0 / 0.06);
+
+  /* ---- Motion ---- */
+  --duration-fast: 120ms;    /* hover, focus */
+  --duration-base: 180ms;    /* dropdowns, tooltips */
+  --duration-slow: 260ms;    /* dialogs, sheets */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ---- Z-index scale ---- */
+  --z-dropdown: 50;
+  --z-sticky: 100;
+  --z-overlay: 200;
+  --z-dialog: 300;
+  --z-toast: 400;
+  --z-tooltip: 500;
+
+  /* ---- Layout ---- */
+  --touch-target-min: 44px;  /* minimum interactive hit area */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+}
+
+/* Dark-mode defaults for brand slots. Projects override these in theme.css
+   (.dark block). semantic.css consumes var(--brand-*) in BOTH modes, so
+   contrast-check verifies pairs that are actually rendered. */
+.dark {
+  --brand-primary:       var(--gray-50);
+  --brand-primary-hover: var(--gray-200);
+  --brand-primary-text:  var(--gray-950);
+  --brand-accent:        oklch(0.72 0.14 240);
+  --brand-accent-subtle: oklch(0.24 0.049 240);
+}

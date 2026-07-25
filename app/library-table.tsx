@@ -7,7 +7,7 @@ import {
   DataRow,
   StatusIndicator,
   type Status,
-} from "@/app/components/ui";
+} from "@/components/ui";
 
 export type Row = {
   id: string;
@@ -36,7 +36,7 @@ function name(row: Row): string {
 }
 
 function sourceLabel(row: Row): string {
-  if (!row.source) return "—";
+  if (!row.source) return "None";
   if (isUrl(row.source)) {
     try {
       return new URL(row.source).host;
@@ -56,7 +56,7 @@ function addedLabel(iso: string): string {
 }
 
 const CONTROL =
-  "rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink transition-colors outline-none hover:border-line-strong focus:border-line-strong";
+  "rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border)] focus:border-[var(--color-border)]";
 
 export function LibraryTable({
   slug,
@@ -124,7 +124,7 @@ export function LibraryTable({
         <div className="relative min-w-[12rem] flex-1">
           <Search
             size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)]"
           />
           <input
             type="text"
@@ -187,11 +187,11 @@ export function LibraryTable({
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-start gap-2 py-6">
-          <p className="text-sm text-ink-faint">No matches.</p>
+          <p className="text-sm text-[var(--color-text-tertiary)]">No matches.</p>
           <button
             type="button"
             onClick={clearFilters}
-            className="text-sm font-medium text-ink underline underline-offset-2 transition-colors hover:text-brand focus:text-brand outline-none"
+            className="text-sm font-medium text-[var(--color-text-primary)] underline underline-offset-2 transition-colors hover:text-[var(--color-accent)] focus:text-[var(--color-accent)]"
           >
             clear filters
           </button>
@@ -205,7 +205,7 @@ export function LibraryTable({
               selectLabel={`Open ${name(row)}`}
               trailing={
                 <div className="flex flex-col items-end gap-1 text-right">
-                  <span className="font-mono text-xs text-ink-faint">
+                  <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
                     {addedLabel(row.capturedAt)}
                   </span>
                   <StatusIndicator
@@ -216,11 +216,11 @@ export function LibraryTable({
               }
             >
               <div className="flex min-w-0 flex-col gap-1">
-                <span className="min-w-0 truncate text-sm font-medium text-ink">
+                <span className="min-w-0 truncate text-sm font-medium text-[var(--color-text-primary)]">
                   {name(row)}
                 </span>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-dim">
-                  <span className="uppercase">{row.type}</span>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--color-text-secondary)]">
+                  <span>{row.type}</span>
                   <span className="truncate">{sourceLabel(row)}</span>
                 </div>
               </div>

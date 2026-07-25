@@ -6,7 +6,7 @@ import { db, schema } from "@/lib/db";
 import { getProjectBySlug, getProjectCounts } from "@/lib/projects";
 import { WEEKLY_DIGEST_TEMPLATE_ID } from "@/lib/pipelines/templates";
 import { DashboardAsk } from "@/app/dashboard-ask";
-import { PageFrame, PageHeader, SectionHeader } from "@/app/components/ui";
+import { PageFrame, PageHeader, SectionHeader } from "@/components/ui";
 
 function Panel({
   title,
@@ -18,14 +18,14 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-line bg-paper p-5">
+    <div className="flex flex-col gap-3 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-5">
       <SectionHeader
         title={title}
         action={
           href ? (
             <Link
               href={href}
-              className="text-xs text-ink-faint transition-colors hover:text-ink"
+              className="text-sm text-[var(--color-text-tertiary)] transition-colors hover:text-[var(--color-text-primary)]"
             >
               View all
             </Link>
@@ -128,16 +128,16 @@ export default async function ProjectDashboard({
         {/* Processing — the old Ingestions, now status not a destination */}
         <Panel title="Processing">
           {counts.processing === 0 ? (
-            <p className="text-sm text-ink-faint">Nothing in flight.</p>
+            <p className="text-sm text-[var(--color-text-tertiary)]">Nothing in flight.</p>
           ) : (
             <>
-              <p className="text-sm text-ink-dim">
-                <span className="font-mono text-brand">{counts.processing}</span> in flight
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                <span className="font-mono text-[var(--color-accent)]">{counts.processing}</span> in flight
               </p>
               <ul className="flex flex-col gap-1">
                 {processingItems.map((it) => (
-                  <li key={it.id} className="flex items-center gap-2 text-sm text-ink">
-                    <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-ink-ghost" />
+                  <li key={it.id} className="flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
+                    <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[var(--color-surface-active)]" />
                     <span className="truncate">{label(it)}</span>
                   </li>
                 ))}
@@ -149,12 +149,12 @@ export default async function ProjectDashboard({
         {/* Just captured */}
         <Panel title="Just captured" href={`${base}/library`}>
           {recent.length === 0 ? (
-            <p className="text-sm text-ink-faint">Nothing yet. Drop something in.</p>
+            <p className="text-sm text-[var(--color-text-tertiary)]">Nothing yet. Drop something in.</p>
           ) : (
             <ul className="flex flex-col gap-1">
               {recent.slice(0, 5).map((it) => (
-                <li key={it.id} className="flex items-center gap-3 text-sm text-ink">
-                  <span className="w-7 shrink-0 font-mono text-xs uppercase text-ink-faint">
+                <li key={it.id} className="flex items-center gap-3 text-sm text-[var(--color-text-primary)]">
+                  <span className="w-7 shrink-0 font-mono text-sm text-[var(--color-text-tertiary)]">
                     {TYPE_GLYPH[it.type] ?? it.type}
                   </span>
                   <span className="truncate">{label(it)}</span>
@@ -167,14 +167,14 @@ export default async function ProjectDashboard({
         {/* Sources health */}
         <Panel title="Sources health" href={`${base}/sources`}>
           {counts.sources === 0 ? (
-            <p className="text-sm text-ink-faint">No sources yet.</p>
+            <p className="text-sm text-[var(--color-text-tertiary)]">No sources yet.</p>
           ) : (
-            <p className="text-sm text-ink-dim">
+            <p className="text-sm text-[var(--color-text-secondary)]">
               <span className="font-mono">{counts.sources - counts.sourceErrors}</span> ok
               {counts.sourceErrors > 0 ? (
                 <>
                   {" · "}
-                  <span className="font-mono text-brand">{counts.sourceErrors} error</span>
+                  <span className="font-mono text-[var(--color-accent)]">{counts.sourceErrors} error</span>
                 </>
               ) : null}
             </p>
@@ -184,11 +184,11 @@ export default async function ProjectDashboard({
         {/* Latest digest */}
         <Panel title="Latest digest" href={`${base}/digest`}>
           {!digest ? (
-            <p className="text-sm text-ink-faint">No digest yet. Runs weekly.</p>
+            <p className="text-sm text-[var(--color-text-tertiary)]">No digest yet. Runs weekly.</p>
           ) : (
             <div className="flex flex-col gap-1.5">
-              <p className="line-clamp-2 text-sm text-ink">{digest.summary ?? "—"}</p>
-              <p className="font-mono text-[11px] text-ink-faint">
+              <p className="line-clamp-2 text-sm text-[var(--color-text-primary)]">{digest.summary ?? "No summary yet"}</p>
+              <p className="font-mono text-sm text-[var(--color-text-tertiary)]">
                 {digest.highlights?.length ?? 0} highlights
                 {digest.forgotten?.title ? " · 1 forgotten pick" : ""}
               </p>

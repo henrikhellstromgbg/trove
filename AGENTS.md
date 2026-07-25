@@ -16,3 +16,18 @@ Standing permission: delegate mechanical work (searches, test runs, log reading,
 - Every project-owned content query scopes by user_id and verified project_id, directly or through a verified owning relation. Global authentication resources are resolved first and must establish the project boundary before project-owned content is accessed.
 - Small diffs, no features beyond the active plan.
 - Code and docs must not disagree; fix both in the same round.
+
+<!-- base-ds:adopt -->
+## base-ds design system
+
+This project uses base-ds for its UI. The design decisions are already made;
+your job is composition, not invention.
+
+- Constraints: `design-rules/RULES.md` (numbered rules, single source of truth).
+- Components: `components/ui/README.md` (the component inventory).
+- Checks: `npm run design-check`, `npm run contrast-check`, `npm run verify-scales`.
+
+Before styling any new UI, check components/ui/README.md for an existing
+component and RULES.md for constraints. If neither covers the case, stop and
+ask instead of inventing.
+<!-- /base-ds:adopt -->

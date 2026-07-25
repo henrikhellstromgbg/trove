@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { useProject } from "@/app/project-context";
 import {
   Button,
+  FieldLabel,
   InlineError,
   TextField,
   TextArea,
   Select,
+  SelectItem,
   cx,
-} from "@/app/components/ui";
+} from "@/components/ui";
 import { requestJson } from "../request-json";
 import {
   SOURCE_KIND_OPTIONS,
@@ -102,7 +104,7 @@ export function NewSourceForm() {
       }}
     >
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 text-sm font-medium text-ink">Kind</legend>
+        <legend className="mb-2 text-sm font-medium text-[var(--color-text-primary)]">Kind</legend>
         <div role="group" aria-label="Source kind" className="flex flex-wrap gap-2">
           {SOURCE_KIND_OPTIONS.map((k) => {
             const active = kind === k.value;
@@ -113,10 +115,10 @@ export function NewSourceForm() {
                 aria-pressed={active}
                 onClick={() => setKind(k.value)}
                 className={cx(
-                  "rounded-lg border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-dim focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
+                  "rounded-lg border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]",
                   active
-                    ? "border-ink bg-ink text-canvas"
-                    : "border-line text-ink-dim hover:border-line-strong"
+                    ? "border-[var(--color-border-strong)] bg-[var(--color-primary)] text-[var(--color-text-inverse)]"
+                    : "border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] hover:border-[var(--color-border)]"
                 )}
               >
                 {k.label}
@@ -161,7 +163,7 @@ export function NewSourceForm() {
             placeholder="e.g. article a, .post-list a"
             className="font-mono"
           />
-          <label className="flex items-start gap-2 text-sm text-ink-dim">
+          <label className="flex items-start gap-2 text-sm text-[var(--color-text-secondary)]">
             <input
               type="checkbox"
               checked={followLinks}
@@ -187,13 +189,13 @@ export function NewSourceForm() {
         />
       ) : null}
       {kind === "slack_channel" ? (
-        <p id="channel-id-note" className="-mt-4 text-xs text-ink-faint">
+        <p id="channel-id-note" className="-mt-4 text-sm text-[var(--color-text-tertiary)]">
           The bot must already be invited to this channel.
         </p>
       ) : null}
 
       {isLocal ? (
-        <p className="rounded-lg border border-line bg-canvas px-3 py-2.5 text-xs leading-relaxed text-ink-dim">
+        <p className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-canvas)] px-3 py-2.5 text-sm leading-relaxed text-[var(--color-text-secondary)]">
           Runs on your Mac. The Trove desktop app reads this path and sends new
           items to your library. The path must be one you approved in the app.
         </p>
@@ -219,7 +221,7 @@ export function NewSourceForm() {
             className="resize-y font-mono"
             aria-describedby="sender-allow-note"
           />
-          <p id="sender-allow-note" className="-mt-4 text-xs text-ink-faint">
+          <p id="sender-allow-note" className="-mt-4 text-sm text-[var(--color-text-tertiary)]">
             Leave empty to take everything.
           </p>
           <TextArea
@@ -263,31 +265,29 @@ export function NewSourceForm() {
             className="resize-y font-mono"
             aria-describedby="globs-note"
           />
-          <p id="globs-note" className="-mt-4 text-xs text-ink-faint">
+          <p id="globs-note" className="-mt-4 text-sm text-[var(--color-text-tertiary)]">
             Leave empty for the defaults shown above.
           </p>
         </>
       ) : null}
 
       {!isLocal ? (
-        <Select
-          id="schedule"
-          label="Check"
-          value={cron}
-          onChange={(e) => setCron(e.target.value)}
-        >
-          {CRON_PRESETS.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </Select>
+        <div className="flex flex-col gap-1.5">
+          <FieldLabel htmlFor="schedule">Check</FieldLabel>
+          <Select id="schedule" value={cron} onValueChange={setCron}>
+            {CRON_PRESETS.map((p) => (
+              <SelectItem key={p.value} value={p.value}>
+                {p.label}
+              </SelectItem>
+            ))}
+          </Select>
+        </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 border-t border-line pt-5">
+      <div className="flex flex-col gap-3 border-t border-[var(--color-border-subtle)] pt-5">
         <InlineError message={error || null} />
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="text-sm text-ink-dim" aria-live="polite">
+          <span className="text-sm text-[var(--color-text-secondary)]" aria-live="polite">
             {busy ? "Saving…" : "Ready when you are"}
           </span>
           <Button

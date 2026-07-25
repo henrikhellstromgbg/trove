@@ -7,10 +7,12 @@ import {
   DataList,
   DataRow,
   EmptyState,
+  FieldLabel,
   InlineError,
   Select,
+  SelectItem,
   TextField,
-} from "@/app/components/ui";
+} from "@/components/ui";
 
 type TokenRow = {
   id: string;
@@ -137,7 +139,7 @@ export function IngestTokensPanel() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 border border-line bg-paper p-6">
+      <div className="flex flex-col gap-4 border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-6">
         <TextField
           id="token-label"
           label="Label, optional"
@@ -148,23 +150,24 @@ export function IngestTokensPanel() {
           className="bg-transparent text-base"
         />
 
-        <Select
-          id="token-scope"
-          label="Scope"
-          value={lockProjectId}
-          onChange={(e) => setLockProjectId(e.target.value)}
-          containerClassName="gap-2"
-        >
-          <option value="">Any project (unlocked)</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              Only {p.name}
-            </option>
-          ))}
-        </Select>
+        <div className="flex flex-col gap-2">
+          <FieldLabel htmlFor="token-scope">Scope</FieldLabel>
+          <Select
+            id="token-scope"
+            value={lockProjectId || "__any__"}
+            onValueChange={(v) => setLockProjectId(v === "__any__" ? "" : v)}
+          >
+            <SelectItem value="__any__">Any project (unlocked)</SelectItem>
+            {projects.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                Only {p.name}
+              </SelectItem>
+            ))}
+          </Select>
+        </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line pt-4">
-          <p className="text-sm text-ink-dim">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[var(--color-border-subtle)] pt-4">
+          <p className="text-sm text-[var(--color-text-secondary)]">
             {busy ? "Issuing..." : error || "Shown once, so keep it safe."}
           </p>
           <Button onClick={create} disabled={busy}>
@@ -176,11 +179,11 @@ export function IngestTokensPanel() {
       </div>
 
       {justCreated ? (
-        <div className="flex flex-col gap-3 border border-capture/40 bg-capture/[0.06] p-4">
-          <p className="text-sm font-medium text-ink-dim">
+        <div className="flex flex-col gap-3 border border-[var(--color-status-success-border)] bg-[var(--color-status-success-bg)] p-4">
+          <p className="text-sm font-medium text-[var(--color-text-secondary)]">
             New token. Copy it now, you will not see it again.
           </p>
-          <code className="block break-all font-mono text-sm text-ink">
+          <code className="block break-all font-mono text-sm text-[var(--color-text-primary)]">
             {justCreated.token}
           </code>
           <div className="flex flex-wrap items-center gap-3">
@@ -201,9 +204,9 @@ export function IngestTokensPanel() {
       ) : null}
 
       <div className="flex flex-col gap-4">
-        <h3 className="text-base font-medium text-ink">Your tokens</h3>
+        <h3 className="text-base font-medium text-[var(--color-text-primary)]">Your tokens</h3>
         {loading ? (
-          <p className="text-sm text-ink-faint">Loading...</p>
+          <p className="text-sm text-[var(--color-text-tertiary)]">Loading...</p>
         ) : tokens.length === 0 ? (
           <EmptyState message="No tokens yet." />
         ) : (
@@ -214,20 +217,20 @@ export function IngestTokensPanel() {
                 <DataRow
                   key={t.id}
                   leading={
-                    <span className="font-mono text-xs text-ink-faint">
+                    <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
                       {fmtDate(t.createdAt)}
                     </span>
                   }
                   trailing={
                     revoked ? (
-                      <span className="text-xs font-medium text-ink-ghost">
+                      <span className="text-sm font-medium text-[var(--color-text-tertiary)]">
                         revoked
                       </span>
                     ) : (
                       <Button
                         variant="destructive"
                         onClick={() => revoke(t.id)}
-                        className="px-3 py-1.5 text-xs"
+                        className="px-3 py-1.5 text-sm"
                       >
                         Revoke
                       </Button>
@@ -236,11 +239,11 @@ export function IngestTokensPanel() {
                 >
                   <div className="flex min-w-0 flex-col gap-1">
                     <span
-                      className={`truncate text-sm ${revoked ? "text-ink-faint line-through" : "text-ink"}`}
+                      className={`truncate text-sm ${revoked ? "text-[var(--color-text-tertiary)] line-through" : "text-[var(--color-text-primary)]"}`}
                     >
                       {t.label || "Unlabelled token"}
                     </span>
-                    <span className="text-xs text-ink-faint">
+                    <span className="text-sm text-[var(--color-text-tertiary)]">
                       {projectName(t.projectId)} · issued {fmtDate(t.createdAt)}
                       {revoked ? " · revoked" : ""}
                     </span>

@@ -9,7 +9,7 @@ import {
   Tabs,
   EmptyState,
   type LinkTabItem,
-} from "@/app/components/ui";
+} from "@/components/ui";
 import {
   listReviewItems,
   listTrashItems,
@@ -126,7 +126,7 @@ export default async function LibraryPage({
       ) : (
         <>
           {counts.items > items.length ? (
-            <p className="text-sm text-ink-faint">
+            <p className="text-sm text-[var(--color-text-tertiary)]">
               Showing the newest {items.length} items.
             </p>
           ) : null}

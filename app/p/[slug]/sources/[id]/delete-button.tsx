@@ -3,7 +3,7 @@
 import { useReducer } from "react";
 import { useRouter } from "next/navigation";
 import { useProject } from "@/app/project-context";
-import { Button, ConfirmDialog, InlineError } from "@/app/components/ui";
+import { Button, ConfirmDialog, InlineError } from "@/components/ui";
 import { requestJson } from "../request-json";
 import { deleteStateReducer, initialDeleteState } from "./delete-state";
 

@@ -109,8 +109,8 @@ export function CaptureOverlay() {
     <>
       {/* ambient drop hint */}
       {dragging && !modalOpen ? (
-        <div className="pointer-events-none fixed inset-3 z-50 flex items-center justify-center rounded-3xl border-2 border-dashed border-capture bg-canvas/70 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-3 text-capture">
+        <div className="pointer-events-none fixed inset-3 z-50 flex items-center justify-center rounded-3xl border-2 border-dashed border-[var(--color-status-success-border)] bg-[var(--color-canvas)]/70 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3 text-[var(--color-status-success-text)]">
             <Add size={40} />
             <p className="font-mono text-sm">drop into {project.name}</p>
           </div>
@@ -119,7 +119,7 @@ export function CaptureOverlay() {
 
       {/* capture confirmation flash */}
       {flash ? (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border border-line bg-paper px-5 py-2.5 font-mono text-xs text-ink shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)]">
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-5 py-2.5 font-mono text-sm text-[var(--color-text-primary)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)]">
           {flash}
         </div>
       ) : null}
@@ -135,19 +135,19 @@ export function CaptureOverlay() {
           ref={dialogRef}
           tabIndex={-1}
           onKeyDown={(event) => trapFocus(event, dialogRef.current!)}
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/20 px-4 py-12 backdrop-blur-sm sm:px-6 sm:pt-24"
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--color-overlay)] px-4 py-12 backdrop-blur-sm sm:px-6 sm:pt-24"
         >
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl">
             <div className="mb-3 flex items-center justify-between">
               <p
                 id="capture-dialog-title"
-                className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint"
+                className="font-mono text-sm text-[var(--color-text-tertiary)]"
               >
-                capture into <span className="text-brand">{project.name}</span>
+                capture into <span className="text-[var(--color-accent)]">{project.name}</span>
               </p>
               <button
                 onClick={() => setModalOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink-dim transition-colors hover:border-ink hover:text-ink"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]"
                 aria-label="close"
               >
                 <Close size={16} />

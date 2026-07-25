@@ -1,0 +1,118 @@
+/* ==========================================================================
+   SEMANTIC TOKENS — the ONLY color layer components may reference.
+   Light mode on :root, dark mode on .dark.
+   Every text/surface pair here is APCA-verified (tools/generate-scales.mjs).
+   ========================================================================== */
+
+:root {
+  /* ---- Surfaces ---- */
+  --color-canvas:          var(--gray-50);    /* app background */
+  --color-surface:         var(--white);      /* cards, panels */
+  --color-surface-raised:  var(--white);      /* dialogs, popovers (pairs with shadow) */
+  --color-surface-sunken:  var(--gray-100);   /* wells, code blocks, table headers */
+  --color-surface-hover:   var(--gray-100);
+  --color-surface-active:  var(--gray-200);
+
+  /* ---- Text ---- */
+  --color-text-primary:    var(--gray-950);   /* Lc 103+ on canvas */
+  --color-text-secondary:  var(--gray-700);   /* Lc 91 — body text on canvas */
+  /* Tertiary tier (Lc 60+): meta text only: hints, timestamps, placeholders.
+     Never body copy, and never on hover/active surfaces (use secondary there). */
+  --color-text-tertiary:   var(--gray-600);   /* Lc 83 — hints, meta. LOWEST allowed for text */
+  --color-text-disabled:   var(--gray-400);   /* disabled states only, never for readable content */
+  --color-text-inverse:    var(--white);
+  --color-text-link:       var(--info-text);
+
+  /* ---- Borders ---- */
+  --color-border:          var(--gray-300);
+  --color-border-subtle:   var(--gray-200);
+  --color-border-strong:   var(--gray-400);
+
+  /* ---- Interactive ---- */
+  --color-primary:         var(--brand-primary);
+  --color-primary-hover:   var(--brand-primary-hover);
+  --color-primary-text:    var(--brand-primary-text);
+  --color-accent:          var(--brand-accent);
+  --color-accent-subtle:   var(--brand-accent-subtle);
+  --color-focus-ring:      var(--info-base);
+  --color-text-on-status:  var(--white);     /* text on solid status colors (destructive buttons) */
+  --color-overlay:         var(--overlay-50); /* dialog/sheet scrim */
+
+  /* ---- Status (bg/border/base/text per status; base = icons and large UI) ---- */
+  --color-status-error-bg:       var(--error-bg);
+  --color-status-error-border:   var(--error-border);
+  --color-status-error:          var(--error-base);
+  --color-status-error-text:     var(--error-text);
+
+  --color-status-warning-bg:     var(--warning-bg);
+  --color-status-warning-border: var(--warning-border);
+  --color-status-warning:        var(--warning-base);
+  --color-status-warning-text:   var(--warning-text);
+
+  --color-status-success-bg:     var(--success-bg);
+  --color-status-success-border: var(--success-border);
+  --color-status-success:        var(--success-base);
+  --color-status-success-text:   var(--success-text);
+
+  --color-status-info-bg:        var(--info-bg);
+  --color-status-info-border:    var(--info-border);
+  --color-status-info:           var(--info-base);
+  --color-status-info-text:      var(--info-text);
+}
+
+.dark {
+  --color-canvas:          var(--gray-950);
+  --color-surface:         var(--gray-900);
+  --color-surface-raised:  var(--gray-800);
+  --color-surface-sunken:  var(--gray-925);
+  --color-surface-hover:   var(--gray-800);
+  --color-surface-active:  var(--gray-750);
+
+  --color-text-primary:    var(--gray-50);    /* Lc 104 on canvas */
+  --color-text-secondary:  var(--gray-200);   /* Lc 75+ on ALL surfaces incl hover/active */
+  --color-text-tertiary:   var(--gray-400);   /* Lc 60 — floor for text */
+  --color-text-disabled:   var(--gray-600);
+  --color-text-inverse:    var(--gray-950);
+  --color-text-link:       var(--info-text-dark);
+
+  --color-border:          var(--gray-700);
+  --color-border-subtle:   var(--gray-800);
+  --color-border-strong:   var(--gray-500);
+
+  --color-focus-ring:      var(--info-base-dark);
+  --color-text-on-status:  var(--gray-950);
+
+  --color-status-error-bg:       var(--error-bg-dark);
+  --color-status-error-border:   var(--error-border-dark);
+  --color-status-error:          var(--error-base-dark);
+  --color-status-error-text:     var(--error-text-dark);
+
+  --color-status-warning-bg:     var(--warning-bg-dark);
+  --color-status-warning-border: var(--warning-border-dark);
+  --color-status-warning:        var(--warning-base-dark);
+  --color-status-warning-text:   var(--warning-text-dark);
+
+  --color-status-success-bg:     var(--success-bg-dark);
+  --color-status-success-border: var(--success-border-dark);
+  --color-status-success:        var(--success-base-dark);
+  --color-status-success-text:   var(--success-text-dark);
+
+  --color-status-info-bg:        var(--info-bg-dark);
+  --color-status-info-border:    var(--info-border-dark);
+  --color-status-info:           var(--info-base-dark);
+  --color-status-info-text:      var(--info-text-dark);
+}
+
+/* ---- Global a11y defaults ---- */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

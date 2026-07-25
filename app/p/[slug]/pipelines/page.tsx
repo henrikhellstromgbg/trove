@@ -11,7 +11,7 @@ import {
   PageFrame,
   PageHeader,
   StatusIndicator,
-} from "@/app/components/ui";
+} from "@/components/ui";
 
 export default async function PipelinesPage({
   params,
@@ -46,7 +46,7 @@ export default async function PipelinesPage({
         action={
           <Link
             href={`${base}/pipelines/new`}
-            className="inline-flex items-center justify-center rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
+            className="inline-flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border-strong)]"
           >
             new pipeline
           </Link>
@@ -63,7 +63,7 @@ export default async function PipelinesPage({
               href={`${base}/pipelines/${pipeline.id}`}
               selectLabel={`Open pipeline ${pipeline.name}`}
               leading={
-                <span className="font-mono text-xs text-ink-faint">
+                <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
                   {pipeline.cron ?? "manual"}
                 </span>
               }
@@ -75,10 +75,10 @@ export default async function PipelinesPage({
               }
             >
               <div className="flex min-w-0 flex-col gap-1">
-                <span className="truncate text-base font-medium text-ink">
+                <span className="truncate text-base font-medium text-[var(--color-text-primary)]">
                   {pipeline.name}
                 </span>
-                <span className="line-clamp-2 text-sm text-ink-dim">
+                <span className="line-clamp-2 text-sm text-[var(--color-text-secondary)]">
                   {pipeline.description}
                 </span>
               </div>

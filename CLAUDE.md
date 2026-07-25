@@ -154,3 +154,18 @@ Already done in `drizzle.config.ts` and `lib/db/migrate.ts`.
 Claude and Codex share build plans through one plan document per work round in `docs/` (see `docs/review-fix-plan-2026-07-21.md` for the format). One agent writes at a time; the status line says who. Commit at each completed and verified stage. Never mix unrelated work in one commit.
 
 Standing permission: delegate mechanical work (searches, test runs, log reading, bulk edits) to a low-effort model. Claude Code uses the `grunt` subagent. Codex primarily uses its native subagents; a headless `codex exec --profile cheap` (loading the separate `~/.codex/cheap.config.toml`) is the manual alternative. Reviews and security-sensitive code always stay on the strong models.
+
+<!-- base-ds:adopt -->
+## base-ds design system
+
+This project uses base-ds for its UI. The design decisions are already made;
+your job is composition, not invention.
+
+- Constraints: `design-rules/RULES.md` (numbered rules, single source of truth).
+- Components: `components/ui/README.md` (the component inventory).
+- Checks: `npm run design-check`, `npm run contrast-check`, `npm run verify-scales`.
+
+Before styling any new UI, check components/ui/README.md for an existing
+component and RULES.md for constraints. If neither covers the case, stop and
+ask instead of inventing.
+<!-- /base-ds:adopt -->

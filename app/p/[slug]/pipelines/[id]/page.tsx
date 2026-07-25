@@ -14,7 +14,7 @@ import {
   SectionHeader,
   StatusIndicator,
   type Status,
-} from "@/app/components/ui";
+} from "@/components/ui";
 import { DeletePipelineButton } from "./delete-button";
 import { RunNowButton } from "./run-now-button";
 
@@ -59,7 +59,7 @@ export default async function PipelineDetailPage({
           action={
             <Link
               href={`${base}/pipelines`}
-              className="text-sm font-medium text-ink underline underline-offset-2 transition-colors hover:text-brand"
+              className="text-sm font-medium text-[var(--color-text-primary)] underline underline-offset-2 transition-colors hover:text-[var(--color-accent)]"
             >
               back to pipelines
             </Link>
@@ -106,7 +106,7 @@ export default async function PipelineDetailPage({
                 <DataRow
                   key={run.id}
                   leading={
-                    <span className="font-mono text-xs text-ink-faint">
+                    <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
                       {(run.completedAt ?? run.startedAt).toLocaleString("en-GB")}
                     </span>
                   }
@@ -125,23 +125,23 @@ export default async function PipelineDetailPage({
           )}
         </section>
 
-        <aside className="flex flex-col gap-4 self-start border border-line bg-paper p-6">
+        <aside className="flex flex-col gap-4 self-start border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-6">
           <SectionHeader title="Spec" />
-          <dl className="flex flex-col gap-2 text-sm text-ink-dim">
+          <dl className="flex flex-col gap-2 text-sm text-[var(--color-text-secondary)]">
             <div className="flex justify-between gap-4">
-              <dt className="text-ink-ghost">name</dt>
+              <dt className="text-[var(--color-text-tertiary)]">name</dt>
               <dd>{spec.name}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-ink-ghost">cron</dt>
+              <dt className="text-[var(--color-text-tertiary)]">cron</dt>
               <dd>{spec.cron}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-ink-ghost">output</dt>
+              <dt className="text-[var(--color-text-tertiary)]">output</dt>
               <dd>{spec.outputShape}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-ink-ghost">filter</dt>
+              <dt className="text-[var(--color-text-tertiary)]">filter</dt>
               <dd className="truncate text-right">
                 {spec.filter && Object.keys(spec.filter).length > 0
                   ? JSON.stringify(spec.filter)
@@ -150,20 +150,20 @@ export default async function PipelineDetailPage({
             </div>
             {pipeline.nextRunAt ? (
               <div className="flex justify-between gap-4">
-                <dt className="text-ink-ghost">next</dt>
+                <dt className="text-[var(--color-text-tertiary)]">next</dt>
                 <dd>{pipeline.nextRunAt.toISOString().slice(0, 16)}z</dd>
               </div>
             ) : null}
             {pipeline.lastRunAt ? (
               <div className="flex justify-between gap-4">
-                <dt className="text-ink-ghost">last</dt>
+                <dt className="text-[var(--color-text-tertiary)]">last</dt>
                 <dd>{pipeline.lastRunAt.toISOString().slice(0, 16)}z</dd>
               </div>
             ) : null}
           </dl>
-          <details className="border-t border-line pt-3 text-sm text-ink-dim">
-            <summary className="cursor-pointer text-ink-ghost">prompt</summary>
-            <pre className="mt-2 whitespace-pre-wrap text-ink-dim">{spec.prompt}</pre>
+          <details className="border-t border-[var(--color-border-subtle)] pt-3 text-sm text-[var(--color-text-secondary)]">
+            <summary className="cursor-pointer text-[var(--color-text-tertiary)]">prompt</summary>
+            <pre className="mt-2 whitespace-pre-wrap text-[var(--color-text-secondary)]">{spec.prompt}</pre>
           </details>
         </aside>
       </div>
@@ -173,22 +173,22 @@ export default async function PipelineDetailPage({
 
 function RunOutput({ output }: { output: PipelineRunOutput | null }) {
   if (!output) {
-    return <p className="text-sm text-ink-faint">(no output)</p>;
+    return <p className="text-sm text-[var(--color-text-tertiary)]">(no output)</p>;
   }
 
   // Failed runs store { error } instead of a shaped output.
   const maybeError = (output as { error?: string }).error;
   if (maybeError) {
-    return <p className="text-sm text-brand">error: {maybeError}</p>;
+    return <p className="text-sm text-[var(--color-accent)]">error: {maybeError}</p>;
   }
 
   return (
     <div className="flex flex-col gap-3">
       <RunOutputBody output={output} />
       {output.forgotten ? (
-        <div className="mt-1 border-l-2 border-brand/40 pl-3">
-          <p className="text-xs font-medium text-brand">Forgotten</p>
-          <p className="text-ink-dim">
+        <div className="mt-1 border-l-2 border-[var(--color-accent)] pl-3">
+          <p className="text-sm font-medium text-[var(--color-accent)]">Forgotten</p>
+          <p className="text-[var(--color-text-secondary)]">
             {output.forgotten.title ?? "(untitled)"}
           </p>
         </div>
@@ -200,7 +200,7 @@ function RunOutput({ output }: { output: PipelineRunOutput | null }) {
 function RunOutputBody({ output }: { output: PipelineRunOutput }) {
   if (output.shape === "text") {
     return (
-      <p className="whitespace-pre-wrap text-base leading-relaxed text-ink">
+      <p className="whitespace-pre-wrap text-base leading-relaxed text-[var(--color-text-primary)]">
         {output.text}
       </p>
     );
@@ -209,11 +209,11 @@ function RunOutputBody({ output }: { output: PipelineRunOutput }) {
   if (output.shape === "summary_with_highlights") {
     return (
       <div className="flex flex-col gap-3">
-        <p className="whitespace-pre-wrap text-base leading-relaxed text-ink">
+        <p className="whitespace-pre-wrap text-base leading-relaxed text-[var(--color-text-primary)]">
           {output.summary}
         </p>
         {output.highlights.length > 0 ? (
-          <ul className="flex flex-col gap-1 pl-3 text-sm text-ink-dim">
+          <ul className="flex flex-col gap-1 pl-3 text-sm text-[var(--color-text-secondary)]">
             {output.highlights.map((h, i) => (
               <li key={i}>{h}</li>
             ))}
@@ -225,7 +225,7 @@ function RunOutputBody({ output }: { output: PipelineRunOutput }) {
 
   if (output.shape === "list" && Array.isArray(output.items)) {
     return (
-      <ul className="flex flex-col gap-1 text-sm text-ink-dim">
+      <ul className="flex flex-col gap-1 text-sm text-[var(--color-text-secondary)]">
         {output.items.map((it, i) => (
           <li key={i}>{it}</li>
         ))}
@@ -233,5 +233,5 @@ function RunOutputBody({ output }: { output: PipelineRunOutput }) {
     );
   }
 
-  return <p className="text-sm text-ink-faint">(no output)</p>;
+  return <p className="text-sm text-[var(--color-text-tertiary)]">(no output)</p>;
 }

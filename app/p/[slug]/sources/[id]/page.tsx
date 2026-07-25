@@ -13,7 +13,7 @@ import {
   EmptyState,
   StatusIndicator,
   type Status,
-} from "@/app/components/ui";
+} from "@/components/ui";
 import { sourceKindLabel, sourceRuntimeLabel } from "../source-display";
 import { DeleteSourceButton } from "./delete-button";
 import { SyncNowButton } from "./sync-now-button";
@@ -77,7 +77,7 @@ export default async function SourceDetailPage({
           action={
             <Link
               href={`${base}/sources`}
-              className="text-sm text-ink-dim transition-colors hover:text-ink"
+              className="text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
             >
               Back to sources
             </Link>
@@ -141,7 +141,7 @@ export default async function SourceDetailPage({
       <div className="flex flex-col gap-4">
         <Link
           href={`${base}/sources`}
-          className="self-start text-sm text-ink-dim transition-colors hover:text-ink"
+          className="self-start text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
         >
           ← All sources
         </Link>
@@ -157,7 +157,7 @@ export default async function SourceDetailPage({
                 <span>{scheduleLabel}</span>
               </div>
               {configSummary ? (
-                <span className="truncate font-mono text-xs text-ink-dim">
+                <span className="truncate font-mono text-sm text-[var(--color-text-secondary)]">
                   {configSummary}
                 </span>
               ) : null}
@@ -166,42 +166,42 @@ export default async function SourceDetailPage({
         />
       </div>
 
-      <div className="flex flex-col gap-4 border-y border-line py-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-4 border-y border-[var(--color-border-subtle)] py-4 sm:flex-row sm:items-start sm:justify-between">
         <dl className="grid grid-cols-2 gap-x-8 gap-y-3 sm:flex sm:flex-wrap sm:gap-x-10">
           <div className="flex flex-col gap-0.5">
-            <dt className="text-xs text-ink-dim">State</dt>
+            <dt className="text-sm text-[var(--color-text-secondary)]">State</dt>
             <dd>
               <StatusIndicator status={state.status} label={state.label} />
             </dd>
           </div>
           <div className="flex flex-col gap-0.5">
-            <dt className="text-xs text-ink-dim">Last sync</dt>
-            <dd className="text-sm text-ink">
+            <dt className="text-sm text-[var(--color-text-secondary)]">Last sync</dt>
+            <dd className="text-sm text-[var(--color-text-primary)]">
               {source.lastSyncAt ? fmt(source.lastSyncAt) : "Never"}
             </dd>
           </div>
           <div className="flex flex-col gap-0.5">
-            <dt className="text-xs text-ink-dim">Last status</dt>
+            <dt className="text-sm text-[var(--color-text-secondary)]">Last status</dt>
             <dd
               className={
                 source.lastStatus === "error"
-                  ? "text-sm text-brand"
-                  : "text-sm text-ink"
+                  ? "text-sm text-[var(--color-accent)]"
+                  : "text-sm text-[var(--color-text-primary)]"
               }
             >
-              {source.lastStatus ?? "—"}
+              {source.lastStatus ?? "Not run yet"}
             </dd>
           </div>
           {source.nextRunAt ? (
             <div className="flex flex-col gap-0.5">
-              <dt className="text-xs text-ink-dim">Next run</dt>
-              <dd className="text-sm text-ink">{fmt(source.nextRunAt)}</dd>
+              <dt className="text-sm text-[var(--color-text-secondary)]">Next run</dt>
+              <dd className="text-sm text-[var(--color-text-primary)]">{fmt(source.nextRunAt)}</dd>
             </div>
           ) : null}
         </dl>
         <div className="shrink-0">
           {isLocal ? (
-            <p className="max-w-xs text-sm text-ink-dim">
+            <p className="max-w-xs text-sm text-[var(--color-text-secondary)]">
               Sync runs from the Trove Desktop app.
             </p>
           ) : (
@@ -211,7 +211,7 @@ export default async function SourceDetailPage({
       </div>
 
       {source.lastError ? (
-        <p className="-mt-4 text-sm text-brand">{source.lastError}</p>
+        <p className="-mt-4 text-sm text-[var(--color-accent)]">{source.lastError}</p>
       ) : null}
 
       <section className="flex flex-col gap-4">
@@ -228,10 +228,10 @@ export default async function SourceDetailPage({
                   trailing={<StatusIndicator status={s.status} label={s.label} />}
                 >
                   <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="truncate font-medium text-ink">
+                    <span className="truncate font-medium text-[var(--color-text-primary)]">
                       {it.title ?? it.source ?? "(untitled)"}
                     </span>
-                    <span className="text-xs text-ink-dim">
+                    <span className="text-sm text-[var(--color-text-secondary)]">
                       {fmt(it.capturedAt)}
                     </span>
                   </div>
@@ -257,15 +257,15 @@ export default async function SourceDetailPage({
                 >
                   <div className="flex min-w-0 flex-col gap-0.5">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                      <span className="text-ink">{fmt(run.startedAt)}</span>
-                      <span className="text-xs text-ink-dim">{run.trigger}</span>
+                      <span className="text-[var(--color-text-primary)]">{fmt(run.startedAt)}</span>
+                      <span className="text-sm text-[var(--color-text-secondary)]">{run.trigger}</span>
                     </div>
-                    <span className="text-xs text-ink-dim">
+                    <span className="text-sm text-[var(--color-text-secondary)]">
                       {run.itemCount} new{" "}
                       {run.itemCount === 1 ? "item" : "items"}
                     </span>
                     {run.error ? (
-                      <span className="text-xs text-brand">{run.error}</span>
+                      <span className="text-sm text-[var(--color-accent)]">{run.error}</span>
                     ) : null}
                   </div>
                 </DataRow>
@@ -275,8 +275,8 @@ export default async function SourceDetailPage({
         )}
       </section>
 
-      <div className="flex flex-col gap-3 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
-        <p className="max-w-md text-sm text-ink-dim">
+      <div className="flex flex-col gap-3 border-t border-[var(--color-border-subtle)] pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <p className="max-w-md text-sm text-[var(--color-text-secondary)]">
           Removing this source stops future syncs. Items already imported stay in
           your Library.
         </p>

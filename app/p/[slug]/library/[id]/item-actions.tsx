@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/app/components/ui";
+import { Button } from "@/components/ui";
 
 type OtherProject = { id: string; name: string; slug: string };
 
@@ -127,24 +127,24 @@ export function ItemActions({
   }
 
   return (
-    <div className="flex flex-col gap-4 border border-line bg-paper p-5">
+    <div className="flex flex-col gap-4 border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-5">
       <div className="flex flex-wrap items-center gap-2">
         <Button
           onClick={() => setMode(mode === "rename" ? null : "rename")}
           variant="secondary"
-          className="px-3 py-1.5 text-xs"
+          className="px-3 py-1.5 text-sm"
         >
           Rename
         </Button>
         <Button
           onClick={() => setMode(mode === "tags" ? null : "tags")}
           variant="secondary"
-          className="px-3 py-1.5 text-xs"
+          className="px-3 py-1.5 text-sm"
         >
           Tags
         </Button>
         {canReprocess ? (
-          <Button onClick={reprocess} disabled={busy} variant="secondary" className="px-3 py-1.5 text-xs">
+          <Button onClick={reprocess} disabled={busy} variant="secondary" className="px-3 py-1.5 text-sm">
             Reprocess
           </Button>
         ) : null}
@@ -152,7 +152,7 @@ export function ItemActions({
           <Button
             onClick={() => setMode(mode === "move" ? null : "move")}
             variant="secondary"
-            className="px-3 py-1.5 text-xs"
+            className="px-3 py-1.5 text-sm"
           >
             Move
           </Button>
@@ -161,20 +161,20 @@ export function ItemActions({
           onClick={trash}
           disabled={busy}
           variant="destructive"
-          className="ml-auto px-3 py-1.5 text-xs"
+          className="ml-auto px-3 py-1.5 text-sm"
         >
           Trash
         </Button>
       </div>
 
       {mode === "rename" ? (
-        <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <p className="text-xs font-medium text-ink-faint">Title</p>
+        <div className="flex flex-col gap-2 border-t border-[var(--color-border-subtle)] pt-4">
+          <p className="text-sm font-medium text-[var(--color-text-tertiary)]">Title</p>
           <input
             autoFocus
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="bg-transparent text-lg text-ink placeholder:text-ink-faint"
+            className="bg-transparent text-lg text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
           />
           <div className="flex justify-end">
             <Button onClick={() => patch({ title })} disabled={busy} variant="secondary">
@@ -185,14 +185,14 @@ export function ItemActions({
       ) : null}
 
       {mode === "tags" ? (
-        <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <p className="text-xs font-medium text-ink-faint">Tags, comma separated</p>
+        <div className="flex flex-col gap-2 border-t border-[var(--color-border-subtle)] pt-4">
+          <p className="text-sm font-medium text-[var(--color-text-tertiary)]">Tags, comma separated</p>
           <input
             autoFocus
             value={tags}
             onChange={(e) => setTags(e.target.value)}
             placeholder="research, to-read, pricing"
-            className="bg-transparent font-mono text-sm text-ink placeholder:text-ink-faint"
+            className="bg-transparent font-mono text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
           />
           <div className="flex justify-end">
             <Button onClick={() => patch({ tags: parseTags(tags) })} disabled={busy} variant="secondary">
@@ -203,12 +203,12 @@ export function ItemActions({
       ) : null}
 
       {mode === "move" ? (
-        <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <p className="text-xs font-medium text-ink-faint">Move to project</p>
+        <div className="flex flex-col gap-2 border-t border-[var(--color-border-subtle)] pt-4">
+          <p className="text-sm font-medium text-[var(--color-text-tertiary)]">Move to project</p>
           <select
             value={dest}
             onChange={(e) => setDest(e.target.value)}
-            className="rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink"
+            className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-canvas)] px-3 py-2 text-sm text-[var(--color-text-primary)]"
           >
             {otherProjects.map((p) => (
               <option key={p.id} value={p.id}>
@@ -216,7 +216,7 @@ export function ItemActions({
               </option>
             ))}
           </select>
-          <p className="text-xs text-ink-faint">
+          <p className="text-sm text-[var(--color-text-tertiary)]">
             a captured item moves; one that came from a source is copied instead, so the source keeps its own.
           </p>
           <div className="flex justify-end">
@@ -228,7 +228,7 @@ export function ItemActions({
       ) : null}
 
       {error ? (
-        <p className="border-t border-line pt-3 text-xs text-brand">{error}</p>
+        <p className="border-t border-[var(--color-border-subtle)] pt-3 text-sm text-[var(--color-accent)]">{error}</p>
       ) : null}
     </div>
   );

@@ -7,7 +7,7 @@ import {
   ConfirmDialog,
   DataList,
   DataRow,
-} from "@/app/components/ui";
+} from "@/components/ui";
 
 export type TrashRow = {
   id: string;
@@ -68,7 +68,7 @@ export function TrashList({
 
   if (rows.length === 0) {
     return (
-      <p className="text-sm text-ink-faint">
+      <p className="text-sm text-[var(--color-text-tertiary)]">
         Trash is empty. Items you remove land here first, then clear on their own.
       </p>
     );
@@ -85,14 +85,14 @@ export function TrashList({
               href={`/p/${slug}/library/${r.id}`}
               selectLabel={`Open ${r.title ?? r.source ?? "(untitled)"}`}
               leading={
-                <span className="font-mono text-xs text-ink-faint">
+                <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
                   {r.type} · {deleting ? "deleting" : `clears ${fmtDate(r.deleteAfterAt)}`}
                 </span>
               }
               trailing={
                 <div className="flex items-center gap-2">
                   {deleting ? (
-                    <span className="text-xs font-medium text-ink-ghost">
+                    <span className="text-sm font-medium text-[var(--color-text-tertiary)]">
                       in progress
                     </span>
                   ) : (
@@ -102,7 +102,7 @@ export function TrashList({
                           onClick={() => restore(r.id)}
                           disabled={busy[r.id]}
                           variant="secondary"
-                          className="px-3 py-1.5 text-xs"
+                          className="px-3 py-1.5 text-sm"
                         >
                           restore
                         </Button>
@@ -111,7 +111,7 @@ export function TrashList({
                         onClick={() => setConfirming(r)}
                         disabled={busy[r.id]}
                         variant="destructive"
-                        className="px-3 py-1.5 text-xs"
+                        className="px-3 py-1.5 text-sm"
                       >
                         delete
                       </Button>
@@ -121,7 +121,7 @@ export function TrashList({
               }
             >
               <div className="flex min-w-0 flex-col gap-1">
-                <span className="truncate text-base font-medium text-ink-dim">
+                <span className="truncate text-base font-medium text-[var(--color-text-secondary)]">
                   {r.title ?? r.source ?? "(untitled)"}
                 </span>
               </div>

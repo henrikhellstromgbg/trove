@@ -23,7 +23,7 @@ import {
 } from "@carbon/icons-react";
 import { useProject } from "./project-context";
 import { trapFocus } from "./focus-trap";
-import { Button, IconButton, StatusIndicator } from "./components/ui";
+import { Button, IconButton, StatusIndicator } from "@/components/ui";
 import type { ProjectCounts } from "@/lib/projects";
 
 // Numbers render with a space thousands separator, matching the sketch
@@ -46,7 +46,7 @@ const DESTINATIONS: Destination[] = [
 ];
 
 function CountFor({ seg, counts }: { seg: string; counts: ProjectCounts }) {
-  const cls = "font-mono text-xs text-ink-faint";
+  const cls = "font-mono text-sm text-[var(--color-text-tertiary)]";
   if (seg === "library")
     return (
       <span className="inline-flex items-center gap-2">
@@ -56,7 +56,7 @@ function CountFor({ seg, counts }: { seg: string; counts: ProjectCounts }) {
             status="review"
             label="to review"
             count={counts.reviewPending}
-            className="text-xs"
+            className="text-sm"
           />
         ) : null}
       </span>
@@ -69,7 +69,7 @@ function CountFor({ seg, counts }: { seg: string; counts: ProjectCounts }) {
         status="active"
         label="active"
         count={counts.pipelinesActive}
-        className="text-xs"
+        className="text-sm"
       />
     ) : null;
   if (seg === "sources")
@@ -81,7 +81,7 @@ function CountFor({ seg, counts }: { seg: string; counts: ProjectCounts }) {
             status="error"
             label="errors"
             count={counts.sourceErrors}
-            className="text-xs"
+            className="text-sm"
           />
         ) : null}
       </span>
@@ -174,7 +174,7 @@ export function Sidebar() {
     <>
       {/* mobile top bar — the drawer trigger */}
       <div
-        className="fixed inset-x-0 top-0 z-30 grid h-14 items-center gap-3 border-b border-line bg-canvas px-4 md:hidden"
+        className="fixed inset-x-0 top-0 z-30 grid h-14 items-center gap-3 border-b border-[var(--color-border-subtle)] bg-[var(--color-canvas)] px-4 md:hidden"
         style={{ gridTemplateColumns: "78px minmax(0,1fr) 78px" }}
       >
         <div className="flex items-center">
@@ -182,7 +182,7 @@ export function Sidebar() {
             <Image src="/logo.svg" alt="Trove" width={78} height={20} priority />
           </Link>
         </div>
-        <span className="min-w-0 truncate text-center text-sm font-medium text-brand">
+        <span className="min-w-0 truncate text-center text-sm font-medium text-[var(--color-accent)]">
           {project.name}
         </span>
         <div className="flex items-center justify-self-end">
@@ -204,7 +204,7 @@ export function Sidebar() {
           type="button"
           onClick={closeMobile}
           aria-label="Close menu"
-          className="fixed inset-0 z-30 bg-ink/20 md:hidden"
+          className="fixed inset-0 z-30 bg-[var(--color-overlay)] md:hidden"
         />
       ) : null}
 
@@ -212,7 +212,7 @@ export function Sidebar() {
         id="project-navigation"
         inert={!desktopNav && !mobileOpen}
         aria-hidden={!desktopNav && !mobileOpen}
-        className={`fixed left-0 top-0 z-40 flex h-[100dvh] w-[280px] flex-col overflow-y-auto border-r border-line bg-canvas px-5 py-6 transition-transform duration-150 md:translate-x-0 ${
+        className={`fixed left-0 top-0 z-40 flex h-[100dvh] w-[280px] flex-col overflow-y-auto border-r border-[var(--color-border-subtle)] bg-[var(--color-canvas)] px-5 py-6 transition-transform duration-150 md:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -236,15 +236,15 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => setSwitcherOpen((o) => !o)}
-            className="flex w-full flex-col gap-0.5 rounded-lg border border-line px-3 py-2 text-left transition-colors hover:border-line-strong"
+            className="flex w-full flex-col gap-0.5 rounded-lg border border-[var(--color-border-subtle)] px-3 py-2 text-left transition-colors hover:border-[var(--color-border)]"
             aria-expanded={switcherOpen}
             aria-controls="project-switcher-popup"
           >
             <span className="flex items-center justify-between">
-              <span className="text-xs text-ink-faint">Project</span>
-              <ChevronDown size={16} className="text-ink-faint" />
+              <span className="text-sm text-[var(--color-text-tertiary)]">Project</span>
+              <ChevronDown size={16} className="text-[var(--color-text-tertiary)]" />
             </span>
-            <span className="truncate text-[15px] font-medium text-brand">
+            <span className="truncate text-[15px] font-medium text-[var(--color-accent)]">
               {project.name}
             </span>
           </button>
@@ -257,7 +257,7 @@ export function Sidebar() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
                 transition={{ duration: 0.15 }}
-                className="absolute left-0 right-0 top-full z-40 mt-1 rounded-lg border border-line bg-paper p-1 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.18)]"
+                className="absolute left-0 right-0 top-full z-40 mt-1 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-1 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.18)]"
               >
                 <ul className="flex flex-col">
                   {projects.map((p) => (
@@ -268,8 +268,8 @@ export function Sidebar() {
                           setSwitcherOpen(false);
                           closeMobile();
                         }}
-                        className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-ink/[0.04] ${
-                          p.id === project.id ? "text-brand" : "text-ink-dim"
+                        className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-[var(--color-surface-hover)] ${
+                          p.id === project.id ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"
                         }`}
                       >
                         <span
@@ -282,7 +282,7 @@ export function Sidebar() {
                   ))}
                 </ul>
 
-                <div className="mt-1 border-t border-line pt-1">
+                <div className="mt-1 border-t border-[var(--color-border-subtle)] pt-1">
                   {creating ? (
                     <div className="flex flex-col gap-2 p-2">
                       <input
@@ -294,9 +294,9 @@ export function Sidebar() {
                           if (e.key === "Enter") create();
                         }}
                         placeholder="project name"
-                        className="w-full bg-transparent text-sm text-ink placeholder:text-ink-faint focus:outline-none"
+                        className="w-full bg-transparent text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
                       />
-                      <div className="flex items-center gap-1 font-mono text-xs">
+                      <div className="flex items-center gap-1 font-mono text-sm">
                         {(["personal", "client"] as const).map((k) => (
                           <button
                             key={k}
@@ -304,7 +304,7 @@ export function Sidebar() {
                             onClick={() => setKind(k)}
                             aria-pressed={kind === k}
                             className={`rounded px-2 py-1 ${
-                              kind === k ? "bg-ink text-canvas" : "text-ink-faint"
+                              kind === k ? "bg-[var(--color-primary)] text-[var(--color-text-inverse)]" : "text-[var(--color-text-tertiary)]"
                             }`}
                           >
                             {k === "personal" ? "Personal" : "Client"}
@@ -324,7 +324,7 @@ export function Sidebar() {
                     <button
                       type="button"
                       onClick={() => setCreating(true)}
-                      className="w-full rounded-md px-2 py-1.5 text-left text-sm text-ink-dim transition-colors hover:bg-ink/[0.04] hover:text-ink"
+                      className="w-full rounded-md px-2 py-1.5 text-left text-sm text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]"
                     >
                       + New project
                     </button>
@@ -343,10 +343,10 @@ export function Sidebar() {
             onClick={closeMobile}
             aria-current={isActive("ask") ? "page" : undefined}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
-              isActive("ask") ? "bg-ink/[0.05] text-ink" : "text-ink hover:bg-ink/[0.03]"
+              isActive("ask") ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
-            <Chat size={18} className={`shrink-0 ${isActive("ask") ? "text-brand" : "text-ink-dim"}`} />
+            <Chat size={18} className={`shrink-0 ${isActive("ask") ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"}`} />
             <span className="min-w-0 truncate">Ask</span>
           </Link>
           <Link
@@ -354,10 +354,10 @@ export function Sidebar() {
             onClick={closeMobile}
             aria-current={isActive("chats") ? "page" : undefined}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
-              isActive("chats") ? "bg-ink/[0.05] text-ink" : "text-ink hover:bg-ink/[0.03]"
+              isActive("chats") ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
-            <Archive size={18} className={`shrink-0 ${isActive("chats") ? "text-brand" : "text-ink-dim"}`} />
+            <Archive size={18} className={`shrink-0 ${isActive("chats") ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"}`} />
             <span className="min-w-0 truncate">Chat archive</span>
           </Link>
           {DESTINATIONS.map(({ seg, label, Icon }) => (
@@ -367,10 +367,10 @@ export function Sidebar() {
               onClick={closeMobile}
               aria-current={isActive(seg) ? "page" : undefined}
               className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
-                isActive(seg) ? "bg-ink/[0.05] text-ink" : "text-ink hover:bg-ink/[0.03]"
+                isActive(seg) ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
               }`}
             >
-              <Icon size={18} className={`shrink-0 ${isActive(seg) ? "text-brand" : "text-ink-dim"}`} />
+              <Icon size={18} className={`shrink-0 ${isActive(seg) ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"}`} />
               <span className="min-w-0 truncate">{label}</span>
               <span className="ml-auto shrink-0">
                 <CountFor seg={seg} counts={counts} />
@@ -380,43 +380,43 @@ export function Sidebar() {
         </nav>
 
         {/* capture */}
-        <div className="mt-6 flex flex-col gap-0.5 border-t border-line pt-6">
+        <div className="mt-6 flex flex-col gap-0.5 border-t border-[var(--color-border-subtle)] pt-6">
           <button
             type="button"
             onClick={openCapture}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] text-ink transition-colors hover:bg-ink/[0.03]"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-hover)]"
           >
-            <Download size={18} className="shrink-0 text-ink-dim" />
+            <Download size={18} className="shrink-0 text-[var(--color-text-secondary)]" />
             <span className="min-w-0 truncate">Capture</span>
           </button>
         </div>
 
         {/* settings + account */}
-        <div className="mt-auto flex flex-col gap-0.5 border-t border-line pt-6">
+        <div className="mt-auto flex flex-col gap-0.5 border-t border-[var(--color-border-subtle)] pt-6">
           <Link
             href={`${base}/settings`}
             onClick={closeMobile}
             aria-current={isActive("settings") ? "page" : undefined}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
-              isActive("settings") ? "bg-ink/[0.05] text-ink" : "text-ink hover:bg-ink/[0.03]"
+              isActive("settings") ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
-            <Settings size={18} className={`shrink-0 ${isActive("settings") ? "text-brand" : "text-ink-dim"}`} />
+            <Settings size={18} className={`shrink-0 ${isActive("settings") ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"}`} />
             <span className="min-w-0 truncate">Settings</span>
           </Link>
 
           <div className="flex items-start gap-3 px-3 pt-6">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line-strong text-ink-dim">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)]">
               <UserAvatar size={14} />
             </div>
             <div className="flex min-w-0 flex-col">
-              <span className="truncate text-sm text-ink">
+              <span className="truncate text-sm text-[var(--color-text-primary)]">
                 {user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? "Account"}
               </span>
               <button
                 type="button"
                 onClick={() => signOut()}
-                className="self-start text-xs text-ink-dim underline underline-offset-2 transition-colors hover:text-ink"
+                className="self-start text-sm text-[var(--color-text-secondary)] underline underline-offset-2 transition-colors hover:text-[var(--color-text-primary)]"
               >
                 Log out
               </button>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProject } from "@/app/project-context";
-import { Button, ConfirmDialog } from "@/app/components/ui";
+import { Button, ConfirmDialog } from "@/components/ui";
 
 export function DeletePipelineButton({ id }: { id: string }) {
   const router = useRouter();

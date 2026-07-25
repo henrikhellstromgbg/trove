@@ -30,7 +30,7 @@ export default function RootLayout({
         className={`${sans.variable} ${mono.variable} h-full antialiased`}
         style={{ fontFamily: "var(--font-geist-sans)" }}
       >
-        <body className="min-h-full overflow-x-hidden bg-canvas text-ink">
+        <body className="min-h-full overflow-x-hidden bg-[var(--color-canvas)] text-[var(--color-text-primary)]">
           {children}
         </body>
       </html>

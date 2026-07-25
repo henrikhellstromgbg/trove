@@ -12,7 +12,7 @@ import {
   PageFrame,
   PageHeader,
   SectionHeader,
-} from "@/app/components/ui";
+} from "@/components/ui";
 
 type Citation = {
   n: number;
@@ -247,7 +247,7 @@ export function AskChat({
           <SectionHeader title="Conversation" />
           <div
             ref={transcriptRef}
-            className="flex min-h-[20rem] flex-1 flex-col overflow-y-auto border border-line bg-paper p-5"
+            className="flex min-h-[20rem] flex-1 flex-col overflow-y-auto border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-5"
           >
             {messages.length === 0 ? (
               <div className="flex flex-col gap-6">
@@ -263,7 +263,7 @@ export function AskChat({
                     </Button>
                   ))}
                 </div>
-                <p className="text-sm text-ink-faint">
+                <p className="text-sm text-[var(--color-text-tertiary)]">
                   Start with a question or pick a common prompt.
                 </p>
               </div>
@@ -273,7 +273,7 @@ export function AskChat({
                   <DataRow
                     key={i}
                     leading={
-                      <span className="font-mono text-xs text-ink-faint">
+                      <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
                         {i === messages.length - 1 && m.loading ? "now" : "message"}
                       </span>
                     }
@@ -281,16 +281,16 @@ export function AskChat({
                   >
                     <div className="flex min-w-0 flex-col gap-3">
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-ink">You</span>
-                        <p className="text-base text-ink">{m.question}</p>
+                        <span className="text-sm font-medium text-[var(--color-text-primary)]">You</span>
+                        <p className="text-base text-[var(--color-text-primary)]">{m.question}</p>
                       </div>
                       {m.error ? (
-                        <p className="text-sm text-brand">{m.error}</p>
+                        <p className="text-sm text-[var(--color-accent)]">{m.error}</p>
                       ) : (
-                        <p className="whitespace-pre-wrap text-base leading-relaxed text-ink">
+                        <p className="whitespace-pre-wrap text-base leading-relaxed text-[var(--color-text-primary)]">
                           {m.answer}
                           {m.loading && !m.answer ? (
-                            <span className="text-ink-faint">thinking…</span>
+                            <span className="text-[var(--color-text-tertiary)]">thinking…</span>
                           ) : null}
                         </p>
                       )}
@@ -301,8 +301,8 @@ export function AskChat({
             )}
           </div>
 
-          <div className="border-t border-line pt-4">
-            <div className="relative border border-line bg-paper focus-within:border-line-strong">
+          <div className="border-t border-[var(--color-border-subtle)] pt-4">
+            <div className="relative border border-[var(--color-border-subtle)] bg-[var(--color-surface)] focus-within:border-[var(--color-border)]">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -314,13 +314,13 @@ export function AskChat({
                 }}
                 rows={3}
                 placeholder="What are you looking for?"
-                className="w-full resize-none bg-transparent px-4 py-3.5 pr-14 text-base text-ink outline-none placeholder:text-ink-faint"
+                className="w-full resize-none bg-transparent px-4 py-3.5 pr-14 text-base text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
               />
               <IconButton
                 onClick={() => submit(input)}
                 disabled={!canSend}
                 label="Send question"
-                className="absolute right-3 top-3 bg-ink text-canvas hover:bg-ink-dim hover:text-canvas disabled:opacity-30"
+                className="absolute right-3 top-3 bg-[var(--color-primary)] text-[var(--color-text-inverse)] hover:bg-[var(--color-primary-hover)] hover:text-[var(--color-text-inverse)] disabled:opacity-30"
               >
                 <ArrowUp size={18} />
               </IconButton>
@@ -344,7 +344,7 @@ export function AskChat({
           </div>
         </div>
 
-        <aside className="hidden min-w-0 flex-col gap-4 border-l border-line pl-8 lg:flex">
+        <aside className="hidden min-w-0 flex-col gap-4 border-l border-[var(--color-border-subtle)] pl-8 lg:flex">
           <SectionHeader title="Files that are relevant" />
           <div className="flex-1 overflow-y-auto">
             <SourcesList citations={citations} slug={slug} />
@@ -364,7 +364,7 @@ function SourcesList({
 }) {
   if (citations.length === 0) {
     return (
-      <p className="text-sm text-ink-faint">
+      <p className="text-sm text-[var(--color-text-tertiary)]">
         No sources yet.
       </p>
     );
@@ -380,14 +380,14 @@ function SourcesList({
             href={`/p/${slug}/library/${c.itemId}`}
             selectLabel={`Open cited item ${c.title}`}
             leading={
-              <span className="font-mono text-xs text-ink-faint">
+              <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
                 {String(c.n).padStart(2, "0")}
               </span>
             }
           >
             <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="truncate text-sm text-ink">{c.title}</span>
-              {host ? <span className="text-xs text-ink-faint">{host}</span> : null}
+              <span className="truncate text-sm text-[var(--color-text-primary)]">{c.title}</span>
+              {host ? <span className="text-sm text-[var(--color-text-tertiary)]">{host}</span> : null}
             </div>
           </DataRow>
         );

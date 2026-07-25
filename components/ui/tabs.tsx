@@ -1,9 +1,16 @@
-"use client";
+'use client';
 
-import type { HTMLAttributes, KeyboardEvent } from "react";
-import { useRef } from "react";
-import Link from "next/link";
-import { cx } from "./class-names";
+import type { HTMLAttributes, KeyboardEvent } from 'react';
+import { useRef } from 'react';
+import Link from 'next/link';
+import { cn } from '@/lib/cn';
+
+// Two modes share one API and styling:
+//  - link tabs (href) render as a <nav> of <Link>s (e.g. ?view=).
+//  - button tabs (tabId/panelId) render a roving-tabindex tablist with
+//    Arrow/Home/End keys, controlling panels rendered elsewhere.
+// Radix Tabs is intentionally not used: its coupled Root/List/Content model
+// cannot express link-nav tabs or externally-rendered panels.
 
 interface TabItemBase {
   key: string;
@@ -25,7 +32,7 @@ export interface ButtonTabItem extends TabItemBase {
 
 export type TabItem = LinkTabItem | ButtonTabItem;
 
-interface TabsCommonProps extends Omit<HTMLAttributes<HTMLDivElement>, "onSelect"> {
+interface TabsCommonProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onSelect'> {
   activeKey: string;
   label: string;
 }
@@ -43,15 +50,24 @@ export interface ButtonTabsProps extends TabsCommonProps {
 
 export type TabsProps = LinkTabsProps | ButtonTabsProps;
 
-const tabBase =
-  "inline-flex items-center gap-1.5 border-b-2 border-transparent px-1 pb-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-dim focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
+const rail =
+  'flex items-center gap-6 overflow-x-auto overflow-y-hidden whitespace-nowrap border-b border-[var(--color-border)]';
 
-const activeClasses = "border-ink text-ink";
-const inactiveClasses = "text-ink-dim hover:border-line-strong hover:text-ink";
+const tabBase =
+  'inline-flex items-center gap-1.5 border-b-2 border-transparent px-1 pb-2 text-[length:var(--text-sm)] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]';
+
+const activeClasses = 'border-[var(--color-text-primary)] text-[var(--color-text-primary)]';
+const inactiveClasses =
+  'text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)]';
 
 function TabCount({ count, active }: { count: number; active: boolean }) {
   return (
-    <span className={cx("font-mono text-xs", active ? "text-ink-dim" : "text-ink-faint")}>
+    <span
+      className={cn(
+        'font-mono text-[length:var(--text-sm)]',
+        active ? 'text-[var(--color-text-secondary)]' : 'text-[var(--color-text-tertiary)]',
+      )}
+    >
       {count}
     </span>
   );
@@ -67,22 +83,15 @@ export function Tabs(props: TabsProps) {
 
   if (isLinkDriven(items)) {
     return (
-      <nav
-        aria-label={label}
-        className={cx(
-          "flex items-center gap-6 overflow-x-auto overflow-y-hidden whitespace-nowrap border-b border-line",
-          className,
-        )}
-        {...rest}
-      >
+      <nav aria-label={label} className={cn(rail, className)} {...rest}>
         {items.map((item) => {
           const active = item.key === activeKey;
           return (
             <Link
               key={item.key}
               href={item.href}
-              aria-current={active ? "page" : undefined}
-              className={cx(tabBase, active ? activeClasses : inactiveClasses)}
+              aria-current={active ? 'page' : undefined}
+              className={cn(tabBase, active ? activeClasses : inactiveClasses)}
             >
               <span>{item.label}</span>
               {item.count !== undefined ? <TabCount count={item.count} active={active} /> : null}
@@ -98,26 +107,25 @@ export function Tabs(props: TabsProps) {
   function focusAndSelect(index: number) {
     const count = items.length;
     const nextIndex = ((index % count) + count) % count;
-    const item = items[nextIndex];
     buttonRefs.current[nextIndex]?.focus();
-    handleSelect(item.key);
+    handleSelect(items[nextIndex].key);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     switch (event.key) {
-      case "ArrowRight":
+      case 'ArrowRight':
         event.preventDefault();
         focusAndSelect(index + 1);
         break;
-      case "ArrowLeft":
+      case 'ArrowLeft':
         event.preventDefault();
         focusAndSelect(index - 1);
         break;
-      case "Home":
+      case 'Home':
         event.preventDefault();
         focusAndSelect(0);
         break;
-      case "End":
+      case 'End':
         event.preventDefault();
         focusAndSelect(items.length - 1);
         break;
@@ -127,16 +135,7 @@ export function Tabs(props: TabsProps) {
   }
 
   return (
-    <div
-      role="tablist"
-      aria-label={label}
-      aria-orientation="horizontal"
-      className={cx(
-        "flex items-center gap-6 overflow-x-auto overflow-y-hidden whitespace-nowrap border-b border-line",
-        className,
-      )}
-      {...rest}
-    >
+    <div role="tablist" aria-label={label} aria-orientation="horizontal" className={cn(rail, className)} {...rest}>
       {items.map((item, index) => {
         const active = item.key === activeKey;
         return (
@@ -153,7 +152,7 @@ export function Tabs(props: TabsProps) {
             tabIndex={active ? 0 : -1}
             onClick={() => handleSelect(item.key)}
             onKeyDown={(event) => handleKeyDown(event, index)}
-            className={cx(tabBase, active ? activeClasses : inactiveClasses)}
+            className={cn(tabBase, active ? activeClasses : inactiveClasses)}
           >
             <span>{item.label}</span>
             {item.count !== undefined ? <TabCount count={item.count} active={active} /> : null}

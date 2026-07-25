@@ -12,7 +12,7 @@ import {
   SectionHeader,
   StatusIndicator,
   type Status,
-} from "@/app/components/ui";
+} from "@/components/ui";
 import { ItemActions } from "./item-actions";
 
 const MAX_RAW = 8000;
@@ -84,7 +84,7 @@ export default async function ItemDetail({
     <PageFrame maxWidth="5xl">
       <Link
         href={`/p/${slug}/library`}
-        className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink focus:text-ink outline-none"
+        className="inline-flex w-fit items-center gap-1.5 text-sm text-[var(--color-text-tertiary)] transition-colors hover:text-[var(--color-text-primary)] focus:text-[var(--color-text-primary)]"
       >
         <ArrowLeft size={16} />
         back to library
@@ -93,7 +93,7 @@ export default async function ItemDetail({
       <PageHeader
         title={title}
         description={
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-dim">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[var(--color-text-secondary)]">
             <span>{item.type}</span>
             <StatusIndicator
               status={statusTone(item.status)}
@@ -109,7 +109,7 @@ export default async function ItemDetail({
               href={originalUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
+              className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border-strong)]"
             >
               <Launch size={16} />
               open original
@@ -133,7 +133,7 @@ export default async function ItemDetail({
           {item.summary ? (
             <section className="flex flex-col gap-3">
               <SectionHeader title="Summary" />
-              <p className="text-base leading-relaxed text-ink">{item.summary}</p>
+              <p className="text-base leading-relaxed text-[var(--color-text-primary)]">{item.summary}</p>
             </section>
           ) : null}
 
@@ -141,17 +141,17 @@ export default async function ItemDetail({
             <SectionHeader title="Raw content" />
             {rawText ? (
               <>
-                <div className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap border border-line bg-paper p-5 text-sm leading-relaxed text-ink-dim">
+                <div className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-5 text-sm leading-relaxed text-[var(--color-text-secondary)]">
                   {rawText}
                 </div>
                 {item.rawText && item.rawText.length > MAX_RAW ? (
-                  <p className="text-sm text-ink-faint">
+                  <p className="text-sm text-[var(--color-text-tertiary)]">
                     Showing the first {MAX_RAW.toLocaleString("en-GB")} characters.
                   </p>
                 ) : null}
               </>
             ) : (
-              <p className="text-sm text-ink-faint">Nothing extracted yet.</p>
+              <p className="text-sm text-[var(--color-text-tertiary)]">Nothing extracted yet.</p>
             )}
           </section>
         </div>
@@ -164,7 +164,7 @@ export default async function ItemDetail({
                 {item.tags.map((tag) => (
                   <li
                     key={tag}
-                    className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-dim"
+                    className="rounded-full border border-[var(--color-border-subtle)] px-2.5 py-1 text-sm text-[var(--color-text-secondary)]"
                   >
                     {tag}
                   </li>
@@ -174,7 +174,7 @@ export default async function ItemDetail({
           ) : null}
 
           {item.status === "failed" ? (
-            <p className="text-sm text-brand">Processing failed for this item.</p>
+            <p className="text-sm text-[var(--color-accent)]">Processing failed for this item.</p>
           ) : null}
         </div>
       </div>

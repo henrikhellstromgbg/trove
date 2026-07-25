@@ -10,7 +10,7 @@ import {
   SectionHeader,
   DataList,
   DataRow,
-} from "@/app/components/ui";
+} from "@/components/ui";
 import {
   PIPELINE_RUN_COMPLETED,
   PIPELINE_RUN_DELIVERY_ERROR,
@@ -111,8 +111,8 @@ function DigestBody({ output }: { output: DigestOutput | null }) {
         {summary ? (
           <section className="flex flex-col gap-3">
             <SectionHeader title="Summary" />
-            <div className="border border-line bg-paper p-6">
-              <p className="text-2xl leading-snug text-ink md:text-[28px]">
+            <div className="border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-6">
+              <p className="text-2xl leading-snug text-[var(--color-text-primary)] md:text-[28px]">
                 {summary}
               </p>
             </div>
@@ -127,12 +127,12 @@ function DigestBody({ output }: { output: DigestOutput | null }) {
                 <DataRow
                   key={index}
                   leading={
-                    <span className="font-mono text-xs text-ink-faint">
+                    <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
                       {String(index + 1).padStart(2, "0")}
                     </span>
                   }
                 >
-                  <p className="text-base leading-relaxed text-ink">
+                  <p className="text-base leading-relaxed text-[var(--color-text-primary)]">
                     {highlight}
                   </p>
                 </DataRow>
@@ -145,12 +145,12 @@ function DigestBody({ output }: { output: DigestOutput | null }) {
       {forgotten ? (
         <aside className="flex flex-col gap-3">
           <SectionHeader title="Forgotten" />
-          <div className="border border-line bg-paper p-6">
-            <p className="text-2xl italic leading-snug text-ink">
+          <div className="border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-6">
+            <p className="text-2xl italic leading-snug text-[var(--color-text-primary)]">
               {forgotten.title ?? "(untitled)"}
             </p>
             {forgotten.summary ? (
-              <p className="mt-3 text-sm leading-relaxed text-ink-dim">
+              <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-secondary)]">
                 {forgotten.summary}
               </p>
             ) : null}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Button, DataList, DataRow } from "@/app/components/ui";
+import { Button, DataList, DataRow } from "@/components/ui";
 
 export type ReviewRow = {
   id: string;
@@ -46,7 +46,7 @@ export function ReviewQueue({
 
   if (rows.length === 0) {
     return (
-      <p className="text-sm text-ink-faint">
+      <p className="text-sm text-[var(--color-text-tertiary)]">
         Nothing waiting. Review rules hold matching items here before they reach the library.
       </p>
     );
@@ -60,7 +60,7 @@ export function ReviewQueue({
           href={`/p/${slug}/library/${r.id}`}
           selectLabel={`Open ${r.title ?? r.source ?? "(untitled)"}`}
           leading={
-            <span className="font-mono text-xs text-ink-faint">
+            <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
               {r.type} · {fmtDate(r.capturedAt)}
             </span>
           }
@@ -71,7 +71,7 @@ export function ReviewQueue({
                   onClick={() => decide(r.id, "approve")}
                   disabled={busy[r.id]}
                   variant="secondary"
-                  className="px-3 py-1.5 text-xs"
+                  className="px-3 py-1.5 text-sm"
                 >
                   approve
                 </Button>
@@ -80,7 +80,7 @@ export function ReviewQueue({
                 onClick={() => decide(r.id, "reject")}
                 disabled={busy[r.id]}
                 variant="secondary"
-                className="px-3 py-1.5 text-xs"
+                className="px-3 py-1.5 text-sm"
               >
                 reject
               </Button>
@@ -88,11 +88,11 @@ export function ReviewQueue({
           }
           >
           <div className="flex min-w-0 flex-col gap-1">
-            <span className="truncate text-base font-medium text-ink transition-colors">
+            <span className="truncate text-base font-medium text-[var(--color-text-primary)] transition-colors">
               {r.title ?? r.source ?? "(untitled)"}
             </span>
             {r.summary ? (
-              <p className="line-clamp-2 max-w-2xl text-sm text-ink-dim">
+              <p className="line-clamp-2 max-w-2xl text-sm text-[var(--color-text-secondary)]">
                 {r.summary}
               </p>
             ) : null}

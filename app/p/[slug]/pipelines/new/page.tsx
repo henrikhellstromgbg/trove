@@ -1,6 +1,6 @@
 import { NewPipelineForm } from "./new-pipeline-form";
 import { TemplatePicker } from "./template-picker";
-import { PageFrame, PageHeader, SectionHeader } from "@/app/components/ui";
+import { PageFrame, PageHeader, SectionHeader } from "@/components/ui";
 
 export default function NewPipelinePage() {
   return (

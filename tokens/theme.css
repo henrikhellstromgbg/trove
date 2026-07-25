@@ -1,0 +1,37 @@
+/* Active project theme — Trove.
+   Brand extracted from app/globals.css on 2026-07-24 (Phase 2 audit),
+   primary/accent split confirmed with Henrik on 2026-07-24 (Phase 3).
+
+   Trove's established look: ink/black primary buttons, red as accent and brand
+   identity (logo, active project, links), never as a filled button surface.
+   So --brand-primary is ink and --brand-accent is the red. Geist sans + mono.
+   Capture green is retired into the system's status-success tier.
+
+   This is the ONLY token file that varies per project. Surfaces, radii and
+   spacing are owned by primitives.css and are deliberately NOT set here. */
+
+:root {
+  /* Ink primary (Trove #111), lightening hover to ink-dim (#444).
+     White text on both passes APCA (|Lc| 107 / 95). */
+  --brand-primary:        oklch(0.178 0 0);
+  --brand-primary-hover:  oklch(0.400 0 0);
+  --brand-primary-text:   oklch(1 0 0);
+
+  /* Accent is brand red #E4130E. Subtle is Trove's selection-wash red. */
+  --brand-accent:         oklch(0.582 0.232 29.1);
+  --brand-accent-subtle:  oklch(0.955 0.030 29.1);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+.dark {
+  /* Trove ships light-only today. Dark values exist so the APCA matrix has
+     real colors to verify. Primary inverts to near-white with dark text
+     (standard dark-mode primary); accent lifts to a soft light red. */
+  --brand-primary:        oklch(0.985 0.005 260);
+  --brand-primary-hover:  oklch(0.922 0.005 260);
+  --brand-primary-text:   oklch(0.137 0.005 260);
+  --brand-accent:         oklch(0.880 0.090 29.1);
+  --brand-accent-subtle:  oklch(0.280 0.060 29.1);
+}

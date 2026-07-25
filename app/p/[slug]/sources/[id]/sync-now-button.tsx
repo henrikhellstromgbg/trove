@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProject } from "@/app/project-context";
-import { Button, InlineError } from "@/app/components/ui";
+import { Button, InlineError } from "@/components/ui";
 import { requestJson } from "../request-json";
 
 export function SyncNowButton({ id }: { id: string }) {

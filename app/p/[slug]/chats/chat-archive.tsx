@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { TrashCan } from "@carbon/icons-react";
-import { EmptyState } from "@/app/components/ui";
+import { EmptyState } from "@/components/ui";
 
 type Row = {
   id: string;
@@ -73,30 +73,30 @@ export function ChatArchive({
     <div className="flex flex-col gap-8">
       {groupByDay(rows).map((group) => (
         <div key={group.label} className="flex flex-col gap-1">
-          <span className="mb-1 text-xs font-medium text-ink-faint">
+          <span className="mb-1 text-sm font-medium text-[var(--color-text-tertiary)]">
             {group.label}
           </span>
           <ul className="flex flex-col">
             {group.rows.map((row) => (
               <li
                 key={row.id}
-                className="group flex items-center gap-3 border-b border-line last:border-b-0"
+                className="group flex items-center gap-3 border-b border-[var(--color-border-subtle)] last:border-b-0"
               >
                 <Link
                   href={`/p/${slug}/ask?conversation=${row.id}`}
                   className="flex min-w-0 flex-1 items-baseline justify-between gap-4 py-4 transition-colors"
                 >
-                  <span className="min-w-0 truncate text-base text-ink transition-colors group-hover:text-brand">
+                  <span className="min-w-0 truncate text-base text-[var(--color-text-primary)] transition-colors group-hover:text-[var(--color-accent)]">
                     {row.title?.trim() || "Untitled"}
                   </span>
-                  <span className="shrink-0 font-mono text-[11px] text-ink-faint">
+                  <span className="shrink-0 font-mono text-sm text-[var(--color-text-tertiary)]">
                     {timeLabel(row.createdAt)}
                   </span>
                 </Link>
                 <button
                   onClick={() => remove(row.id)}
                   aria-label="delete conversation"
-                  className="shrink-0 rounded-md p-1.5 text-ink-faint opacity-0 transition-opacity hover:text-brand focus:opacity-100 group-hover:opacity-100"
+                  className="shrink-0 rounded-md p-1.5 text-[var(--color-text-tertiary)] opacity-0 transition-opacity hover:text-[var(--color-accent)] focus:opacity-100 group-hover:opacity-100"
                 >
                   <TrashCan size={16} />
                 </button>

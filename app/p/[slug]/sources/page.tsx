@@ -12,7 +12,7 @@ import {
   EmptyState,
   StatusIndicator,
   type Status,
-} from "@/app/components/ui";
+} from "@/components/ui";
 import { sourceKindLabel, sourceRuntimeLabel } from "./source-display";
 
 function sourceStatus(source: { enabled: boolean; lastStatus: string | null }): {
@@ -79,7 +79,7 @@ export default async function SourcesPage({
         action={
           <Link
             href={`${base}/sources/new`}
-            className="inline-flex items-center justify-center rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
+            className="inline-flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border-strong)]"
           >
             New source
           </Link>
@@ -101,12 +101,12 @@ export default async function SourcesPage({
               >
                 <div className="flex flex-col gap-1 pr-4">
                   <div className="flex min-w-0 items-start justify-between gap-3">
-                    <span className="min-w-0 truncate font-medium text-ink">
+                    <span className="min-w-0 truncate font-medium text-[var(--color-text-primary)]">
                       {s.name}
                     </span>
                     <StatusIndicator status={status} label={label} />
                   </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-dim">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--color-text-secondary)]">
                     <span>{sourceKindLabel(s.kind)}</span>
                     <span>{sourceRuntimeLabel(s.runtime)}</span>
                     <span>

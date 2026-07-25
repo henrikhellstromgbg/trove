@@ -19,7 +19,7 @@ export function DashboardAsk({ slug }: { slug: string }) {
   }
 
   return (
-    <div className="flex items-center gap-3 border border-line bg-paper px-5 py-4 transition-colors focus-within:border-line-strong">
+    <div className="flex items-center gap-3 border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-5 py-4 transition-colors focus-within:border-[var(--color-border)]">
       <input
         type="text"
         value={question}
@@ -31,11 +31,11 @@ export function DashboardAsk({ slug }: { slug: string }) {
           }
         }}
         placeholder="Ask anything in this project…"
-        className="flex-1 bg-transparent text-lg text-ink outline-none placeholder:text-ink-faint"
+        className="flex-1 bg-transparent text-lg text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
       />
       <button
         onClick={go}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ink text-canvas transition-opacity hover:opacity-90"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary)] text-[var(--color-text-inverse)] transition-opacity hover:opacity-90"
         aria-label="Ask"
       >
         <ArrowUp size={18} />

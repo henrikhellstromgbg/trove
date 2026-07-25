@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProject } from "@/app/project-context";
-import { Button } from "@/app/components/ui";
+import { Button } from "@/components/ui";
 
 export function RunNowButton({ id }: { id: string }) {
   const router = useRouter();
@@ -38,7 +38,7 @@ export function RunNowButton({ id }: { id: string }) {
       >
         {busy ? "running" : "run now"}
       </Button>
-      {error ? <span className="text-sm text-brand">{error}</span> : null}
+      {error ? <span className="text-sm text-[var(--color-accent)]">{error}</span> : null}
     </div>
   );
 }

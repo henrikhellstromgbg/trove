@@ -11,7 +11,7 @@ import {
   EmptyState,
   InlineError,
   StatusIndicator,
-} from "@/app/components/ui";
+} from "@/components/ui";
 import { describeStarterPipelineSchedule } from "@/lib/pipelines/templates";
 
 type Template = {
@@ -103,7 +103,7 @@ export function TemplatePicker() {
   }
 
   if (templates === null) {
-    return <p className="font-mono text-sm text-ink-faint">loading templates…</p>;
+    return <p className="font-mono text-sm text-[var(--color-text-tertiary)]">loading templates…</p>;
   }
 
   if (templates.length === 0) {
@@ -123,7 +123,7 @@ export function TemplatePicker() {
             key={template.id}
             leading={
               <span
-                className="text-xs font-medium text-ink-dim"
+                className="text-sm font-medium text-[var(--color-text-secondary)]"
                 title={template.cron}
               >
                 {describeStarterPipelineSchedule(template.cron)}
@@ -136,7 +136,7 @@ export function TemplatePicker() {
                   {template.installedPipelineId ? (
                     <Link
                       href={`/p/${project.slug}/pipelines/${template.installedPipelineId}`}
-                      className="text-xs font-medium text-ink-dim underline underline-offset-2 transition-colors hover:text-ink"
+                      className="text-sm font-medium text-[var(--color-text-secondary)] underline underline-offset-2 transition-colors hover:text-[var(--color-text-primary)]"
                     >
                       open
                     </Link>
@@ -144,7 +144,7 @@ export function TemplatePicker() {
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 text-xs text-ink-dim">
+                  <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
                     <input
                       type="checkbox"
                       checked={email[template.id] ?? false}
@@ -161,7 +161,7 @@ export function TemplatePicker() {
                     variant="secondary"
                     onClick={() => install(template.id)}
                     disabled={busyId === template.id}
-                    className="px-3 py-1.5 text-xs"
+                    className="px-3 py-1.5 text-sm"
                   >
                     {busyId === template.id ? "adding" : "add"}
                   </Button>
@@ -170,13 +170,13 @@ export function TemplatePicker() {
             }
           >
             <div className="flex min-w-0 flex-col gap-1">
-              <span className="truncate text-base font-medium text-ink">
+              <span className="truncate text-base font-medium text-[var(--color-text-primary)]">
                 {template.title}
               </span>
-              <span className="line-clamp-2 text-sm text-ink-dim">
+              <span className="line-clamp-2 text-sm text-[var(--color-text-secondary)]">
                 {template.description}
               </span>
-              <span className="text-xs text-ink-faint">
+              <span className="text-sm text-[var(--color-text-tertiary)]">
                 {template.pipelineName}
               </span>
             </div>

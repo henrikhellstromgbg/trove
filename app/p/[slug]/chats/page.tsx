@@ -4,7 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug } from "@/lib/projects";
-import { PageFrame, PageHeader } from "@/app/components/ui";
+import { PageFrame, PageHeader } from "@/components/ui";
 import { ChatArchive } from "./chat-archive";
 
 export default async function ChatsPage({
@@ -44,7 +44,7 @@ export default async function ChatsPage({
         action={
           <Link
             href={`${base}/ask`}
-            className="inline-flex items-center justify-center rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink"
+            className="inline-flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border-strong)]"
           >
             New chat
           </Link>

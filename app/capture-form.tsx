@@ -124,23 +124,23 @@ export function CaptureForm() {
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className={`relative flex w-full flex-col overflow-hidden rounded-2xl border border-line bg-paper px-5 py-8 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors sm:px-8 sm:py-14 ${
-        isDragging ? "ring-1 ring-capture/50" : ""
+      className={`relative flex w-full flex-col overflow-hidden rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-5 py-8 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors sm:px-8 sm:py-14 ${
+        isDragging ? "ring-1 ring-[var(--color-status-success)]" : ""
       }`}
     >
       {isDragging ? (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-canvas/60 backdrop-blur-sm">
-          <p className="font-mono text-sm text-ink-dim">release to keep</p>
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[var(--color-canvas)]/60 backdrop-blur-sm">
+          <p className="font-mono text-sm text-[var(--color-text-secondary)]">release to keep</p>
         </div>
       ) : null}
 
       {/* centered drop affordance: plus + mono headline + mono subline */}
       <div className="flex flex-col items-center text-center">
-        <Add size={40} className="text-brand" />
-        <p className="mt-6 max-w-xl font-mono text-[15px] font-semibold text-ink">
+        <Add size={40} className="text-[var(--color-accent)]" />
+        <p className="mt-6 max-w-xl font-mono text-[15px] font-semibold text-[var(--color-text-primary)]">
           PDF, DOCX, XLSX, JPG, PNG, TXT… anything really.
         </p>
-        <p className="mt-2 max-w-2xl font-mono text-[13px] leading-relaxed text-ink-faint">
+        <p className="mt-2 max-w-2xl font-mono text-sm leading-relaxed text-[var(--color-text-tertiary)]">
           Drop anything. I&apos;ll organize it, preserve the original, and make
           it searchable, browsable, and askable.
         </p>
@@ -162,18 +162,18 @@ export function CaptureForm() {
           }
           disabled={!!file || submitting}
           rows={1}
-          className="min-h-[52px] w-full resize-none rounded-lg border border-line-strong bg-canvas/30 px-4 py-3.5 text-base leading-snug text-ink transition-colors placeholder:text-ink-faint hover:border-ink/40 focus:border-ink focus:outline-none disabled:opacity-40"
+          className="min-h-[52px] w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-canvas)]/30 px-4 py-3.5 text-base leading-snug text-[var(--color-text-primary)] transition-colors placeholder:text-[var(--color-text-tertiary)] hover:border-[var(--color-border-strong)] focus:border-[var(--color-border-strong)] disabled:opacity-40"
         />
 
         {file ? (
-          <div className="mt-3 flex items-center justify-between rounded-lg border border-line bg-canvas/40 px-4 py-3 font-mono text-[11px] text-ink-dim">
+          <div className="mt-3 flex items-center justify-between rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-canvas)]/40 px-4 py-3 font-mono text-sm text-[var(--color-text-secondary)]">
             <span className="truncate">{file.name}</span>
             <button
               onClick={() => {
                 setFile(null);
                 setStatus("");
               }}
-              className="ml-3 text-ink-faint transition-colors hover:text-ink"
+              className="ml-3 text-[var(--color-text-tertiary)] transition-colors hover:text-[var(--color-text-primary)]"
               aria-label="remove file"
             >
               remove
@@ -182,8 +182,8 @@ export function CaptureForm() {
         ) : null}
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-            <span className={status === "saved" ? "text-capture" : ""}>
+          <div className="flex items-center gap-3 font-mono text-sm text-[var(--color-text-tertiary)]">
+            <span className={status === "saved" ? "text-[var(--color-status-success-text)]" : ""}>
               {pending ? "settling" : status || "ready"}
             </span>
           </div>
@@ -206,14 +206,14 @@ export function CaptureForm() {
             <button
               onClick={() => inputRef.current?.click()}
               disabled={submitting}
-              className="rounded-lg border border-line-strong px-4 py-2 text-sm font-medium text-ink-dim transition-colors hover:border-ink hover:text-ink disabled:opacity-40"
+              className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-primary)] disabled:opacity-40"
             >
               attach
             </button>
             <button
               onClick={submit}
               disabled={!ready}
-              className="rounded-lg border border-line-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink disabled:opacity-40 disabled:hover:border-line-strong"
+              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border-strong)] disabled:opacity-40 disabled:hover:border-[var(--color-border)]"
             >
               capture
             </button>

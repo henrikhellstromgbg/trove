@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProject } from "@/app/project-context";
-import { Button, InlineError, TextArea } from "@/app/components/ui";
+import { Button, InlineError, TextArea } from "@/components/ui";
 
 const EXAMPLES = [
   "every sunday at 9am, summarize my newsletters into three highlights",
@@ -47,7 +47,7 @@ export function NewPipelineForm() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-      <section className="flex flex-col gap-4 border border-line bg-paper p-6 md:p-8">
+      <section className="flex flex-col gap-4 border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-6 md:p-8">
         <TextArea
           id="pipeline-description"
           label="Pipeline prompt"
@@ -58,12 +58,12 @@ export function NewPipelineForm() {
           }}
           placeholder="Describe what should happen and when."
           rows={9}
-          className="min-h-[220px] resize-none border-0 bg-transparent p-0 text-base leading-relaxed text-ink placeholder:text-ink-faint focus-visible:ring-0"
+          className="min-h-[220px] resize-none border-0 bg-transparent p-0 text-base leading-relaxed text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus-visible:ring-0"
           containerClassName="gap-2"
         />
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-          <p className="font-mono text-xs text-ink-faint">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border-subtle)] pt-4">
+          <p className="font-mono text-sm text-[var(--color-text-tertiary)]">
             Press Cmd/Ctrl + Enter to save.
           </p>
           <Button onClick={submit} disabled={busy || description.trim().length < 10}>
@@ -75,7 +75,7 @@ export function NewPipelineForm() {
       </section>
 
       <aside className="flex flex-col gap-3">
-        <p className="text-sm font-medium text-ink">Examples</p>
+        <p className="text-sm font-medium text-[var(--color-text-primary)]">Examples</p>
         <div className="flex flex-col gap-2">
           {EXAMPLES.map((example) => (
             <Button
