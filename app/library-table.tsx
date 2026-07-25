@@ -1,14 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "@carbon/icons-react";
+import { Search } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { DataList, DataRow } from "@/components/ui/data-list";
 import {
-  Button,
-  DataList,
-  DataRow,
-  StatusIndicator,
-  type Status,
-} from "@/components/ui";
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import { Label } from "@/components/ui/label";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { StatusIndicator, type Status } from "@/components/ui/status-indicator";
 import { statusLabel } from "@/lib/status-label";
 
 export type Row = {
@@ -56,9 +62,6 @@ function addedLabel(iso: string): string {
     year: "numeric",
   });
 }
-
-const CONTROL =
-  "rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border)] focus:border-[var(--color-border)]";
 
 export function LibraryTable({
   slug,
@@ -123,74 +126,73 @@ export function LibraryTable({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[12rem] flex-1">
-          <Search
-            size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)]"
-          />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={limited ? "Search newest 200 items" : "Search title or source"}
-            aria-label={limited ? "Search newest 200 library items" : "Search library"}
-            className={`${CONTROL} w-full pl-9`}
-          />
+        <div className="flex min-w-[12rem] flex-1 flex-col gap-1">
+          <Label htmlFor="library-search">Search</Label>
+          <InputGroup>
+            <InputGroupAddon>
+              <Search aria-hidden="true" size={16} />
+            </InputGroupAddon>
+            <InputGroupInput
+              id="library-search"
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={limited ? "Search newest 200 items" : "Search title or source"}
+              aria-label={limited ? "Search newest 200 library items" : "Search library"}
+            />
+          </InputGroup>
         </div>
 
-        <label className="sr-only" htmlFor="type-filter">
-          Type
-        </label>
-        <select
-          id="type-filter"
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className={CONTROL}
-        >
-          <option value="all">All types</option>
-          {types.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="type-filter">Type</Label>
+          <NativeSelect
+            id="type-filter"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+          >
+            <NativeSelectOption value="all">All types</NativeSelectOption>
+            {types.map((type) => (
+              <NativeSelectOption key={type} value={type}>
+                {type}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </div>
 
-        <label className="sr-only" htmlFor="status-filter">
-          Status
-        </label>
-        <select
-          id="status-filter"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className={CONTROL}
-        >
-          <option value="all">All statuses</option>
-          <option value="ready">Ready</option>
-          <option value="processing">Processing</option>
-          <option value="pending">Pending</option>
-          <option value="failed">Failed</option>
-        </select>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="status-filter">Status</Label>
+          <NativeSelect
+            id="status-filter"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <NativeSelectOption value="all">All statuses</NativeSelectOption>
+            <NativeSelectOption value="ready">Ready</NativeSelectOption>
+            <NativeSelectOption value="processing">Processing</NativeSelectOption>
+            <NativeSelectOption value="pending">Pending</NativeSelectOption>
+            <NativeSelectOption value="failed">Failed</NativeSelectOption>
+          </NativeSelect>
+        </div>
 
-        <label className="sr-only" htmlFor="sort">
-          Sort
-        </label>
-        <select
-          id="sort"
-          value={sort}
-          onChange={(e) => setSort(e.target.value as SortKey)}
-          className={CONTROL}
-        >
-          <option value="added-desc">Added newest</option>
-          <option value="added-asc">Added oldest</option>
-          <option value="title-asc">Title A to Z</option>
-          <option value="type-asc">Type</option>
-        </select>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="sort">Sort</Label>
+          <NativeSelect
+            id="sort"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+          >
+            <NativeSelectOption value="added-desc">Added newest</NativeSelectOption>
+            <NativeSelectOption value="added-asc">Added oldest</NativeSelectOption>
+            <NativeSelectOption value="title-asc">Title A to Z</NativeSelectOption>
+            <NativeSelectOption value="type-asc">Type</NativeSelectOption>
+          </NativeSelect>
+        </div>
       </div>
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-start gap-2 py-6">
           <p className="text-sm text-[var(--color-text-tertiary)]">No matches.</p>
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="-ml-3">
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
             Clear filters
           </Button>
         </div>

@@ -230,7 +230,7 @@ export function IngestTokensPanel() {
                       <Button
                         variant="destructive"
                         onClick={() => revoke(t.id)}
-                        className="px-3 py-1.5 text-sm"
+                        size="sm"
                       >
                         Revoke
                       </Button>

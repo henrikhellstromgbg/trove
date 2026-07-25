@@ -117,9 +117,8 @@ export default async function PipelineDetailPage({
                       label={statusLabel(run.status)}
                     />
                   }
-                  className="items-start"
                 >
-                  <RunOutput output={run.output as PipelineRunOutput | null} />
+                  {renderRunOutput(run.output as PipelineRunOutput | null)}
                 </DataRow>
               ))}
             </DataList>
@@ -172,7 +171,7 @@ export default async function PipelineDetailPage({
   );
 }
 
-function RunOutput({ output }: { output: PipelineRunOutput | null }) {
+function renderRunOutput(output: PipelineRunOutput | null) {
   if (!output) {
     return <p className="text-sm text-[var(--color-text-tertiary)]">(No output)</p>;
   }
@@ -185,7 +184,7 @@ function RunOutput({ output }: { output: PipelineRunOutput | null }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <RunOutputBody output={output} />
+      {renderRunOutputBody(output)}
       {output.forgotten ? (
         <div className="mt-1 border-l-2 border-[var(--color-brand)] pl-3">
           <p className="text-sm font-medium text-[var(--color-brand)]">Forgotten</p>
@@ -198,7 +197,7 @@ function RunOutput({ output }: { output: PipelineRunOutput | null }) {
   );
 }
 
-function RunOutputBody({ output }: { output: PipelineRunOutput }) {
+function renderRunOutputBody(output: PipelineRunOutput) {
   if (output.shape === "text") {
     return (
       <p className="whitespace-pre-wrap text-base leading-relaxed text-[var(--color-text-primary)]">

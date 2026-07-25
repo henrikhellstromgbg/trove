@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { CheckmarkFilled, ErrorFilled, InformationFilled, WarningFilled } from '@carbon/icons-react';
+import { CheckmarkFilled, ErrorFilled, InformationFilled, WarningFilled } from '@/components/icons';
 import { cn } from '@/lib/cn';
 
 // Status badges always pair color with an icon (rule N9).

@@ -1,11 +1,3 @@
-// Light coloured-text status label, not a filled badge. Use Badge when the
-// status needs to read as a discrete chip; use StatusIndicator inside dense
-// lists and tables where a filled chip per row would be visual noise.
-//
-// Colour is always paired with the text label, so N9 holds. Error and review
-// use the darker --color-status-*-text tokens so the label clears the Lc 75
-// body-text tier; the lighter --color-status-* base tier is icon-only (Lc 45).
-
 import * as React from 'react';
 import { cn } from '@/lib/cn';
 

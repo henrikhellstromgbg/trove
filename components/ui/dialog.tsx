@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { Close } from '@carbon/icons-react';
+import { Close } from '@/components/icons';
 import { cn } from '@/lib/cn';
 
 // Radix handles focus trap, focus return, and Escape (A12).

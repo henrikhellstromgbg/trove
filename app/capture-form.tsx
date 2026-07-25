@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Add } from "@carbon/icons-react";
+import { Add } from "@/components/icons";
 import { runOnce } from "@/lib/submission-lock";
 import { useProject } from "./project-context";
 import { Button } from "@/components/ui";
@@ -131,7 +131,7 @@ export function CaptureForm() {
       }`}
     >
       {isDragging ? (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[var(--color-canvas)]/60 backdrop-blur-sm">
+        <div className="pointer-events-none absolute inset-0 z-[var(--z-overlay)] flex items-center justify-center bg-[var(--color-canvas)]/60 backdrop-blur-sm">
           <p className="font-mono text-sm text-[var(--color-text-secondary)]">Release to keep</p>
         </div>
       ) : null}
@@ -170,18 +170,19 @@ export function CaptureForm() {
         {file ? (
           <div className="mt-3 flex items-center justify-between rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-canvas)]/40 px-4 py-3 font-mono text-sm text-[var(--color-text-secondary)]">
             <span className="truncate">{file.name}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="-mr-2 ml-3 shrink-0"
-              onClick={() => {
-                setFile(null);
-                setStatus("");
-              }}
-              aria-label="Remove file"
-            >
-              Remove
-            </Button>
+            <div className="-mr-2 ml-3 shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setFile(null);
+                  setStatus("");
+                }}
+                aria-label="Remove file"
+              >
+                Remove
+              </Button>
+            </div>
           </div>
         ) : null}
 

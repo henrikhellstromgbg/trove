@@ -47,8 +47,8 @@ export { DataList, DataRow } from './data-list';
 export type { DataListProps, DataRowProps } from './data-list';
 
 // ConfirmDialog is the same API as AlertDialog (Radix alertdialog under it).
-export { AlertDialog, AlertDialog as ConfirmDialog } from './alert-dialog';
-export type { AlertDialogProps, AlertDialogProps as ConfirmDialogProps } from './alert-dialog';
+export { AlertDialog, ConfirmDialog } from './alert-dialog';
+export type { AlertDialogProps, ConfirmDialogProps } from './alert-dialog';
 
 // base-ds natives, available for new/idiomatic UI.
 export { Badge, badgeVariants } from './badge';

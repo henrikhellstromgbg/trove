@@ -1,10 +1,23 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const checker = fileURLToPath(new URL('./design-check.mjs', import.meta.url));
+const repoRoot = dirname(dirname(checker));
+
+const registry = JSON.parse(readFileSync(join(repoRoot, 'design-system/registry.json'), 'utf8'));
+const registeredEntrypoints = [...registry.components, ...registry.patterns]
+  .map(({ entrypoint }) => entrypoint)
+  .sort();
+const componentEntrypoints = readdirSync(join(repoRoot, 'components/ui'))
+  .filter((file) => file.endsWith('.tsx'))
+  .map((file) => file.replace(/\.tsx$/, ''))
+  .sort();
+if (JSON.stringify(registeredEntrypoints) !== JSON.stringify(componentEntrypoints)) {
+  throw new Error(`Registry/component drift:\nregistered=${registeredEntrypoints.join(',')}\nfiles=${componentEntrypoints.join(',')}`);
+}
 
 function runFixture(source, dir = 'app') {
   const root = mkdtempSync(join(tmpdir(), 'base-ds-design-check-'));
@@ -55,7 +68,7 @@ if (violations.status !== 1 || !violations.stderr.includes('N1') || !violations.
   throw new Error('Expected N1, N2, and N4 violations were not all reported.');
 }
 
-const clean = runFixture(`export function Clean() { return <div className="text-[var(--color-text-primary)]" />; }`);
+const clean = runFixture(`export function Fixture() { return <div className="text-[var(--color-text-primary)]" />; }`);
 if (clean.status !== 0) {
   console.error(clean.stderr || clean.stdout);
   throw new Error('A valid semantic-token fixture failed design-check.');
@@ -122,9 +135,88 @@ export function DataRow({ onPick }) {
 
 expectClean(runFixture(`
 export function Fixture({ onClose }) {
-  return <button type="button" aria-label="Close menu" onClick={onClose} className="fixed inset-0 z-30 cursor-pointer bg-[var(--color-overlay)]" />;
+  return <button type="button" aria-label="Close menu" onClick={onClose} className="fixed inset-0 z-[var(--z-overlay)] cursor-pointer bg-[var(--color-overlay)]" />;
 }
 `), 'N15 full-bleed scrim button is a dismiss layer, not a content control');
+
+// ---- Registry-backed agent consistency rules -----------------------------
+
+expectRules(runFixture(`
+function InventedPanel() { return <section>Details</section>; }
+export function Fixture() { return <InventedPanel />; }
+`), ['N5'], 'N5 view-local component invention');
+
+expectRules(runFixture(`
+function InventedPanel() { return <section>Details</section>; }
+export default () => <InventedPanel />;
+`), ['N5'], 'N5 invention beside anonymous default page');
+
+expectClean(runFixture(`
+export function DeleteProjectButton() { return <Button>Delete project</Button>; }
+`), 'N5 exported feature component in its own module');
+
+expectRules(runFixture(`
+export function InventedPanel() { return <section>Details</section>; }
+`), ['N5'], 'N5 exported component cannot bypass invention rule when it owns DOM');
+
+expectRules(runFixture(`
+import { Button } from '@/components/ui/not-in-registry';
+export function Fixture() { return <Button>Save changes</Button>; }
+`), ['I1'], 'I1 unapproved component entrypoint');
+
+expectClean(runFixture(`
+import { Button, EmptyState } from '@/components/ui';
+export function Fixture() { return <><Button>Save changes</Button><EmptyState title="No items" /></>; }
+`), 'I1 registered exports through a project UI barrel');
+
+expectRules(runFixture(`
+import { Button, InventedPanel } from '@/components/ui';
+export function Fixture() { return <><Button>Save changes</Button><InventedPanel /></>; }
+`), ['I1'], 'I1 unknown export through a project UI barrel');
+
+expectRules(runFixture(`
+import { Camera } from 'lucide-react';
+export function Fixture() { return <Camera />; }
+`), ['N13'], 'N13 third-party icon import');
+
+expectRules(runFixture(`
+import { Add } from '@carbon/icons-react';
+export function Fixture() { return <Add />; }
+`), ['N13'], 'N13 direct Carbon import bypasses icon barrel');
+
+expectRules(runFixture(`
+export function Fixture() {
+  return <><div className="z-50" /><div style={{ zIndex: 999 }} /></>;
+}
+`), ['N14'], 'N14 non-tokenized z-index');
+
+expectRules(runFixture(`
+export function Fixture() {
+  return <><button className="cursor-pointer outline-none">Save changes</button><button className="cursor-pointer outline-none focus-visible:bg-[var(--color-surface-hover)]">Cancel</button></>;
+}
+`, 'components/ui'), ['N7'], 'N7 local focus replacement');
+
+expectRules(runFixture(`
+import { Button } from '@/components/ui/button';
+export function Fixture() { return <Button className="rounded-none">Save changes</Button>; }
+`), ['A16'], 'A16 Button styling override');
+
+expectRules(runFixture(`
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { DataRow } from '@/components/ui/data-list';
+export function Fixture() {
+  return <><Badge className="px-8">Active</Badge><Card className="rounded-none" /><DataRow className="gap-8">Row</DataRow></>;
+}
+`), ['A16'], 'A16 chip, card, and row styling overrides');
+
+expectClean(runFixture(`
+import { Button } from '@/components/ui/button';
+import { Add } from '@/components/icons';
+export function Fixture() {
+  return <div className="relative z-[var(--z-overlay)]"><Button><Add aria-hidden="true" />Save changes</Button></div>;
+}
+`, 'src/app'), 'registry rules in src layout');
 
 // ---- C1: sentence case ----------------------------------------------------
 

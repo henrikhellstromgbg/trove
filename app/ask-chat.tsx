@@ -2,17 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowUp, ChevronDown, ChevronUp } from "@carbon/icons-react";
+import { ArrowUp, ChevronDown, ChevronUp } from "@/components/icons";
 import { drainNdjson, parseNdjsonRecord } from "@/lib/ndjson";
-import {
-  Button,
-  DataList,
-  DataRow,
-  IconButton,
-  PageFrame,
-  PageHeader,
-  SectionHeader,
-} from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { DataList, DataRow } from "@/components/ui/data-list";
+import { PageFrame } from "@/components/ui/page-frame";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionHeader } from "@/components/ui/section-header";
 
 type Citation = {
   n: number;
@@ -232,8 +228,39 @@ export function AskChat({
 
   const canSend = input.trim().length > 0 && !isBusy;
   const idle = messages.length === 0;
+  const sources = citations.length === 0 ? (
+    <p className="text-sm text-[var(--color-text-tertiary)]">No sources yet.</p>
+  ) : (
+    <DataList>
+      {citations.map((citation) => {
+        const host = hostOf(citation.source);
+        return (
+          <DataRow
+            key={citation.n}
+            href={`/p/${slug}/library/${citation.itemId}`}
+            selectLabel={`Open cited item ${citation.title}`}
+            leading={
+              <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
+                {String(citation.n).padStart(2, "0")}
+              </span>
+            }
+          >
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="truncate text-sm text-[var(--color-text-primary)]">
+                {citation.title}
+              </span>
+              {host ? (
+                <span className="text-sm text-[var(--color-text-tertiary)]">{host}</span>
+              ) : null}
+            </div>
+          </DataRow>
+        );
+      })}
+    </DataList>
+  );
 
   return (
+    /* design-check-exempt: The chat surface must fill Trove's responsive app shell below its mobile header. */
     <PageFrame maxWidth="5xl" className="min-h-[calc(100dvh-3.5rem)] md:min-h-[100dvh]">
       <PageHeader
         title="What do you want to know?"
@@ -249,7 +276,7 @@ export function AskChat({
                 ref={transcriptRef}
                 className="flex min-h-[20rem] flex-1 flex-col overflow-y-auto border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-5"
               >
-                <DataList className="flex flex-col gap-5 divide-y-0">
+                <DataList>
                   {messages.map((m, i) => (
                     <DataRow
                       key={i}
@@ -258,7 +285,6 @@ export function AskChat({
                           {i === messages.length - 1 && m.loading ? "Now" : "Message"}
                         </span>
                       }
-                      className="items-start py-0"
                     >
                       <div className="flex min-w-0 flex-col gap-3">
                         <div className="flex flex-col gap-1">
@@ -298,30 +324,31 @@ export function AskChat({
                 placeholder="What are you looking for?"
                 className="w-full resize-none bg-transparent px-4 py-3.5 pr-14 text-base text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
               />
-              <IconButton
-                onClick={() => submit(input)}
-                disabled={!canSend}
-                label="Send question"
-                className="absolute right-3 top-3 bg-[var(--color-action)] text-[var(--color-text-inverse)] hover:bg-[var(--color-action-hover)] hover:text-[var(--color-text-inverse)] disabled:opacity-30"
-              >
-                <ArrowUp size={18} />
-              </IconButton>
+              <div className="absolute right-3 top-3">
+                <Button
+                  onClick={() => submit(input)}
+                  disabled={!canSend}
+                  aria-label="Send question"
+                  size="icon"
+                >
+                  <ArrowUp size={18} />
+                </Button>
+              </div>
             </div>
           </div>
 
           {!idle ? (
-            <div className="md:hidden">
+            <div className="grid md:hidden">
               <Button
                 onClick={() => setSourcesOpen((v) => !v)}
                 variant="secondary"
-                className="w-full justify-between"
               >
                 <span>Files that are relevant</span>
-                {sourcesOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                {sourcesOpen ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
               </Button>
               {sourcesOpen ? (
                 <div className="mt-3 max-h-56 overflow-y-auto">
-                  <SourcesList citations={citations} slug={slug} />
+                  {sources}
                 </div>
               ) : null}
             </div>
@@ -332,7 +359,7 @@ export function AskChat({
           <aside className="hidden min-w-0 flex-col gap-4 border-l border-[var(--color-border-subtle)] pl-8 lg:flex">
             <SectionHeader title="Files that are relevant" />
             <div className="flex-1 overflow-y-auto">
-              <SourcesList citations={citations} slug={slug} />
+              {sources}
             </div>
           </aside>
         ) : null}
@@ -340,46 +367,5 @@ export function AskChat({
 
       {idle && overview ? <div className="mt-2">{overview}</div> : null}
     </PageFrame>
-  );
-}
-
-function SourcesList({
-  citations,
-  slug,
-}: {
-  citations: Citation[];
-  slug: string;
-}) {
-  if (citations.length === 0) {
-    return (
-      <p className="text-sm text-[var(--color-text-tertiary)]">
-        No sources yet.
-      </p>
-    );
-  }
-
-  return (
-    <DataList className="flex flex-col divide-y-0">
-      {citations.map((c) => {
-        const host = hostOf(c.source);
-        return (
-          <DataRow
-            key={c.n}
-            href={`/p/${slug}/library/${c.itemId}`}
-            selectLabel={`Open cited item ${c.title}`}
-            leading={
-              <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
-                {String(c.n).padStart(2, "0")}
-              </span>
-            }
-          >
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="truncate text-sm text-[var(--color-text-primary)]">{c.title}</span>
-              {host ? <span className="text-sm text-[var(--color-text-tertiary)]">{host}</span> : null}
-            </div>
-          </DataRow>
-        );
-      })}
-    </DataList>
   );
 }

@@ -1,130 +1,135 @@
 # Component inventory
 
-Status: `done` = built and pattern-verified. `todo` = generate with Claude Code
-using the new-component skill, based on the shadcn/ui equivalent adapted to
-RULES.md (the `done` components define the pattern to follow).
+Every TypeScript entrypoint in this directory is available for composition.
+Import each entrypoint through `@/components/ui/<entrypoint>`. The exact public
+exports are recorded in `design-system/registry.json`, which is the
+machine-readable contract checked by `scripts/registry-contract.test.mjs`.
 
-When a `todo` component is built, flip its status here.
+`Available` means the source file exists and is registered. It does not waive
+the usage rules in `design-rules/RULES.md`. Views must compose these components
+instead of restyling their internals or inventing local replacements.
 
-Every component follows the shadcn architecture (Radix primitive + cva + `cn`)
-reskinned onto `--color-*` semantic tokens. Never `npx shadcn add`: its output
-carries its own color scale and would reintroduce raw values. See the "Component
-source" section in the root README.md.
+## Forms and inputs
 
-## Forms
-
-| Component | Status | Notes |
+| Entrypoint | Status | Intended use |
 |---|---|---|
-| Button (incl. icon size) | done | Reference component, read first |
-| Label | done | in form-field.tsx |
-| Input | done | in form-field.tsx |
-| Textarea | done | in form-field.tsx |
-| FormField | done | Required wrapper for all inputs |
-| Select | done | Radix Select. Trigger matches Input; forwards FormField's id/aria/invalid |
-| Combobox | todo | cmdk + Popover |
-| Checkbox | todo | Radix Checkbox |
-| RadioGroup | todo | Radix RadioGroup |
-| Switch | todo | Radix Switch |
-| Slider | todo | Radix Slider |
-| DatePicker | todo | react-day-picker + Popover |
-| Calendar | todo | react-day-picker |
-| FileUpload | todo | custom, drag and drop + keyboard |
-| InputOTP | todo | input-otp |
+| `button` | Available | Primary, secondary, tertiary, destructive, icon, and loading actions |
+| `button-group` | Available | Visually joined actions or an action with adjacent context |
+| `checkbox` | Available | Independent boolean choice or row selection |
+| `combobox` | Available | Searchable selection from a large known set, including multi-value chips |
+| `field` | Available | Composable field groups, descriptions, and errors |
+| `file-upload` | Available | Labelled drag, drop, and file chooser input with error wiring |
+| `form-field` | Available | Required label, hint, input, textarea, and error wiring for ordinary forms |
+| `form-controls` | Available | Trove compatibility adapters for labelled text and textarea fields |
+| `input` | Available | Standalone text-like input primitive when `FormField` is composed separately |
+| `icon-button` | Available | Trove compatibility adapter for accessible icon-only actions |
+| `inline-error` | Available | Trove compatibility adapter for standalone recoverable errors |
+| `input-group` | Available | Input with a prefix, suffix, button, or supporting text |
+| `input-otp` | Available | One-time code entry |
+| `label` | Available | Standalone accessible label primitive |
+| `native-select` | Available | Native platform select where browser behavior is preferred |
+| `radio-group` | Available | One choice from fewer than five visible options |
+| `select` | Available | One choice from five or more fixed options |
+| `slider` | Available | Bounded numeric value where relative position matters |
+| `switch` | Available | Immediate on or off setting |
+| `textarea` | Available | Standalone multiline input primitive |
+| `toggle` | Available | Pressed or unpressed action state |
+| `toggle-group` | Available | Segmented single-choice or multi-choice controls |
+| `date-picker` | Available | Calendar-backed single date or date range selection |
 
-## Surfaces and layout
+## Pages, layout, and disclosure
 
-| Component | Status | Notes |
+| Entrypoint | Status | Intended use |
 |---|---|---|
-| Card | done | |
-| PageFrame | todo | Centered page column, gutters and rhythm. Source material: Trove's `page-frame.tsx` |
-| PageHeader | todo | Title, description, action slot. Source material: Trove's `page-header.tsx` |
-| SectionHeader | todo | Section title plus action slot. Source material: Trove's `section-header.tsx` |
-| Separator | todo | Radix Separator |
-| AspectRatio | todo | Radix AspectRatio |
-| ScrollArea | todo | Radix ScrollArea |
-| Resizable | todo | react-resizable-panels |
-| Collapsible | todo | Radix Collapsible |
-| Accordion | todo | Radix Accordion |
+| `accordion` | Available | Multiple disclosure sections where more than one may be useful |
+| `aspect-ratio` | Available | Stable media proportions |
+| `card` | Available | A bounded content group, never a default wrapper for every section |
+| `collapsible` | Available | One optional disclosure region |
+| `direction` | Available | Text direction context for bidirectional interfaces |
+| `page-frame` | Available | Standard page width, gutters, and vertical rhythm |
+| `page-header` | Available | Page title, description, and one action slot |
+| `resizable` | Available | User-adjustable adjacent panels |
+| `scroll-area` | Available | Constrained custom scroll region |
+| `section-header` | Available | Section title and optional action slot |
+| `separator` | Available | Semantic or visual separation between related groups |
 
-## Overlay
+## Overlays and menus
 
-| Component | Status | Notes |
+| Entrypoint | Status | Intended use |
 |---|---|---|
-| Dialog | done | |
-| AlertDialog | done | Radix AlertDialog. The only correct guard for a destructive action |
-| Sheet | todo | Dialog variant, side panel |
-| Drawer | todo | vaul |
-| Popover | todo | Radix Popover |
-| Tooltip | todo | Radix Tooltip |
-| HoverCard | todo | Radix HoverCard |
-| DropdownMenu | todo | Radix DropdownMenu |
-| ContextMenu | todo | Radix ContextMenu |
-| Command | todo | cmdk palette |
+| `alert-dialog` | Available | Confirmation guard for destructive or irreversible actions |
+| `command` | Available | Searchable command palette, commonly hosted by its provided dialog |
+| `context-menu` | Available | Pointer context actions that also have a discoverable alternative |
+| `dialog` | Available | Blocking decision or short self-contained task |
+| `drawer` | Available | Mobile details or task surface anchored to a screen edge |
+| `dropdown-menu` | Available | Compact secondary action menu |
+| `hover-card` | Available | Supplementary preview, never required information |
+| `menubar` | Available | Desktop-style persistent application command menus |
+| `popover` | Available | Light contextual details or controls on desktop |
+| `sheet` | Available | Non-blocking desktop side panel that preserves page context |
+| `tooltip` | Available | Brief supplementary label or explanation, never essential content |
 
 ## Navigation
 
-| Component | Status | Notes |
+| Entrypoint | Status | Intended use |
 |---|---|---|
-| Tabs | done | Two modes, link and button. NOT Radix, see "Tabs: why not Radix" below |
-| NavigationMenu | todo | Radix NavigationMenu |
-| Breadcrumb | todo | |
-| Pagination | todo | |
-| Sidebar | todo | |
+| `breadcrumb` | Available | Location within a hierarchy |
+| `carousel` | Available | Sequential browseable media or content items |
+| `navigation-menu` | Available | Site or product navigation with grouped destinations |
+| `pagination` | Available | Navigation across discrete result pages |
+| `sidebar` | Available | Responsive application navigation and grouped destinations |
+| `tabs` | Available | Peer views in link mode or accessible button mode |
 
-## Feedback
+## Data, content, and messaging
 
-| Component | Status | Notes |
+| Entrypoint | Status | Intended use |
 |---|---|---|
-| Alert | done | |
-| Badge | done | Status variants include icons (N9) |
-| Toast | todo | sonner, styled with tokens |
-| Progress | todo | Radix Progress |
-| Spinner | todo | extract from Button loading state |
-| Skeleton | done | |
-| EmptyState | done | custom |
-| StatusIndicator | done | Coloured-text status label for dense rows. Badge is the chip version |
+| `attachment` | Available | File or media attachment with metadata and actions |
+| `avatar` | Available | Person or entity identity, including groups and status badge |
+| `avatar-group` | Available | Compact collection of people with an overflow count |
+| `bubble` | Available | Compact conversational or annotation content |
+| `chart` | Available | Token-aware Recharts container, tooltip, legend, and styles |
+| `data-list` | Available | Repeated non-tabular records with the row layout owned by `DataRow` |
+| `data-table` | Available | Sortable, filterable, selectable, and paginated tabular data |
+| `item` | Available | Rich list or menu-like item with media, content, and actions slots |
+| `message` | Available | Structured message with avatar, header, body, and footer |
+| `message-scroller` | Available | Scroll and visibility behavior for a sequence of messages |
+| `table` | Available | Truly tabular data with comparable columns and headers |
 
-## Data
+## Feedback and status
 
-| Component | Status | Notes |
+| Entrypoint | Status | Intended use |
 |---|---|---|
-| Table | done | |
-| DataList | done | Row list for non-tabular content. Row owns its padding and layout (A15, A16) |
-| DataTable | todo | TanStack Table on top of Table |
-| Avatar | todo | Radix Avatar |
-| AvatarGroup | todo | custom |
-| Chart | todo | Recharts wrappers with token colors preapplied |
+| `alert` | Available | Persistent inline page or form message |
+| `async-state` | Available | Exhaustive loading, error, empty, and ready rendering |
+| `badge` | Available | Compact categorical or status chip |
+| `empty` | Available | Composable empty-content structure |
+| `empty-state` | Available | Opinionated empty collection with one clear next action |
+| `marker` | Available | Labelled visual marker with token-owned variants |
+| `progress` | Available | Determinate task or multi-step progress |
+| `skeleton` | Available | Layout-preserving loading placeholder |
+| `sonner` | Available | `Toaster` host for transient success or informational events |
+| `spinner` | Available | Compact indeterminate progress inside an existing surface |
+| `status-indicator` | Available | Dense text status with icon or count support |
 
-## Typography
+## Utility and media
 
-| Component | Status | Notes |
+| Entrypoint | Status | Intended use |
 |---|---|---|
-| Heading | todo | |
-| Text | todo | |
-| InlineCode | todo | |
-| Kbd | todo | |
-| Link | todo | underline on hover minimum, uses --color-text-link |
+| `calendar` | Available | Calendar grid and day selection, usually paired with a labelled field |
+| `kbd` | Available | Keyboard key or shortcut notation |
+| `typography` | Available | System heading, text, link, and inline code primitives |
 
-## Tabs: why not Radix
+## Tabs: link mode and button mode
 
-Learned during the first real adoption. Radix Tabs owns the state *and* the
-panels: `Content` must be a descendant of `Root`, and `Trigger` renders a
-button. Two common cases fall outside that model, and both appear in almost
-every real app:
+`tabs.tsx` intentionally supports two patterns behind one style contract:
 
-- **Link tabs.** The tabs are navigation (`?view=archived`, `/settings/billing`)
-  and the URL is the state. Radix renders triggers, not links, and does not
-  drive routing. Forcing it means either losing the URL or shadowing Radix state
-  with router state, which desyncs on back/forward.
-- **Externally rendered panels.** The panel content lives elsewhere in the tree,
-  is server-rendered, or is a sibling rather than a child. Radix `Content` has
-  to sit inside `Root`, so this needs a portal or a rewrite of the page tree.
+- Link mode uses `href`; the URL owns state and browser back and forward keep
+  working.
+- Button mode uses `tabId`, `panelId`, and `onSelect`; it implements roving
+  focus, Arrow, Home, End, `aria-selected`, and `aria-controls` for externally
+  rendered panels.
 
-`tabs.tsx` covers both behind one API and one set of styles: pass `href` for
-link mode, or `tabId`/`panelId` plus `onSelect` for button mode. Button mode
-implements the tablist keyboard contract by hand (roving tabindex,
-Arrow/Home/End, `aria-selected`, `aria-controls`).
-
-Radix Tabs is still the right answer for a self-contained tab group that owns
-its own panels and needs no URL. If you build that variant, add it beside this
-one rather than replacing it, and note both modes here.
+Use a URL when a tab represents a destination or a shareable view. Use button
+mode only when the panels are part of the current interaction and routing adds
+no value.

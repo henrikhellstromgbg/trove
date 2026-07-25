@@ -153,7 +153,7 @@ export function TemplatePicker() {
                     variant="secondary"
                     onClick={() => install(template.id)}
                     disabled={busyId === template.id}
-                    className="px-3 py-1.5 text-sm"
+                    size="sm"
                   >
                     {busyId === template.id ? "Adding" : "Add"}
                   </Button>

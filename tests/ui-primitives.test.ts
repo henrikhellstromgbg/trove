@@ -246,6 +246,35 @@ test("DataRow renders block children inside a block content wrapper", () => {
   });
 });
 
+test("DataRow keeps trailing actions above its stretched row control", () => {
+  withDom(() => {
+    const selected: string[] = [];
+    const view = renderComponent(
+      React.createElement(
+        DataRow,
+        {
+          onSelect: () => selected.push("row"),
+          selectLabel: "Open item",
+          trailing: React.createElement("button", { type: "button", "data-testid": "row-action" }, "Approve"),
+        },
+        "Item",
+      ),
+    );
+
+    const action = view.container.querySelector("[data-testid='row-action']") as HTMLButtonElement | null;
+    assert.ok(action);
+    assert.ok(
+      action.parentElement?.classList.contains("z-[var(--z-raised)]"),
+      "expected the trailing slot to use the tokenized raised layer",
+    );
+
+    action.click();
+    assert.deepEqual(selected, [], "the trailing action must not trigger the row control");
+
+    view.unmount();
+  });
+});
+
 test("Button asChild slots a single link child even though a loading sibling exists", () => {
   withDom(() => {
     // Regression: Button always renders a loading-spinner sibling before its

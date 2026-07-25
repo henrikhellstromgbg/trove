@@ -1,12 +1,9 @@
-import type { HTMLAttributes } from 'react';
+import * as React from 'react';
 import { cn } from '@/lib/cn';
-
-// Page-level content frame: centered column, standard gutters and rhythm.
-// Pure layout — spacing only, no colour tokens.
 
 export type PageFrameMaxWidth = '4xl' | '5xl';
 
-export interface PageFrameProps extends HTMLAttributes<HTMLElement> {
+export interface PageFrameProps extends React.HTMLAttributes<HTMLElement> {
   maxWidth?: PageFrameMaxWidth;
 }
 
@@ -15,15 +12,18 @@ const maxWidthClasses: Record<PageFrameMaxWidth, string> = {
   '5xl': 'max-w-5xl',
 };
 
-export function PageFrame({ maxWidth = '4xl', className, ...props }: PageFrameProps) {
+function PageFrame({ maxWidth = '4xl', className, ...props }: PageFrameProps) {
   return (
-    <section
+    <main
       className={cn(
-        'relative mx-auto flex w-full flex-col gap-8 px-6 pb-16 pt-16 md:px-10',
+        'mx-auto flex w-full flex-col gap-[var(--space-8)]',
+        'px-[var(--space-6)] py-[var(--space-12)] md:px-[var(--space-10)] md:py-[var(--space-16)]',
         maxWidthClasses[maxWidth],
-        className,
+        className
       )}
       {...props}
     />
   );
 }
+
+export { PageFrame };

@@ -1,26 +1,51 @@
-import type { HTMLAttributes, ReactNode } from 'react';
+import * as React from 'react';
 import { cn } from '@/lib/cn';
 
-// Compact, left-aligned empty state: a short explanation and an optional
-// action. Matches Trove's established inline "nothing here yet" pattern rather
-// than base-ds's large centred variant, which Trove does not use.
+// Empty states are an invitation to act: icon, one-line explanation, one action.
+// Copy rules: sentence case, plain verbs, no mood-only messaging (A11).
 
-export interface EmptyStateProps extends HTMLAttributes<HTMLDivElement> {
-  message: string;
-  action?: ReactNode;
+interface EmptyStateBaseProps extends React.HTMLAttributes<HTMLDivElement> {
+  icon?: React.ReactNode;
+  description?: string;
+  action?: React.ReactNode;
 }
 
-export function EmptyState({ message, action, className, ...props }: EmptyStateProps) {
+export type EmptyStateProps = EmptyStateBaseProps & (
+  | { title: string; message?: never }
+  | { message: string; title?: never }
+);
+
+function EmptyState({ icon, title, message, description, action, className, ...props }: EmptyStateProps) {
+  const compact = message !== undefined;
+  const primaryText = title ?? message;
+
   return (
     <div
       className={cn(
-        'flex flex-col items-start gap-3 text-[length:var(--text-sm)] text-[var(--color-text-secondary)]',
-        className,
+        'flex flex-col gap-[var(--space-3)]',
+        compact
+          ? 'items-start text-left'
+          : 'items-center justify-center p-[var(--space-12)] text-center',
+        className
       )}
       {...props}
     >
-      <p>{message}</p>
-      {action ? <div>{action}</div> : null}
+      {icon && <div aria-hidden="true" className="text-[var(--color-text-tertiary)]">{icon}</div>}
+      <p
+        className={cn(
+          compact
+            ? 'text-[length:var(--text-sm)] text-[var(--color-text-secondary)]'
+            : 'text-[length:var(--text-lg)] font-semibold text-[var(--color-text-primary)]'
+        )}
+      >
+        {primaryText}
+      </p>
+      {description && (
+        <p className="max-w-sm text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">{description}</p>
+      )}
+      {action && <div className="mt-[var(--space-2)]">{action}</div>}
     </div>
   );
 }
+
+export { EmptyState };

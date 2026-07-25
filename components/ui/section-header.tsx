@@ -1,16 +1,24 @@
-import type { HTMLAttributes, ReactNode } from 'react';
+import * as React from 'react';
 import { cn } from '@/lib/cn';
 
-export interface SectionHeaderProps extends HTMLAttributes<HTMLDivElement> {
+export interface SectionHeaderProps extends React.HTMLAttributes<HTMLElement> {
   title: string;
-  action?: ReactNode;
+  action?: React.ReactNode;
+  headingId?: string;
 }
 
-export function SectionHeader({ title, action, className, ...props }: SectionHeaderProps) {
+function SectionHeader({ title, action, headingId, className, ...props }: SectionHeaderProps) {
   return (
-    <div className={cn('flex items-center justify-between gap-4', className)} {...props}>
-      <h2 className="text-base font-medium text-[var(--color-text-primary)]">{title}</h2>
+    <header
+      className={cn('flex items-center justify-between gap-[var(--space-4)]', className)}
+      {...props}
+    >
+      <h2 id={headingId} className="text-[length:var(--text-lg)] font-semibold leading-[var(--leading-md)] text-[var(--color-text-primary)]">
+        {title}
+      </h2>
       {action ? <div className="shrink-0">{action}</div> : null}
-    </div>
+    </header>
   );
 }
+
+export { SectionHeader };

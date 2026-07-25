@@ -102,7 +102,7 @@ const SelectItem = React.forwardRef<
     className={cn(
       'relative flex cursor-pointer select-none items-center rounded-[var(--radius-sm)]',
       'py-2 pl-8 pr-3',
-      'text-[length:var(--text-sm)] text-[var(--color-text-primary)] outline-none',
+      'text-[length:var(--text-sm)] text-[var(--color-text-primary)]',
       'data-[highlighted]:bg-[var(--color-surface-hover)]',
       'focus-visible:bg-[var(--color-surface-hover)]',
       'data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50',

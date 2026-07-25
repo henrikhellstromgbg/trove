@@ -78,6 +78,10 @@ export default async function DigestPage({
       })
     : null;
 
+  const summary = output?.summary ?? "";
+  const highlights = output?.highlights ?? [];
+  const forgotten = output?.forgotten ?? null;
+
   return (
     <PageFrame maxWidth="5xl">
       <PageHeader
@@ -94,69 +98,59 @@ export default async function DigestPage({
       {!run ? (
         <EmptyState message="No digest yet. One runs every Sunday at 09:00, once Trove has things to chew on." />
       ) : (
-        <DigestBody output={output} />
-      )}
-    </PageFrame>
-  );
-}
-
-function DigestBody({ output }: { output: DigestOutput | null }) {
-  const summary = output?.summary ?? "";
-  const highlights = output?.highlights ?? [];
-  const forgotten = output?.forgotten ?? null;
-
-  return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="flex flex-col gap-8">
-        {summary ? (
-          <section className="flex flex-col gap-3">
-            <SectionHeader title="Summary" />
-            <div className="border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-6">
-              <p className="text-2xl leading-snug text-[var(--color-text-primary)] md:text-[28px]">
-                {summary}
-              </p>
-            </div>
-          </section>
-        ) : null}
-
-        {highlights.length > 0 ? (
-          <section className="flex flex-col gap-3">
-            <SectionHeader title="Highlights" />
-            <DataList>
-              {highlights.map((highlight, index) => (
-                <DataRow
-                  key={index}
-                  leading={
-                    <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                  }
-                >
-                  <p className="text-base leading-relaxed text-[var(--color-text-primary)]">
-                    {highlight}
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="flex flex-col gap-8">
+            {summary ? (
+              <section className="flex flex-col gap-3">
+                <SectionHeader title="Summary" />
+                <div className="border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-6">
+                  <p className="text-2xl leading-snug text-[var(--color-text-primary)] md:text-[28px]">
+                    {summary}
                   </p>
-                </DataRow>
-              ))}
-            </DataList>
-          </section>
-        ) : null}
-      </div>
+                </div>
+              </section>
+            ) : null}
 
-      {forgotten ? (
-        <aside className="flex flex-col gap-3">
-          <SectionHeader title="Forgotten" />
-          <div className="border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-6">
-            <p className="text-2xl italic leading-snug text-[var(--color-text-primary)]">
-              {forgotten.title ?? "(Untitled)"}
-            </p>
-            {forgotten.summary ? (
-              <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-secondary)]">
-                {forgotten.summary}
-              </p>
+            {highlights.length > 0 ? (
+              <section className="flex flex-col gap-3">
+                <SectionHeader title="Highlights" />
+                <DataList>
+                  {highlights.map((highlight, index) => (
+                    <DataRow
+                      key={index}
+                      leading={
+                        <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                      }
+                    >
+                      <p className="text-base leading-relaxed text-[var(--color-text-primary)]">
+                        {highlight}
+                      </p>
+                    </DataRow>
+                  ))}
+                </DataList>
+              </section>
             ) : null}
           </div>
-        </aside>
-      ) : null}
-    </div>
+
+          {forgotten ? (
+            <aside className="flex flex-col gap-3">
+              <SectionHeader title="Forgotten" />
+              <div className="border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-6">
+                <p className="text-2xl italic leading-snug text-[var(--color-text-primary)]">
+                  {forgotten.title ?? "(Untitled)"}
+                </p>
+                {forgotten.summary ? (
+                  <p className="mt-3 text-sm leading-relaxed text-[var(--color-text-secondary)]">
+                    {forgotten.summary}
+                  </p>
+                ) : null}
+              </div>
+            </aside>
+          ) : null}
+        </div>
+      )}
+    </PageFrame>
   );
 }

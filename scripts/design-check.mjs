@@ -6,11 +6,29 @@
 // parsed numerically, and modern color functions (oklab, lab, lch, color())
 // plus Tailwind palette utilities are caught.
 
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { basename, dirname, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
-const ROOTS = ['app', 'components', 'examples', 'lib'];
+const CHECKER_DIR = dirname(fileURLToPath(import.meta.url));
+const registryPath = existsSync(join(process.cwd(), 'design-system/registry.json'))
+  ? join(process.cwd(), 'design-system/registry.json')
+  : join(CHECKER_DIR, '../design-system/registry.json');
+const registry = JSON.parse(readFileSync(registryPath, 'utf8'));
+const ROOTS = registry.surfaces.scanRoots.flatMap((root) => [root, `src/${root}`]);
+const COMPONENT_ROOTS = [registry.surfaces.componentRoot, `src/${registry.surfaces.componentRoot}`];
+const UI_ENTRYPOINTS = new Map(
+  [...registry.components, ...registry.patterns].map((component) => [component.entrypoint, component]),
+);
+const UI_EXPORTS = new Set(
+  [...registry.components, ...registry.patterns].flatMap((component) => component.exports),
+);
+const SYSTEM_OWNED_CLASS_NAMES = new Set(
+  [...registry.components, ...registry.patterns]
+    .filter((component) => component.classNamePolicy === 'system-owned')
+    .flatMap((component) => component.exports),
+);
 const EXT = /\.(tsx|ts|jsx|js|css)$/;
 const SKIP_DIRS = new Set(['node_modules', '.next', 'dist', 'tokens']);
 
@@ -100,18 +118,21 @@ const RULES = [
   },
   {
     id: 'N7', desc: 'outline-none without focus-visible replacement',
-    test: (src) => {
-      const hits = [...src.matchAll(/outline-none|outline\s*:\s*none/gi)];
-      return src.includes('focus-visible') ? [] : hits;
-    },
+    test: (src) => [...src.matchAll(/outline\s*:\s*none[^;\n}]*(?:;|$)/gi)]
+      .filter((match) => !/focus-visible/i.test(match[0])),
   },
   {
-    id: 'N13', desc: 'only @carbon/icons-react is allowed for icons',
-    test: (src) => [...src.matchAll(/from\s+['"](lucide-react|react-icons|@heroicons|@tabler\/icons|@radix-ui\/react-icons|@fortawesome)['"]/gi)],
+    id: 'N13', desc: 'icons must be imported from components/icons.ts',
+    test: () => [],
   },
   {
     id: 'N14', desc: 'z-index outside the --z-* scale',
-    test: (src) => [...src.matchAll(/z-\[(?!var\(--z-)|z-index\s*:\s*(?!var\(--z-)\d|zIndex\s*:\s*\d/g)],
+    test: (src) => [
+      ...src.matchAll(/\bz-\d+\b/g),
+      ...src.matchAll(/\bz-\[(?!var\(--z-)[^\]]+\]/g),
+      ...src.matchAll(/z-index\s*:\s*(?!var\(--z-)/gi),
+      ...src.matchAll(/zIndex\s*:\s*(?!['"]var\(--z-)/g),
+    ],
   },
 ];
 
@@ -157,6 +178,62 @@ function classNamesFor(opening, declarations) {
   return parts.join(' ');
 }
 
+function isComponentLibraryFile(file) {
+  return COMPONENT_ROOTS.some((root) => file === root || file.startsWith(`${root}/`));
+}
+
+function pascalFileName(file) {
+  return basename(file).replace(/\.[^.]+$/, '').split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean).map((part) => part[0].toUpperCase() + part.slice(1)).join('');
+}
+
+function containsJsx(node) {
+  let found = false;
+  const visit = (child) => {
+    if (found) return;
+    if (ts.isJsxElement(child) || ts.isJsxSelfClosingElement(child) || ts.isJsxFragment(child)) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(child, visit);
+  };
+  visit(node);
+  return found;
+}
+
+function containsIntrinsicJsx(node) {
+  let found = false;
+  const visit = (child) => {
+    if (found) return;
+    const opening = ts.isJsxElement(child) ? child.openingElement
+      : ts.isJsxSelfClosingElement(child) ? child : undefined;
+    if (opening && /^[a-z]/.test(opening.tagName.getText())) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(child, visit);
+  };
+  visit(node);
+  return found;
+}
+
+function hasModifier(node, kind) {
+  return node.modifiers?.some((modifier) => modifier.kind === kind) ?? false;
+}
+
+function moduleName(node) {
+  return ts.isStringLiteral(node.moduleSpecifier) ? node.moduleSpecifier.text : '';
+}
+
+function uiEntrypoint(module) {
+  const match = /(?:^|\/)components\/ui(?:\/(.+))?$/.exec(module);
+  return match ? (match[1] ?? '') : undefined;
+}
+
+function isIconEntrypoint(module) {
+  return module === registry.imports.iconEntrypoint || /(?:^|\/)components\/icons(?:\.[jt]sx?)?$/.test(module);
+}
+
 const INTERACTIVE_PRIMITIVE = /\.(Trigger|Close|Item|Action|Cancel|Thumb|Tab|Link)$/;
 const NON_INTERACTIVE_TAG = /^(div|span|li|tr|td|th|p|section|article|header|footer|aside|nav|ul|ol|figure|img|svg)$/;
 const PADDING = /(?:^|\s)!?(?:p|px|pl|pr)-/;
@@ -168,6 +245,124 @@ const FIXED_SQUARE = /(?:^|\s)!?size-|(?:^|\s)!?h-\d.*(?:^|\s)!?w-\d|(?:^|\s)!?w
 const HUGGING_BG = /(?:^|\s)[^\s]*:bg-|bg-\[var\(--color-(?:surface-hover|surface-active|brand-subtle|status-\w+-bg)\)\]/;
 
 const AST_RULES = [
+  {
+    id: 'N5', desc: 'view-local component invented outside components/ui',
+    scope: (file) => !isComponentLibraryFile(file),
+    check(sourceFile, _context) {
+      const candidates = [];
+      const allowedName = pascalFileName(_context.file);
+      const visit = (node) => {
+        let name;
+        let body;
+        let isDefault = false;
+        if (ts.isFunctionDeclaration(node) && node.name) {
+          name = node.name.text;
+          body = node.body;
+          isDefault = hasModifier(node, ts.SyntaxKind.DefaultKeyword);
+        } else if (
+          ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer &&
+          (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))
+        ) {
+          name = node.name.text;
+          body = node.initializer.body;
+          const statement = node.parent?.parent;
+          isDefault = statement ? hasModifier(statement, ts.SyntaxKind.DefaultKeyword) : false;
+        }
+        const statement = ts.isVariableDeclaration(node) ? node.parent?.parent : node;
+        const isExported = statement ? hasModifier(statement, ts.SyntaxKind.ExportKeyword) : false;
+        if (name && /^[A-Z]/.test(name) && body && containsJsx(body)) {
+          candidates.push({ node, name, isDefault, isExported, hasIntrinsicJsx: containsIntrinsicJsx(body) });
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(sourceFile);
+      return candidates
+        .filter((candidate) => candidate.name !== allowedName && !candidate.isDefault)
+        .filter((candidate) => !candidate.isExported || candidate.hasIntrinsicJsx)
+        .map(({ node }) => ({ node }));
+    },
+  },
+  {
+    id: 'I1', desc: 'component import is not an approved registry entrypoint',
+    check(sourceFile) {
+      const hits = [];
+      for (const statement of sourceFile.statements) {
+        if (!ts.isImportDeclaration(statement)) continue;
+        const entrypoint = uiEntrypoint(moduleName(statement));
+        if (entrypoint === undefined) continue;
+        if (entrypoint) {
+          if (!UI_ENTRYPOINTS.has(entrypoint)) hits.push({ node: statement });
+          continue;
+        }
+        const bindings = statement.importClause?.namedBindings;
+        const validBarrelImport = bindings && ts.isNamedImports(bindings)
+          && bindings.elements.every((element) => UI_EXPORTS.has(element.propertyName?.text ?? element.name.text));
+        if (!validBarrelImport) hits.push({ node: statement });
+      }
+      return hits;
+    },
+  },
+  {
+    id: 'N13', desc: 'icons must be imported from components/icons.ts',
+    check(sourceFile, { file }) {
+      const hits = [];
+      for (const statement of sourceFile.statements) {
+        if (!ts.isImportDeclaration(statement)) continue;
+        const module = moduleName(statement);
+        const isDirectCarbon = module === registry.imports.iconPackage;
+        const isOtherIconLibrary = module !== registry.imports.iconPackage && !isIconEntrypoint(module)
+          && /(?:^|[/@-])icons?(?:[/@-]|$)|lucide/i.test(module);
+        const isIconBarrel = file === 'components/icons.ts' || file === 'src/components/icons.ts';
+        if ((isDirectCarbon && !isIconBarrel) || isOtherIconLibrary) hits.push({ node: statement });
+      }
+      return hits;
+    },
+  },
+  {
+    id: 'N7', desc: 'outline-none without a local focus-visible replacement',
+    check(sourceFile, { declarations }) {
+      const hits = [];
+      const visit = (node) => {
+        const opening = ts.isJsxElement(node) ? node.openingElement
+          : ts.isJsxSelfClosingElement(node) ? node : undefined;
+        if (opening) {
+          const classes = classNamesFor(opening, declarations);
+          if (/\boutline-none\b/.test(classes) && !/\bfocus-visible:(?:outline|ring)(?:-|\b)/.test(classes)) {
+            hits.push({ node: opening });
+          }
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(sourceFile);
+      return hits;
+    },
+  },
+  {
+    id: 'A16', desc: 'system component className overrides its owned styling',
+    check(sourceFile) {
+      const protectedNames = new Set();
+      for (const statement of sourceFile.statements) {
+        if (!ts.isImportDeclaration(statement)) continue;
+        const entrypoint = uiEntrypoint(moduleName(statement));
+        if (entrypoint === undefined || (entrypoint && !UI_ENTRYPOINTS.has(entrypoint))) continue;
+        for (const element of statement.importClause?.namedBindings?.elements ?? []) {
+          const importedName = element.propertyName?.text ?? element.name.text;
+          if (SYSTEM_OWNED_CLASS_NAMES.has(importedName)) protectedNames.add(element.name.text);
+        }
+      }
+      const hits = [];
+      const visit = (node) => {
+        const opening = ts.isJsxElement(node) ? node.openingElement
+          : ts.isJsxSelfClosingElement(node) ? node : undefined;
+        if (opening && protectedNames.has(opening.tagName.getText()) && jsxAttribute(opening, 'className')) {
+          hits.push({ node: opening });
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(sourceFile);
+      return hits;
+    },
+  },
   {
     id: 'A14', desc: 'interactive element without cursor-pointer',
     check(sourceFile, { declarations }) {
@@ -231,7 +426,7 @@ const AST_RULES = [
   {
     id: 'N15', desc: 'hand-built clickable element (use a system component)',
     // components/ui is where raw interactive elements are allowed to live.
-    scope: (file) => !file.startsWith('components/ui/'),
+    scope: (file) => !isComponentLibraryFile(file),
     check(sourceFile, { declarations }) {
       const hits = [];
       const visit = (node) => {

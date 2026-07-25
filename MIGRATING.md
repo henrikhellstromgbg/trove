@@ -3,6 +3,25 @@
 One section per breaking change, newest first. If a project adopted base-ds
 before a change listed here, apply the section.
 
+## Unreleased: registry, inventory, and Codex skills
+
+Adoption now installs the complete control plane referenced by its generated
+instructions:
+
+- `design-system/registry.json`, the machine-readable component and pattern contract
+- `components/ui/README.md`, the human-readable inventory (not component source)
+- agent skills under both `.claude/skills/` and `.codex/skills/`
+- the design, contrast, and scale checks
+
+Re-run `scripts/adopt.sh` to add any of these files that are missing. Adoption
+is non-destructive, so it will not replace an existing checker, inventory,
+registry, or skill. Compare and merge changed files manually when the target
+already has an older copy, then run `npm test`, `npm run design-check`,
+`npm run contrast-check`, and `npm run verify-scales`.
+
+The inventory is guidance, not an implicit component install. Continue copying
+component source one view at a time during migration.
+
 ## 1.2.0: exemptions replace skip lists
 
 `design-check` used to be edited when a file could not follow the rules. Trove
@@ -121,8 +140,9 @@ and put the brand color on `--brand-base`.
 Adoption is a copy, not a package install, so a project drifts from base-ds
 the moment either side changes. To resync:
 
-1. Re-run `scripts/adopt.sh` from base-ds against the project. It refreshes
-   tokens, rules, skills and checks, and skips anything it would clobber.
+1. Re-run `scripts/adopt.sh` from base-ds against the project. It installs
+   missing tokens, registry, inventory, rules, skills and checks, and skips
+   anything it would clobber. Compare existing copies manually when updating.
 2. Copy the components that changed by hand. `adopt.sh` does not install
    `components/ui/`, by design: a project that already has its own components
    should retire them view by view, not have them overwritten.

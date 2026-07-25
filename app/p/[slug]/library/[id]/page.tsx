@@ -2,7 +2,7 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Launch } from "@carbon/icons-react";
+import { ArrowLeft, Launch } from "@/components/icons";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug, listProjects } from "@/lib/projects";
 import { itemOriginalUrl } from "@/lib/item-url";

@@ -1,11 +1,3 @@
-// Vertical list of item rows: the list equivalent of Table, for content that
-// is not tabular. A row is static, a link, or a button. When interactive, a
-// stretched overlay makes the whole row the click target while trailing
-// controls stay clickable (z-10), so a row never nests a button inside a link.
-//
-// The row owns its own inner padding (A15): the hover surface must not sit
-// flush against the text. Views pass content, never row layout (A16).
-
 import * as React from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/cn';
@@ -83,11 +75,6 @@ function DataRow({
       )}
       {...props}
     >
-      {leading && <span className="shrink-0">{leading}</span>}
-      <div className="min-w-0 flex-1 text-[length:var(--text-sm)] text-[var(--color-text-primary)]">
-        {children}
-      </div>
-      {trailing && <span className="relative z-10 shrink-0">{trailing}</span>}
       {href ? (
         <Link href={href} className={overlay}>
           <span className="sr-only">{selectLabel}</span>
@@ -95,6 +82,11 @@ function DataRow({
       ) : onSelect ? (
         <button type="button" onClick={onSelect} aria-label={selectLabel} className={overlay} />
       ) : null}
+      {leading && <span className="shrink-0">{leading}</span>}
+      <div className="min-w-0 flex-1 text-[length:var(--text-sm)] text-[var(--color-text-primary)]">
+        {children}
+      </div>
+      {trailing && <span className="relative z-[var(--z-raised)] shrink-0">{trailing}</span>}
     </div>
   );
 }

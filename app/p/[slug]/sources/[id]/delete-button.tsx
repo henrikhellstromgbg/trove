@@ -7,6 +7,7 @@ import { Button, ConfirmDialog, InlineError } from "@/components/ui";
 import { requestJson } from "../request-json";
 import { deleteStateReducer, initialDeleteState } from "./delete-state";
 
+/* design-check-exempt: Next.js requires this feature-specific client boundary outside the shared UI library. */
 export function DeleteSourceButton({ id, name }: { id: string; name: string }) {
   const router = useRouter();
   const { project } = useProject();

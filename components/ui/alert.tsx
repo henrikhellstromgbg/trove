@@ -1,10 +1,10 @@
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { CheckmarkFilled, ErrorFilled, InformationFilled, WarningFilled } from '@carbon/icons-react';
+import { CheckmarkFilled, ErrorFilled, InformationFilled, WarningFilled } from '@/components/icons';
 import { cn } from '@/lib/cn';
 
-// Inline alert / banner. Color always paired with icon and text (N9).
-// Error/warning alerts get role=alert so they are announced.
+// Inline alert / banner. Color is always paired with an icon and text (N9).
+// Error and warning alerts use role=alert so they are announced immediately.
 
 const alertVariants = cva(
   'flex gap-3 rounded-[var(--radius-md)] border p-[var(--space-4)] text-[length:var(--text-sm)]',
@@ -21,24 +21,72 @@ const alertVariants = cva(
   }
 );
 
-const ICON = { error: ErrorFilled, warning: WarningFilled, success: CheckmarkFilled, info: InformationFilled } as const;
+const ICON = {
+  error: ErrorFilled,
+  warning: WarningFilled,
+  success: CheckmarkFilled,
+  info: InformationFilled,
+} as const;
 
-export interface AlertProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof alertVariants> {
+export interface AlertProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof alertVariants> {
   title?: string;
 }
 
-function Alert({ className, variant = 'info', title, children, ...props }: AlertProps) {
+function Alert({ className, variant = 'info', title, children, role, ...props }: AlertProps) {
   const Icon = ICON[variant ?? 'info'];
-  const role = variant === 'error' || variant === 'warning' ? 'alert' : 'status';
+  const defaultRole = variant === 'error' || variant === 'warning' ? 'alert' : 'status';
+  const hasComposableChild = React.Children.toArray(children).some(
+    (child) =>
+      React.isValidElement(child) &&
+      (child.type === AlertTitle || child.type === AlertDescription || child.type === AlertAction)
+  );
+
   return (
-    <div role={role} className={cn(alertVariants({ variant }), className)} {...props}>
+    <div
+      data-slot="alert"
+      role={role ?? defaultRole}
+      className={cn(alertVariants({ variant }), className)}
+      {...props}
+    >
       <Icon size={20} aria-hidden="true" className="mt-0.5 shrink-0" />
-      <div className="flex flex-col gap-1">
-        {title && <p className="font-semibold">{title}</p>}
-        {children && <div className="[&_a]:underline">{children}</div>}
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        {title && <AlertTitle>{title}</AlertTitle>}
+        {hasComposableChild ? children : children && <AlertDescription>{children}</AlertDescription>}
       </div>
     </div>
   );
 }
 
-export { Alert };
+function AlertTitle({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="alert-title"
+      className={cn('font-semibold', className)}
+      {...props}
+    />
+  );
+}
+
+function AlertDescription({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="alert-description"
+      className={cn('[&_a]:underline', className)}
+      {...props}
+    />
+  );
+}
+
+function AlertAction({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="alert-action"
+      className={cn('mt-[var(--space-2)] flex items-center gap-[var(--space-2)]', className)}
+      {...props}
+    />
+  );
+}
+
+export { Alert, AlertTitle, AlertDescription, AlertAction, alertVariants };

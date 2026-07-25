@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { TrashCan } from "@carbon/icons-react";
+import { TrashCan } from "@/components/icons";
 import { EmptyState, IconButton } from "@/components/ui";
 
 type Row = {

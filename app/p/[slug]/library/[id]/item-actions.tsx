@@ -132,19 +132,19 @@ export function ItemActions({
         <Button
           onClick={() => setMode(mode === "rename" ? null : "rename")}
           variant="secondary"
-          className="px-3 py-1.5 text-sm"
+          size="sm"
         >
           Rename
         </Button>
         <Button
           onClick={() => setMode(mode === "tags" ? null : "tags")}
           variant="secondary"
-          className="px-3 py-1.5 text-sm"
+          size="sm"
         >
           Tags
         </Button>
         {canReprocess ? (
-          <Button onClick={reprocess} disabled={busy} variant="secondary" className="px-3 py-1.5 text-sm">
+          <Button onClick={reprocess} disabled={busy} variant="secondary" size="sm">
             Reprocess
           </Button>
         ) : null}
@@ -152,19 +152,21 @@ export function ItemActions({
           <Button
             onClick={() => setMode(mode === "move" ? null : "move")}
             variant="secondary"
-            className="px-3 py-1.5 text-sm"
+            size="sm"
           >
             Move
           </Button>
         ) : null}
-        <Button
-          onClick={trash}
-          disabled={busy}
-          variant="destructive"
-          className="ml-auto px-3 py-1.5 text-sm"
-        >
-          Trash
-        </Button>
+        <div className="ml-auto">
+          <Button
+            onClick={trash}
+            disabled={busy}
+            variant="destructive"
+            size="sm"
+          >
+            Trash
+          </Button>
+        </div>
       </div>
 
       {mode === "rename" ? (

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Add } from "@carbon/icons-react";
+import { Add } from "@/components/icons";
 import { useProject } from "./project-context";
 import { CaptureForm } from "./capture-form";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui";
@@ -92,7 +92,7 @@ export function CaptureOverlay() {
     <>
       {/* ambient drop hint */}
       {dragging && !modalOpen ? (
-        <div className="pointer-events-none fixed inset-3 z-50 flex items-center justify-center rounded-3xl border-2 border-dashed border-[var(--color-status-success-border)] bg-[var(--color-canvas)]/70 backdrop-blur-sm">
+        <div className="pointer-events-none fixed inset-3 z-[var(--z-overlay)] flex items-center justify-center rounded-3xl border-2 border-dashed border-[var(--color-status-success-border)] bg-[var(--color-canvas)]/70 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3 text-[var(--color-status-success-text)]">
             <Add size={40} />
             <p className="font-mono text-sm">Drop into {project.name}</p>
@@ -102,7 +102,7 @@ export function CaptureOverlay() {
 
       {/* capture confirmation flash */}
       {flash ? (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-5 py-2.5 font-mono text-sm text-[var(--color-text-primary)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)]">
+        <div className="fixed bottom-6 left-1/2 z-[var(--z-toast)] -translate-x-1/2 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-5 py-2.5 font-mono text-sm text-[var(--color-text-primary)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)]">
           {flash}
         </div>
       ) : null}

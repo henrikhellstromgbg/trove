@@ -23,7 +23,7 @@ number. Done. It is immediately active in Claude Code, Codex, and reviews.
 - N10: Never use `title` case in UI copy. Sentence case everywhere: buttons, headings, labels, menu items. Machine-checked as C1
 - N11: Never use corporate filler copy ("Empower your workflow", "Seamlessly manage"). Plain verbs, specific nouns. See C3
 - N12: Never add animation without checking `prefers-reduced-motion` (handled globally in semantic.css, do not add JS-driven animation that bypasses it)
-- N13: Never use icons from any library except `@carbon/icons-react` `[lint]`
+- N13: Never use icons from any library except `@carbon/icons-react`, and import them through `@/components/icons` so the approved set stays centralized `[lint]`
 - N14: Never use `z-index` values outside the `--z-*` scale `[lint]`
 - N15: Never hand-build a clickable element in a view. No `onClick` on a `div` or `span`, no raw `<button>` with its own classes. Clickable things are system components: `Button`, `DataRow`, `Tabs` `[lint]`
 

@@ -71,16 +71,16 @@ export function ReviewQueue({
                   onClick={() => decide(r.id, "approve")}
                   disabled={busy[r.id]}
                   variant="secondary"
-                  className="px-3 py-1.5 text-sm"
+                  size="sm"
                 >
                   Approve
                 </Button>
               </motion.div>
               <Button
-                onClick={() => decide(r.id, "reject")}
-                disabled={busy[r.id]}
-                variant="secondary"
-                className="px-3 py-1.5 text-sm"
+                  onClick={() => decide(r.id, "reject")}
+                  disabled={busy[r.id]}
+                  variant="secondary"
+                  size="sm"
               >
                 Reject
               </Button>

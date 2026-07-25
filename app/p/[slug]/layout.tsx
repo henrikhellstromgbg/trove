@@ -28,7 +28,7 @@ export default async function ProjectLayout({
     <ProjectProvider project={project} projects={projects} counts={counts}>
       <Sidebar />
       <CaptureOverlay />
-      <main className="min-h-[100dvh] pt-14 md:ml-[280px] md:pt-0">{children}</main>
+      <div className="min-h-[100dvh] pt-14 md:ml-[280px] md:pt-0">{children}</div>
     </ProjectProvider>
   );
 }

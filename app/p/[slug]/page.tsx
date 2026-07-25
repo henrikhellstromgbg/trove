@@ -6,36 +6,8 @@ import { db, schema } from "@/lib/db";
 import { getProjectBySlug, getProjectCounts } from "@/lib/projects";
 import { WEEKLY_DIGEST_TEMPLATE_ID } from "@/lib/pipelines/templates";
 import { AskChat } from "@/app/ask-chat";
-import { SectionHeader } from "@/components/ui";
-
-function Panel({
-  title,
-  href,
-  children,
-}: {
-  title: string;
-  href?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-5">
-      <SectionHeader
-        title={title}
-        action={
-          href ? (
-            <Link
-              href={href}
-              className="text-sm text-[var(--color-text-tertiary)] transition-colors hover:text-[var(--color-text-primary)]"
-            >
-              View all
-            </Link>
-          ) : undefined
-        }
-      />
-      {children}
-    </div>
-  );
-}
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { SectionHeader } from "@/components/ui/section-header";
 
 type DigestOutput = {
   summary?: string;
@@ -118,75 +90,125 @@ export default async function ProjectDashboard({
   const overview = (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Processing — the old Ingestions, now status not a destination */}
-        <Panel title="Processing">
-          {counts.processing === 0 ? (
-            <p className="text-sm text-[var(--color-text-tertiary)]">Nothing in flight.</p>
-          ) : (
-            <>
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                <span className="font-mono text-[var(--color-brand)]">{counts.processing}</span> in flight
-              </p>
+        <Card>
+          <CardHeader>
+            <SectionHeader title="Processing" />
+          </CardHeader>
+          <CardContent>
+            {counts.processing === 0 ? (
+              <p className="text-sm text-[var(--color-text-tertiary)]">Nothing in flight.</p>
+            ) : (
+              <>
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  <span className="font-mono text-[var(--color-brand)]">{counts.processing}</span> in flight
+                </p>
+                <ul className="flex flex-col gap-1">
+                  {processingItems.map((it) => (
+                    <li key={it.id} className="flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
+                      <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[var(--color-surface-active)]" />
+                      <span className="truncate">{label(it)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Just captured */}
+        <Card>
+          <CardHeader>
+            <SectionHeader
+              title="Just captured"
+              action={
+                <Link
+                  href={`${base}/library`}
+                  className="text-sm text-[var(--color-text-tertiary)] transition-colors hover:text-[var(--color-text-primary)]"
+                >
+                  View all
+                </Link>
+              }
+            />
+          </CardHeader>
+          <CardContent>
+            {recent.length === 0 ? (
+              <p className="text-sm text-[var(--color-text-tertiary)]">Nothing yet. Drop something in.</p>
+            ) : (
               <ul className="flex flex-col gap-1">
-                {processingItems.map((it) => (
-                  <li key={it.id} className="flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
-                    <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[var(--color-surface-active)]" />
+                {recent.slice(0, 5).map((it) => (
+                  <li key={it.id} className="flex items-center gap-3 text-sm text-[var(--color-text-primary)]">
+                    <span className="w-7 shrink-0 font-mono text-sm text-[var(--color-text-tertiary)]">
+                      {TYPE_GLYPH[it.type] ?? it.type}
+                    </span>
                     <span className="truncate">{label(it)}</span>
                   </li>
                 ))}
               </ul>
-            </>
-          )}
-        </Panel>
-
-        {/* Just captured */}
-        <Panel title="Just captured" href={`${base}/library`}>
-          {recent.length === 0 ? (
-            <p className="text-sm text-[var(--color-text-tertiary)]">Nothing yet. Drop something in.</p>
-          ) : (
-            <ul className="flex flex-col gap-1">
-              {recent.slice(0, 5).map((it) => (
-                <li key={it.id} className="flex items-center gap-3 text-sm text-[var(--color-text-primary)]">
-                  <span className="w-7 shrink-0 font-mono text-sm text-[var(--color-text-tertiary)]">
-                    {TYPE_GLYPH[it.type] ?? it.type}
-                  </span>
-                  <span className="truncate">{label(it)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Panel>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Sources health */}
-        <Panel title="Sources health" href={`${base}/sources`}>
-          {counts.sources === 0 ? (
-            <p className="text-sm text-[var(--color-text-tertiary)]">No sources yet.</p>
-          ) : (
-            <p className="text-sm text-[var(--color-text-secondary)]">
-              <span className="font-mono">{counts.sources - counts.sourceErrors}</span> OK
-              {counts.sourceErrors > 0 ? (
-                <>
-                  {" · "}
-                  <span className="font-mono text-[var(--color-brand)]">{counts.sourceErrors} error</span>
-                </>
-              ) : null}
-            </p>
-          )}
-        </Panel>
+        <Card>
+          <CardHeader>
+            <SectionHeader
+              title="Sources health"
+              action={
+                <Link
+                  href={`${base}/sources`}
+                  className="text-sm text-[var(--color-text-tertiary)] transition-colors hover:text-[var(--color-text-primary)]"
+                >
+                  View all
+                </Link>
+              }
+            />
+          </CardHeader>
+          <CardContent>
+            {counts.sources === 0 ? (
+              <p className="text-sm text-[var(--color-text-tertiary)]">No sources yet.</p>
+            ) : (
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                <span className="font-mono">{counts.sources - counts.sourceErrors}</span> OK
+                {counts.sourceErrors > 0 ? (
+                  <>
+                    {" · "}
+                    <span className="font-mono text-[var(--color-brand)]">{counts.sourceErrors} error</span>
+                  </>
+                ) : null}
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Latest digest */}
-        <Panel title="Latest digest" href={`${base}/digest`}>
-          {!digest ? (
-            <p className="text-sm text-[var(--color-text-tertiary)]">No digest yet. Runs weekly.</p>
-          ) : (
-            <div className="flex flex-col gap-1.5">
-              <p className="line-clamp-2 text-sm text-[var(--color-text-primary)]">{digest.summary ?? "No summary yet"}</p>
-              <p className="font-mono text-sm text-[var(--color-text-tertiary)]">
-                {digest.highlights?.length ?? 0} highlights
-                {digest.forgotten?.title ? " · 1 forgotten pick" : ""}
-              </p>
-            </div>
-          )}
-        </Panel>
+        <Card>
+          <CardHeader>
+            <SectionHeader
+              title="Latest digest"
+              action={
+                <Link
+                  href={`${base}/digest`}
+                  className="text-sm text-[var(--color-text-tertiary)] transition-colors hover:text-[var(--color-text-primary)]"
+                >
+                  View all
+                </Link>
+              }
+            />
+          </CardHeader>
+          <CardContent>
+            {!digest ? (
+              <p className="text-sm text-[var(--color-text-tertiary)]">No digest yet. Runs weekly.</p>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <p className="line-clamp-2 text-sm text-[var(--color-text-primary)]">{digest.summary ?? "No summary yet"}</p>
+                <p className="font-mono text-sm text-[var(--color-text-tertiary)]">
+                  {digest.highlights?.length ?? 0} highlights
+                  {digest.forgotten?.title ? " · 1 forgotten pick" : ""}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
   );
 

@@ -5,7 +5,7 @@
 // Always use FormField for form inputs; never a bare <Input> with placeholder-as-label.
 
 import * as React from 'react';
-import { ErrorFilled } from '@carbon/icons-react';
+import { ErrorFilled } from '@/components/icons';
 import { cn } from '@/lib/cn';
 
 /* ---------- Label ---------- */

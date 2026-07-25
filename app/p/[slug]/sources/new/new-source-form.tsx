@@ -278,14 +278,15 @@ export function NewSourceForm() {
           <span className="text-sm text-[var(--color-text-secondary)]" aria-live="polite">
             {busy ? "Saving…" : "Ready when you are"}
           </span>
-          <Button
-            type="submit"
-            disabled={!canSubmit}
-            aria-busy={busy}
-            className="shrink-0"
-          >
-            {busy ? "Saving…" : "Add source"}
-          </Button>
+          <div className="shrink-0">
+            <Button
+              type="submit"
+              disabled={!canSubmit}
+              aria-busy={busy}
+            >
+              {busy ? "Saving…" : "Add source"}
+            </Button>
+          </div>
         </div>
       </div>
     </form>

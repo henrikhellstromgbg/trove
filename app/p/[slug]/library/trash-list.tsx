@@ -102,7 +102,7 @@ export function TrashList({
                           onClick={() => restore(r.id)}
                           disabled={busy[r.id]}
                           variant="secondary"
-                          className="px-3 py-1.5 text-sm"
+                          size="sm"
                         >
                           Restore
                         </Button>
@@ -111,7 +111,7 @@ export function TrashList({
                         onClick={() => setConfirming(r)}
                         disabled={busy[r.id]}
                         variant="destructive"
-                        className="px-3 py-1.5 text-sm"
+                        size="sm"
                       >
                         Delete
                       </Button>

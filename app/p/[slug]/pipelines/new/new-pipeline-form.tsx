@@ -82,8 +82,8 @@ export function NewPipelineForm() {
             <Button
               key={example}
               variant="secondary"
+              size="lg"
               onClick={() => setDescription(example)}
-              className="h-auto min-h-11 items-start justify-start px-4 py-3 text-left"
             >
               <span className="whitespace-normal text-sm leading-relaxed">
                 {example}
