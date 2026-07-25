@@ -29,13 +29,6 @@ type ChatMessage = {
   error: string | null;
 };
 
-const STARTERS = [
-  "What did I capture recently?",
-  "Summarize the key themes across my sources.",
-  "What should I revisit that I might have forgotten?",
-  "Which sources are most relevant to my current focus?",
-];
-
 function hostOf(source: string | null): string | null {
   if (!source || !/^https?:\/\//i.test(source)) return null;
   try {
@@ -249,64 +242,48 @@ export function AskChat({
 
       <div className={`grid min-h-0 gap-8 ${idle ? "" : "lg:grid-cols-[minmax(0,1fr)_20rem]"}`}>
         <div className="flex min-w-0 flex-col gap-6">
-          <SectionHeader title="Conversation" />
-          <div
-            ref={transcriptRef}
-            className="flex min-h-[20rem] flex-1 flex-col overflow-y-auto border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-5"
-          >
-            {messages.length === 0 ? (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col gap-2">
-                  {STARTERS.map((s) => (
-                    <Button
-                      key={s}
-                      onClick={() => submit(s)}
-                      variant="secondary"
-                      className="justify-start text-left"
+          {!idle ? (
+            <>
+              <SectionHeader title="Conversation" />
+              <div
+                ref={transcriptRef}
+                className="flex min-h-[20rem] flex-1 flex-col overflow-y-auto border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-5"
+              >
+                <DataList className="flex flex-col gap-5 divide-y-0">
+                  {messages.map((m, i) => (
+                    <DataRow
+                      key={i}
+                      leading={
+                        <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
+                          {i === messages.length - 1 && m.loading ? "Now" : "Message"}
+                        </span>
+                      }
+                      className="items-start py-0"
                     >
-                      {s}
-                    </Button>
-                  ))}
-                </div>
-                <p className="text-sm text-[var(--color-text-tertiary)]">
-                  Start with a question or pick a common prompt.
-                </p>
-              </div>
-            ) : (
-              <DataList className="flex flex-col gap-5 divide-y-0">
-                {messages.map((m, i) => (
-                  <DataRow
-                    key={i}
-                    leading={
-                      <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
-                        {i === messages.length - 1 && m.loading ? "Now" : "Message"}
-                      </span>
-                    }
-                    className="items-start py-0"
-                  >
-                    <div className="flex min-w-0 flex-col gap-3">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-[var(--color-text-primary)]">You</span>
-                        <p className="text-base text-[var(--color-text-primary)]">{m.question}</p>
+                      <div className="flex min-w-0 flex-col gap-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm font-medium text-[var(--color-text-primary)]">You</span>
+                          <p className="text-base text-[var(--color-text-primary)]">{m.question}</p>
+                        </div>
+                        {m.error ? (
+                          <p className="text-sm text-[var(--color-brand)]">{m.error}</p>
+                        ) : (
+                          <p className="whitespace-pre-wrap text-base leading-relaxed text-[var(--color-text-primary)]">
+                            {m.answer}
+                            {m.loading && !m.answer ? (
+                              <span className="text-[var(--color-text-tertiary)]">Thinking…</span>
+                            ) : null}
+                          </p>
+                        )}
                       </div>
-                      {m.error ? (
-                        <p className="text-sm text-[var(--color-brand)]">{m.error}</p>
-                      ) : (
-                        <p className="whitespace-pre-wrap text-base leading-relaxed text-[var(--color-text-primary)]">
-                          {m.answer}
-                          {m.loading && !m.answer ? (
-                            <span className="text-[var(--color-text-tertiary)]">Thinking…</span>
-                          ) : null}
-                        </p>
-                      )}
-                    </div>
-                  </DataRow>
-                ))}
-              </DataList>
-            )}
-          </div>
+                    </DataRow>
+                  ))}
+                </DataList>
+              </div>
+            </>
+          ) : null}
 
-          <div className="border-t border-[var(--color-border-subtle)] pt-4">
+          <div className={!idle ? "border-t border-[var(--color-border-subtle)] pt-4" : ""}>
             <div className="relative border border-[var(--color-border-subtle)] bg-[var(--color-surface)] focus-within:border-[var(--color-border)]">
               <textarea
                 value={input}
