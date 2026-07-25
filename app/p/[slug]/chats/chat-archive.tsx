@@ -83,7 +83,7 @@ export function ChatArchive({
                 className="group flex items-center gap-3 border-b border-[var(--color-border-subtle)] last:border-b-0"
               >
                 <Link
-                  href={`/p/${slug}/ask?conversation=${row.id}`}
+                  href={`/p/${slug}?conversation=${row.id}`}
                   className="flex min-w-0 flex-1 items-baseline justify-between gap-4 py-4 transition-colors"
                 >
                   <span className="min-w-0 truncate text-base text-[var(--color-text-primary)] transition-colors group-hover:text-[var(--color-brand)]">

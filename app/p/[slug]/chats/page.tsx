@@ -43,7 +43,7 @@ export default async function ChatsPage({
         description={`${conversations.length} saved conversations in ${project.name}.`}
         action={
           <Link
-            href={`${base}/ask`}
+            href={base}
             className="inline-flex items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition-colors hover:border-[var(--color-border-strong)]"
           >
             New chat

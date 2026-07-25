@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowUp, ChevronDown, ChevronUp } from "@carbon/icons-react";
 import { drainNdjson, parseNdjsonRecord } from "@/lib/ndjson";
@@ -49,10 +49,14 @@ export function AskChat({
   projectId,
   slug,
   projectName,
+  overview,
 }: {
   projectId: string;
   slug: string;
   projectName: string;
+  // Rendered below the ask box while the conversation is empty: the project's
+  // status at a glance. Hidden once a question is asked.
+  overview?: ReactNode;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -234,15 +238,16 @@ export function AskChat({
   }, [projectId, submit]);
 
   const canSend = input.trim().length > 0 && !isBusy;
+  const idle = messages.length === 0;
 
   return (
     <PageFrame maxWidth="5xl" className="min-h-[calc(100dvh-3.5rem)] md:min-h-[100dvh]">
       <PageHeader
-        title={`Ask in ${projectName}`}
-        description="Project-scoped answers with citations and saved conversations."
+        title="What do you want to know?"
+        description={`Ask, or pick up where you left off in ${projectName}.`}
       />
 
-      <div className="grid min-h-0 gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className={`grid min-h-0 gap-8 ${idle ? "" : "lg:grid-cols-[minmax(0,1fr)_20rem]"}`}>
         <div className="flex min-w-0 flex-col gap-6">
           <SectionHeader title="Conversation" />
           <div
@@ -327,30 +332,36 @@ export function AskChat({
             </div>
           </div>
 
-          <div className="md:hidden">
-            <Button
-              onClick={() => setSourcesOpen((v) => !v)}
-              variant="secondary"
-              className="w-full justify-between"
-            >
-              <span>Files that are relevant</span>
-              {sourcesOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </Button>
-            {sourcesOpen ? (
-              <div className="mt-3 max-h-56 overflow-y-auto">
-                <SourcesList citations={citations} slug={slug} />
-              </div>
-            ) : null}
-          </div>
+          {!idle ? (
+            <div className="md:hidden">
+              <Button
+                onClick={() => setSourcesOpen((v) => !v)}
+                variant="secondary"
+                className="w-full justify-between"
+              >
+                <span>Files that are relevant</span>
+                {sourcesOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </Button>
+              {sourcesOpen ? (
+                <div className="mt-3 max-h-56 overflow-y-auto">
+                  <SourcesList citations={citations} slug={slug} />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
-        <aside className="hidden min-w-0 flex-col gap-4 border-l border-[var(--color-border-subtle)] pl-8 lg:flex">
-          <SectionHeader title="Files that are relevant" />
-          <div className="flex-1 overflow-y-auto">
-            <SourcesList citations={citations} slug={slug} />
-          </div>
-        </aside>
+        {!idle ? (
+          <aside className="hidden min-w-0 flex-col gap-4 border-l border-[var(--color-border-subtle)] pl-8 lg:flex">
+            <SectionHeader title="Files that are relevant" />
+            <div className="flex-1 overflow-y-auto">
+              <SourcesList citations={citations} slug={slug} />
+            </div>
+          </aside>
+        ) : null}
       </div>
+
+      {idle && overview ? <div className="mt-2">{overview}</div> : null}
     </PageFrame>
   );
 }

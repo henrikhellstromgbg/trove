@@ -120,7 +120,9 @@ export function Sidebar() {
   const prefersReducedMotion = useReducedMotion();
 
   const base = `/p/${project.slug}`;
-  const askHref = `${base}/ask`;
+  // Ask is the project home now, so it is active only on the exact home path
+  // (startsWith would light it up on every sub-route).
+  const askActive = pathname === base;
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 768px)");
@@ -370,16 +372,16 @@ export function Sidebar() {
 
         {/* destinations */}
         <nav className="flex flex-col gap-0.5">
-          {/* Ask is its own workspace now */}
+          {/* Ask is the project home */}
           <Link
-            href={askHref}
+            href={base}
             onClick={closeMobile}
-            aria-current={isActive("ask") ? "page" : undefined}
+            aria-current={askActive ? "page" : undefined}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
-              isActive("ask") ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
+              askActive ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
-            <Chat size={18} className={`shrink-0 ${isActive("ask") ? "text-[var(--color-brand)]" : "text-[var(--color-text-secondary)]"}`} />
+            <Chat size={18} className={`shrink-0 ${askActive ? "text-[var(--color-brand)]" : "text-[var(--color-text-secondary)]"}`} />
             <span className="min-w-0 truncate">Ask</span>
           </Link>
           <Link

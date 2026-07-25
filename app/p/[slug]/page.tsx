@@ -5,8 +5,8 @@ import { notFound } from "next/navigation";
 import { db, schema } from "@/lib/db";
 import { getProjectBySlug, getProjectCounts } from "@/lib/projects";
 import { WEEKLY_DIGEST_TEMPLATE_ID } from "@/lib/pipelines/templates";
-import { DashboardAsk } from "@/app/dashboard-ask";
-import { PageFrame, PageHeader, SectionHeader } from "@/components/ui";
+import { AskChat } from "@/app/ask-chat";
+import { SectionHeader } from "@/components/ui";
 
 function Panel({
   title,
@@ -115,16 +115,8 @@ export default async function ProjectDashboard({
     return it.title ?? it.source ?? "(Untitled)";
   }
 
-  return (
-    <PageFrame maxWidth="4xl">
-      <PageHeader
-        title="What do you want to know?"
-        description={`Ask, or pick up where you left off in ${project.name}.`}
-      />
-
-      <DashboardAsk slug={project.slug} />
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+  const overview = (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Processing — the old Ingestions, now status not a destination */}
         <Panel title="Processing">
           {counts.processing === 0 ? (
@@ -196,6 +188,14 @@ export default async function ProjectDashboard({
           )}
         </Panel>
       </div>
-    </PageFrame>
+  );
+
+  return (
+    <AskChat
+      projectId={project.id}
+      slug={project.slug}
+      projectName={project.name}
+      overview={overview}
+    />
   );
 }
