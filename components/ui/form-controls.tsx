@@ -57,13 +57,28 @@ export function FieldError({ id, message, className }: FieldErrorProps) {
 const fieldBase =
   'w-full rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[length:var(--text-sm)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] transition-colors duration-[var(--duration-fast)] hover:border-[var(--color-border-strong)] disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-[var(--color-status-error)]';
 
-function describedBy(error: string | null | undefined, errorId: string, ariaDescribedBy?: string) {
-  return cn(error ? errorId : undefined, ariaDescribedBy) || undefined;
+function describedBy(
+  ids: Array<string | undefined>,
+  ariaDescribedBy?: string,
+) {
+  return cn(...ids, ariaDescribedBy) || undefined;
+}
+
+// A permanently visible description under the label. Format hints and any
+// information needed to fill the field live here, never in the placeholder
+// (U5). Wired to the control via aria-describedby.
+function FieldDescription({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <p id={id} className="text-[length:var(--text-sm)] text-[var(--color-text-tertiary)]">
+      {children}
+    </p>
+  );
 }
 
 export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> {
   id: string;
   label?: string;
+  description?: ReactNode;
   error?: string | null;
   containerClassName?: string;
 }
@@ -71,6 +86,7 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
 export function TextField({
   id,
   label,
+  description,
   error,
   className,
   containerClassName,
@@ -78,14 +94,16 @@ export function TextField({
   ...props
 }: TextFieldProps) {
   const errorId = `${id}-error`;
+  const descId = description ? `${id}-desc` : undefined;
   return (
     <div className={cn('flex flex-col gap-1.5', containerClassName)}>
       {label ? <FieldLabel htmlFor={id}>{label}</FieldLabel> : null}
+      {description ? <FieldDescription id={descId!}>{description}</FieldDescription> : null}
       <input
         id={id}
         className={cn(fieldBase, 'h-11', className)}
         aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy(error, errorId, ariaDescribedBy)}
+        aria-describedby={describedBy([descId, error ? errorId : undefined], ariaDescribedBy)}
         {...props}
       />
       <FieldError id={errorId} message={error} />
@@ -96,6 +114,7 @@ export function TextField({
 export interface TextAreaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'id'> {
   id: string;
   label?: string;
+  description?: ReactNode;
   error?: string | null;
   containerClassName?: string;
 }
@@ -103,6 +122,7 @@ export interface TextAreaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaE
 export function TextArea({
   id,
   label,
+  description,
   error,
   className,
   containerClassName,
@@ -110,14 +130,16 @@ export function TextArea({
   ...props
 }: TextAreaProps) {
   const errorId = `${id}-error`;
+  const descId = description ? `${id}-desc` : undefined;
   return (
     <div className={cn('flex flex-col gap-1.5', containerClassName)}>
       {label ? <FieldLabel htmlFor={id}>{label}</FieldLabel> : null}
+      {description ? <FieldDescription id={descId!}>{description}</FieldDescription> : null}
       <textarea
         id={id}
         className={cn(fieldBase, 'min-h-24', className)}
         aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy(error, errorId, ariaDescribedBy)}
+        aria-describedby={describedBy([descId, error ? errorId : undefined], ariaDescribedBy)}
         {...props}
       />
       <FieldError id={errorId} message={error} />

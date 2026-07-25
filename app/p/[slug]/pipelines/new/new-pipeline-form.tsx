@@ -51,12 +51,13 @@ export function NewPipelineForm() {
         <TextArea
           id="pipeline-description"
           label="Pipeline prompt"
+          description="Describe what should happen and when, in plain language."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
           }}
-          placeholder="Describe what should happen and when."
+          placeholder="Every Monday, summarise what's new in my sources."
           rows={9}
           className="min-h-[220px] resize-none border-0 bg-transparent p-0 text-base leading-relaxed text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus-visible:ring-0"
           containerClassName="gap-2"

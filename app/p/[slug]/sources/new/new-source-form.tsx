@@ -153,9 +153,10 @@ export function NewSourceForm() {
           <TextField
             id="link-selector"
             label="Link selector, optional"
+            description="A CSS selector for the links to follow. Leave empty to scan the whole page."
             value={selector}
             onChange={(e) => setSelector(e.target.value)}
-            placeholder="e.g. article a, .post-list a"
+            placeholder="article a, .post-list a"
             className="font-mono"
           />
           <label className="flex items-start gap-2 text-sm text-[var(--color-text-secondary)]">
@@ -176,17 +177,12 @@ export function NewSourceForm() {
         <TextField
           id="channel-id"
           label="Channel ID"
+          description="The bot must already be invited to this channel."
           value={channelId}
           onChange={(e) => setChannelId(e.target.value)}
           placeholder="C0123456789"
           className="font-mono"
-          aria-describedby="channel-id-note"
         />
-      ) : null}
-      {kind === "slack_channel" ? (
-        <p id="channel-id-note" className="-mt-4 text-sm text-[var(--color-text-tertiary)]">
-          The bot must already be invited to this channel.
-        </p>
       ) : null}
 
       {isLocal ? (
@@ -201,6 +197,7 @@ export function NewSourceForm() {
           <TextField
             id="mbox-path"
             label="Mbox path"
+            description="The full path to a .mbox file on your Mac. The desktop app can only read a path you approved."
             value={mboxPath}
             onChange={(e) => setMboxPath(e.target.value)}
             placeholder="~/Library/Mail/.../INBOX.mbox"
@@ -209,32 +206,31 @@ export function NewSourceForm() {
           <TextArea
             id="sender-allow"
             label="Only from, optional"
+            description="One address or domain per line. Leave empty to take everything."
             value={senderAllow}
             onChange={(e) => setSenderAllow(e.target.value)}
             rows={2}
-            placeholder="one address or domain per line"
+            placeholder="hello@acme.com"
             className="resize-y font-mono"
-            aria-describedby="sender-allow-note"
           />
-          <p id="sender-allow-note" className="-mt-4 text-sm text-[var(--color-text-tertiary)]">
-            Leave empty to take everything.
-          </p>
           <TextArea
             id="sender-block"
             label="Never from, optional"
+            description="One address or domain per line."
             value={senderBlock}
             onChange={(e) => setSenderBlock(e.target.value)}
             rows={2}
-            placeholder="one address or domain per line"
+            placeholder="noreply@acme.com"
             className="resize-y font-mono"
           />
           <TextArea
             id="promo-blocklist"
             label="Drop as promo, optional"
+            description="Words that mark a mail as promo, one per line."
             value={promoBlocklist}
             onChange={(e) => setPromoBlocklist(e.target.value)}
             rows={2}
-            placeholder="words that mark a mail as promo, e.g. unsubscribe, sale"
+            placeholder="unsubscribe, sale"
             className="resize-y font-mono"
           />
         </>
@@ -253,16 +249,13 @@ export function NewSourceForm() {
           <TextArea
             id="globs"
             label="File patterns, optional"
+            description={`One glob per line. Leave empty for the defaults: ${DEFAULT_GLOBS_HINT}`}
             value={globs}
             onChange={(e) => setGlobs(e.target.value)}
             rows={2}
-            placeholder={DEFAULT_GLOBS_HINT}
+            placeholder="**/*.pdf"
             className="resize-y font-mono"
-            aria-describedby="globs-note"
           />
-          <p id="globs-note" className="-mt-4 text-sm text-[var(--color-text-tertiary)]">
-            Leave empty for the defaults shown above.
-          </p>
         </>
       ) : null}
 
