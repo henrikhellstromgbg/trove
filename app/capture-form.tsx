@@ -7,11 +7,15 @@ import { runOnce } from "@/lib/submission-lock";
 import { useProject } from "./project-context";
 import { Button } from "@/components/ui";
 import { statusLabel } from "@/lib/status-label";
+import {
+  formatCaptureUploadStatus,
+  uploadCaptureFiles,
+} from "@/lib/capture-upload";
 
 export function CaptureForm() {
   const { project } = useProject();
   const [value, setValue] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [status, setStatus] = useState<string>("");
   const [pending, startTransition] = useTransition();
   const [isDragging, setIsDragging] = useState(false);
@@ -25,10 +29,10 @@ export function CaptureForm() {
     function onPaste(e: ClipboardEvent) {
       const target = e.target as HTMLElement | null;
       if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return;
-      const f = e.clipboardData?.files?.[0];
-      if (f) {
+      const pastedFiles = Array.from(e.clipboardData?.files ?? []);
+      if (pastedFiles.length > 0) {
         e.preventDefault();
-        setFile(f);
+        setFiles((current) => [...current, ...pastedFiles]);
         setValue("");
         setStatus("");
         return;
@@ -45,25 +49,28 @@ export function CaptureForm() {
 
   async function submit() {
     const trimmed = value.trim();
-    if (!file && trimmed.length === 0) return;
+    if (files.length === 0 && trimmed.length === 0) return;
 
     await runOnce(submittingRef, async () => {
       setSubmitting(true);
       try {
-        if (file) {
-          setStatus("uploading");
-          const form = new FormData();
-          form.append("file", file);
-          form.append("projectId", project.id);
-
-          const res = await fetch("/api/ingest", { method: "POST", body: form });
-          if (res.ok) {
-            setFile(null);
-            setStatus("saved");
+        if (files.length > 0) {
+          const queuedFiles = files;
+          setStatus(`Uploading 0/${queuedFiles.length}`);
+          const results = await uploadCaptureFiles(
+            queuedFiles,
+            project.id,
+            fetch,
+            (completed, total) => setStatus(`Uploading ${completed}/${total}`)
+          );
+          setFiles(
+            results
+              .filter((result) => result.outcome === "error")
+              .map((result) => result.file)
+          );
+          setStatus(formatCaptureUploadStatus(results));
+          if (results.some((result) => result.outcome === "saved")) {
             startTransition(() => router.refresh());
-          } else {
-            const err = await res.json().catch(() => ({}));
-            setStatus(`error ${err.error ?? res.status}`);
           }
           return;
         }
@@ -111,15 +118,16 @@ export function CaptureForm() {
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
     setIsDragging(false);
-    const f = e.dataTransfer.files?.[0];
-    if (f) {
-      setFile(f);
+    const droppedFiles = Array.from(e.dataTransfer.files ?? []);
+    if (droppedFiles.length > 0) {
+      setFiles((current) => [...current, ...droppedFiles]);
       setValue("");
       setStatus("");
     }
   }
 
-  const ready = !submitting && (!!file || value.trim().length > 0);
+  const ready = !submitting && (files.length > 0 || value.trim().length > 0);
+  const successfulStatus = status === "File saved" || /files saved$/.test(status);
 
   return (
     <div
@@ -158,37 +166,48 @@ export function CaptureForm() {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") submit();
           }}
           placeholder={
-            file
-              ? "A file is waiting. Press capture."
+            files.length > 0
+              ? files.length === 1
+                ? "A file is waiting. Press capture."
+                : `${files.length} files are waiting. Press capture.`
               : "Paste a link or type a thought, or just drop a file above."
           }
-          disabled={!!file || submitting}
+          disabled={files.length > 0 || submitting}
           rows={1}
           className="min-h-[52px] w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-canvas)]/30 px-4 py-3.5 text-base leading-snug text-[var(--color-text-primary)] transition-colors placeholder:text-[var(--color-text-tertiary)] hover:border-[var(--color-border-strong)] focus:border-[var(--color-border-strong)] disabled:opacity-40"
         />
 
-        {file ? (
-          <div className="mt-3 flex items-center justify-between rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-canvas)]/40 px-4 py-3 font-mono text-sm text-[var(--color-text-secondary)]">
-            <span className="truncate">{file.name}</span>
-            <div className="-mr-2 ml-3 shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setFile(null);
-                  setStatus("");
-                }}
-                aria-label="Remove file"
+        {files.length > 0 ? (
+          <div className="mt-3 divide-y divide-[var(--color-border-subtle)] overflow-hidden rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-canvas)]/40 font-mono text-sm text-[var(--color-text-secondary)]">
+            {files.map((file, index) => (
+              <div
+                key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+                className="flex items-center justify-between px-4 py-3"
               >
-                Remove
-              </Button>
-            </div>
+                <span className="truncate">{file.name}</span>
+                <div className="-mr-2 ml-3 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setFiles((current) =>
+                        current.filter((_, fileIndex) => fileIndex !== index)
+                      );
+                      setStatus("");
+                    }}
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
         ) : null}
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3 font-mono text-sm text-[var(--color-text-tertiary)]">
-            <span className={status === "saved" ? "text-[var(--color-status-success-text)]" : ""}>
+            <span className={successfulStatus ? "text-[var(--color-status-success-text)]" : ""}>
               {pending ? "Settling" : statusLabel(status) || "Ready"}
             </span>
           </div>
@@ -196,12 +215,13 @@ export function CaptureForm() {
             <input
               ref={inputRef}
               type="file"
+              multiple
               accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.docx,.xlsx,.txt,.md,.markdown,.csv,.tsv,.json,.html,.xml,.log,.yaml,.yml"
               className="hidden"
               onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) {
-                  setFile(f);
+                const selectedFiles = Array.from(e.target.files ?? []);
+                if (selectedFiles.length > 0) {
+                  setFiles((current) => [...current, ...selectedFiles]);
                   setValue("");
                   setStatus("");
                 }

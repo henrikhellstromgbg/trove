@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { schema } from "@/lib/db";
 import { InvalidProjectError, isUuid } from "@/lib/projects";
 import {
@@ -110,6 +110,26 @@ async function findDuplicate(
         eq(schema.item.userId, userId),
         eq(schema.item.sourceId, sourceId),
         eq(schema.item.externalId, externalId)
+      )
+    )
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+async function findManualFileDuplicate(
+  userId: string,
+  projectId: string,
+  filename: string
+) {
+  const rows = await ingestDeps.db
+    .select({ id: schema.item.id, status: schema.item.status })
+    .from(schema.item)
+    .where(
+      and(
+        eq(schema.item.userId, userId),
+        eq(schema.item.projectId, projectId),
+        eq(schema.item.source, filename),
+        isNotNull(schema.item.blobUrl)
       )
     )
     .limit(1);
@@ -243,6 +263,25 @@ async function handleFile(req: NextRequest, ingestAuth: IngestAuth) {
       status: duplicate.status,
       duplicate: true,
     });
+  }
+
+  if (!sourceId) {
+    const manualDuplicate = await findManualFileDuplicate(
+      ingestAuth.userId,
+      projectId,
+      file.name
+    );
+    if (manualDuplicate) {
+      return NextResponse.json(
+        {
+          error: "File already exists",
+          id: manualDuplicate.id,
+          status: manualDuplicate.status,
+          duplicate: true,
+        },
+        { status: 409 }
+      );
+    }
   }
 
   const { key } = await ingestDeps.storeUpload(

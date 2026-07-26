@@ -194,6 +194,30 @@ test("browser file capture uses multipart bytes through ingest", async () => {
   });
 });
 
+test("browser file capture reports an existing project filename before side effects", async () => {
+  const db = new MockDb();
+  db.selectResults.push([{ id: "existing-item", status: "ready" }]);
+  Object.assign(ingestDeps as unknown as MutableDeps, {
+    db,
+    requireProjectId: async (_userId: string, projectId: unknown) => projectId,
+  });
+
+  const response = await ingestPost(fileRequest("/api/ingest", {
+    projectId: PROJECT_A,
+  }));
+
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), {
+    error: "File already exists",
+    id: "existing-item",
+    status: "ready",
+    duplicate: true,
+  });
+  assert.equal(db.insertCalls, 0);
+  assert.equal(putCalls, 0);
+  assert.equal(sendCalls, 0);
+});
+
 // Backed by the REAL ownership helper: the fetched row belongs to user-b, so
 // the rejection comes from verifyProjectOwnership's own comparisons, not from
 // a mock that throws unconditionally.
