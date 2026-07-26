@@ -64,6 +64,8 @@ Replace the global one-line pill with the existing token-aware `Alert` surface:
 
 - The global pill is replaced by the existing `Alert` component with a status
   icon, semantic color, emphasized left border, title, and description.
+- The global notification overrides the shared alert radius with `rounded-none`
+  for an exact `0px` border radius; other alerts keep the design-system radius.
 - Duplicate-only batches use a warning state; completed batches use success;
   failures use error; in-flight progress uses information styling.
 - Filename detail is limited to four names plus an `and N more` summary.

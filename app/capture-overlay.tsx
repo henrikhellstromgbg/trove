@@ -129,7 +129,7 @@ export function CaptureOverlay() {
           <Alert
             variant={notice.variant}
             title={notice.title}
-            className="border-l-4 shadow-[var(--shadow-lg)]"
+            className="rounded-none border-l-4 shadow-[var(--shadow-lg)]"
           >
             <span className="text-pretty break-words">{notice.description}</span>
           </Alert>
