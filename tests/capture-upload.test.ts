@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  buildCaptureUploadNotice,
   captureFilesFromList,
   formatCaptureUploadStatus,
   uploadCaptureFiles,
@@ -75,4 +76,38 @@ test("multi-file capture exposes duplicates and retains request errors", async (
     formatCaptureUploadStatus(results),
     "File already exists: same.txt · bad.bin: unsupported file type"
   );
+});
+
+test("duplicate batches become a concise warning notification", () => {
+  const results = ["one.json", "two.json", "three.json", "four.json", "five.json"].map(
+    (name) => ({
+      file: new File([name], name, { type: "application/json" }),
+      outcome: "duplicate" as const,
+    })
+  );
+
+  assert.deepEqual(buildCaptureUploadNotice(results, "Infospread"), {
+    variant: "warning",
+    title: "5 files already exist",
+    description: "one.json, two.json, three.json, four.json, and 1 more are already in Infospread.",
+  });
+});
+
+test("successful batches become a clear success notification", () => {
+  const results = [
+    {
+      file: new File(["one"], "one.json", { type: "application/json" }),
+      outcome: "saved" as const,
+    },
+    {
+      file: new File(["two"], "two.json", { type: "application/json" }),
+      outcome: "saved" as const,
+    },
+  ];
+
+  assert.deepEqual(buildCaptureUploadNotice(results, "Infospread"), {
+    variant: "success",
+    title: "2 files captured",
+    description: "The files were added to Infospread.",
+  });
 });

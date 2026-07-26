@@ -1,6 +1,6 @@
 # Multi-file capture and duplicate feedback — 2026-07-26
 
-Status: Codex — implementation complete, verified
+Status: Codex — notification clarity follow-up complete, verified
 
 ## Goal
 
@@ -50,3 +50,25 @@ are green.
 - The local route responds, but command-line UI smoke is stopped by Clerk's
   expected signed-out development-browser guard; no persisted files were added
   during verification.
+
+## Notification clarity follow-up
+
+Replace the global one-line pill with the existing token-aware `Alert` surface:
+
+1. Pair every state with the design-system icon and semantic status color.
+2. Separate the short outcome title from filenames and explanatory detail.
+3. Keep long duplicate batches compact by showing a bounded filename summary.
+4. Preserve progress, success, duplicate, partial-success, and error states.
+
+### Notification result
+
+- The global pill is replaced by the existing `Alert` component with a status
+  icon, semantic color, emphasized left border, title, and description.
+- Duplicate-only batches use a warning state; completed batches use success;
+  failures use error; in-flight progress uses information styling.
+- Filename detail is limited to four names plus an `and N more` summary.
+- Focused notification tests: 5/5 pass.
+- Full test suite: 240/240 pass.
+- TypeScript, changed-file lint, and production build: pass.
+- Full design-check still reports 11 pre-existing violations in
+  `app/sidebar.tsx`; neither changed file has a design-check violation.

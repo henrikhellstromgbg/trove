@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Add } from "@/components/icons";
 import { useProject } from "./project-context";
 import { CaptureForm } from "./capture-form";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui";
+import { Alert, Dialog, DialogContent, DialogTitle } from "@/components/ui";
 import {
+  buildCaptureUploadNotice,
+  type CaptureUploadNotice,
   captureFilesFromList,
-  formatCaptureUploadStatus,
   uploadCaptureFiles,
 } from "@/lib/capture-upload";
 
@@ -21,8 +22,9 @@ export function CaptureOverlay() {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [flash, setFlash] = useState<string>("");
+  const [notice, setNotice] = useState<CaptureUploadNotice | null>(null);
   const [, startTransition] = useTransition();
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Modal open via the sidebar button. Radix Dialog owns focus trap, focus
   // return, Escape and scroll lock once open, so nothing else to wire here.
@@ -34,21 +36,37 @@ export function CaptureOverlay() {
     return () => window.removeEventListener("trove:open-capture", onOpen);
   }, []);
 
+  useEffect(
+    () => () => {
+      if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    },
+    []
+  );
+
   const uploadFiles = useCallback(
     async (files: File[]) => {
-      setFlash(`Capturing 0/${files.length} into ${project.name}…`);
+      if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+      setNotice({
+        variant: "info",
+        title: files.length === 1 ? "Capturing file" : `Capturing ${files.length} files`,
+        description: `0 of ${files.length} processed for ${project.name}.`,
+      });
       const results = await uploadCaptureFiles(
         files,
         project.id,
         fetch,
         (completed, total) =>
-          setFlash(`Capturing ${completed}/${total} into ${project.name}…`)
+          setNotice({
+            variant: "info",
+            title: total === 1 ? "Capturing file" : `Capturing ${total} files`,
+            description: `${completed} of ${total} processed for ${project.name}.`,
+          })
       );
-      setFlash(formatCaptureUploadStatus(results));
+      setNotice(buildCaptureUploadNotice(results, project.name));
       if (results.some((result) => result.outcome === "saved")) {
         startTransition(() => router.refresh());
       }
-      setTimeout(() => setFlash(""), 2600);
+      noticeTimerRef.current = setTimeout(() => setNotice(null), 5200);
     },
     [project.id, project.name, router]
   );
@@ -106,9 +124,15 @@ export function CaptureOverlay() {
       ) : null}
 
       {/* capture confirmation flash */}
-      {flash ? (
-        <div className="fixed bottom-6 left-1/2 z-[var(--z-toast)] -translate-x-1/2 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface)] px-5 py-2.5 font-mono text-sm text-[var(--color-text-primary)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)]">
-          {flash}
+      {notice ? (
+        <div className="fixed inset-x-[var(--space-4)] bottom-[var(--space-6)] z-[var(--z-toast)] mx-auto max-w-2xl">
+          <Alert
+            variant={notice.variant}
+            title={notice.title}
+            className="border-l-4 shadow-[var(--shadow-lg)]"
+          >
+            <span className="text-pretty break-words">{notice.description}</span>
+          </Alert>
         </div>
       ) : null}
 
