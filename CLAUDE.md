@@ -83,13 +83,18 @@ SLACK_BOT_TOKEN                    Optional Slack poll source
 ## Scripts
 
 ```
-pnpm dev          Next.js dev server on :3000
+pnpm dev          Next.js on :3000 + Inngest dev server on :8288
+pnpm dev:web      Next.js only (ingestion remains queued until Inngest runs)
 pnpm build        Next.js production build
 pnpm db:generate  drizzle-kit generate, creates SQL from schema
 pnpm db:migrate   tsx lib/db/migrate.ts, applies migrations then sets up FTS5 (item_fts + triggers)
 pnpm db:push      drizzle-kit push, skips migration files (dev only)
 pnpm db:studio    drizzle-kit studio, web UI on the DB
 ```
+
+`pnpm dev` downloads the pinned Inngest CLI through pnpm's cache on first use.
+The local runner is capped at four workers, and a once-per-minute recovery job
+re-emits persisted `pending` items after the runner has been unavailable.
 
 ## Conventions and gotchas
 

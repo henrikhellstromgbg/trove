@@ -2,6 +2,7 @@ import { serve } from "inngest/next";
 import { inngest } from "@/lib/inngest/client";
 import {
   ingestItem,
+  recoverPendingItems,
   clusterTopics,
   runDuePipelines,
   runEventPipelines,
@@ -12,6 +13,7 @@ export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
     ingestItem,
+    recoverPendingItems,
     clusterTopics,
     runDuePipelines,
     runEventPipelines,

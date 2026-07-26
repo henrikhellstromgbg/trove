@@ -19,6 +19,10 @@ import { runPipelineSpec } from "@/lib/pipelines/run";
 import { nextRunFromCron } from "@/lib/pipelines/cron";
 import { PipelineSpecSchema, runStatusForOutput } from "@/lib/pipelines/types";
 import { runSourceSync } from "@/lib/sources/sync";
+import {
+  claimPendingItem,
+  reemitPendingItems,
+} from "@/lib/inngest/pending-items";
 
 export const ingestItem = inngest.createFunction(
   {
@@ -39,14 +43,11 @@ export const ingestItem = inngest.createFunction(
     });
 
     if (!item) return { skipped: "not found" };
-    if (item.status === "ready") return { skipped: "already ready" };
 
-    await step.run("mark-processing", async () => {
-      await db
-        .update(schema.item)
-        .set({ status: "processing" })
-        .where(eq(schema.item.id, itemId));
+    const claimed = await step.run("claim-pending", async () => {
+      return await claimPendingItem(itemId);
     });
+    if (!claimed) return { skipped: `item is ${item.status}` };
 
     let rawText = item.rawText ?? "";
     let extractedTitle: string | null = null;
@@ -160,6 +161,21 @@ export const ingestItem = inngest.createFunction(
     });
 
     return { ok: true, chunks: chunks.length };
+  }
+);
+
+export const recoverPendingItems = inngest.createFunction(
+  {
+    id: "recover-pending-items",
+    retries: 1,
+    triggers: [{ cron: "* * * * *" }],
+  },
+  async ({ step }) => {
+    const itemIds = await step.run("reemit-pending-items", async () => {
+      return await reemitPendingItems((event) => inngest.send(event));
+    });
+
+    return { ok: true, reemitted: itemIds.length };
   }
 );
 
