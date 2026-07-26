@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import * as schema from "@/lib/db/schema";
 import {
   claimPendingItem,
+  markProcessingItemFailed,
   reemitPendingItems,
 } from "@/lib/inngest/pending-items";
 
@@ -60,6 +61,19 @@ test("claimPendingItem does not restart non-pending items", async () => {
 
   assert.equal(await claimPendingItem("ready", database), false);
   assert.equal(await claimPendingItem("processing", database), false);
+});
+
+test("markProcessingItemFailed closes only an active processing item", async () => {
+  const { client, database } = await queueDb();
+  await seed(client, "processing", "processing", 1);
+  await seed(client, "ready", "ready", 2);
+
+  assert.equal(await markProcessingItemFailed("processing", database), true);
+  assert.equal(await markProcessingItemFailed("processing", database), false);
+  assert.equal(await markProcessingItemFailed("ready", database), false);
+
+  const row = await client.execute("SELECT status FROM item WHERE id = 'processing'");
+  assert.equal(row.rows[0]?.status, "failed");
 });
 
 test("reemitPendingItems emits the oldest pending batch only", async () => {

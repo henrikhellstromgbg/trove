@@ -21,6 +21,7 @@ import { PipelineSpecSchema, runStatusForOutput } from "@/lib/pipelines/types";
 import { runSourceSync } from "@/lib/sources/sync";
 import {
   claimPendingItem,
+  markProcessingItemFailed,
   reemitPendingItems,
 } from "@/lib/inngest/pending-items";
 
@@ -28,6 +29,17 @@ export const ingestItem = inngest.createFunction(
   {
     id: "ingest-item",
     retries: 3,
+    concurrency: 1,
+    throttle: { limit: 2, period: "1m" },
+    onFailure: async ({ event }) => {
+      const originalEvent = event.data.event as {
+        data?: { itemId?: unknown };
+      };
+      const itemId = originalEvent.data?.itemId;
+      if (typeof itemId === "string") {
+        await markProcessingItemFailed(itemId);
+      }
+    },
     triggers: [{ event: "item/captured" }],
   },
   async ({ event, step }) => {

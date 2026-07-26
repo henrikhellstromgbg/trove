@@ -10,7 +10,7 @@
     "verify-scales": "node tools/generate-scales.mjs",
     "dev": "node scripts/dev.mjs",
     "dev:web": "next dev",
-    "dev:inngest": "pnpm dlx inngest-cli@1.38.1 dev -u http://localhost:3000/api/inngest --queue-workers 4",
+    "dev:inngest": "pnpm dlx inngest-cli@1.38.1 dev -u http://localhost:3000/api/inngest",
     "build": "next build",
     "test": "node --import tsx --test tests/*.test.ts",
     "start": "next start",

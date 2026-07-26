@@ -26,6 +26,19 @@ export async function claimPendingItem(
   return claimed.length === 1;
 }
 
+export async function markProcessingItemFailed(
+  itemId: string,
+  database: typeof db = db
+): Promise<boolean> {
+  const failed = await database
+    .update(schema.item)
+    .set({ status: "failed" })
+    .where(and(eq(schema.item.id, itemId), eq(schema.item.status, "processing")))
+    .returning({ id: schema.item.id });
+
+  return failed.length === 1;
+}
+
 // Re-emit persisted pending work after the job runner comes back. The database
 // is the durable queue boundary; claimPendingItem makes repeated recovery runs
 // and duplicate event delivery safe.

@@ -93,8 +93,10 @@ pnpm db:studio    drizzle-kit studio, web UI on the DB
 ```
 
 `pnpm dev` downloads the pinned Inngest CLI through pnpm's cache on first use.
-The local runner is capped at four workers, and a once-per-minute recovery job
-re-emits persisted `pending` items after the runner has been unavailable.
+The ingest function processes one item at a time and starts at most two items per
+minute so Gemini's free-tier embedding quota is not exceeded. A once-per-minute
+recovery job re-emits persisted `pending` items after the runner has been unavailable.
+After all retries are exhausted, its failure handler moves `processing` to `failed`.
 
 ## Conventions and gotchas
 
