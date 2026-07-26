@@ -6,8 +6,13 @@ import { Add } from "@/components/icons";
 import { useProject } from "./project-context";
 import { CaptureForm } from "./capture-form";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui";
+import {
+  captureFilesFromList,
+  formatCaptureUploadStatus,
+  uploadCaptureFiles,
+} from "@/lib/capture-upload";
 
-// Ambient capture (option B). Drop a file anywhere in the app and it is
+// Ambient capture (option B). Drop files anywhere in the app and they are
 // captured straight away — no page to visit. The dedicated form (URL/text
 // paste, manual attach) opens as a modal from the sidebar "Capture" button,
 // which dispatches "trove:open-capture".
@@ -29,19 +34,19 @@ export function CaptureOverlay() {
     return () => window.removeEventListener("trove:open-capture", onOpen);
   }, []);
 
-  const uploadFile = useCallback(
-    async (file: File) => {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("projectId", project.id);
-      setFlash(`Capturing ${file.name}…`);
-      const res = await fetch("/api/ingest", { method: "POST", body: form });
-      if (res.ok) {
-        setFlash(`Captured ${file.name} into ${project.name}`);
+  const uploadFiles = useCallback(
+    async (files: File[]) => {
+      setFlash(`Capturing 0/${files.length} into ${project.name}…`);
+      const results = await uploadCaptureFiles(
+        files,
+        project.id,
+        fetch,
+        (completed, total) =>
+          setFlash(`Capturing ${completed}/${total} into ${project.name}…`)
+      );
+      setFlash(formatCaptureUploadStatus(results));
+      if (results.some((result) => result.outcome === "saved")) {
         startTransition(() => router.refresh());
-      } else {
-        const err = await res.json().catch(() => ({}));
-        setFlash(`Error: ${err.error ?? res.status}`);
       }
       setTimeout(() => setFlash(""), 2600);
     },
@@ -73,8 +78,8 @@ export function CaptureOverlay() {
       setDragging(false);
       // Modal has its own drop handling; don't double-capture.
       if (modalOpen) return;
-      const file = e.dataTransfer?.files?.[0];
-      if (file) uploadFile(file);
+      const files = captureFilesFromList(e.dataTransfer?.files);
+      if (files.length > 0) void uploadFiles(files);
     }
     window.addEventListener("dragenter", onEnter);
     window.addEventListener("dragover", onOver);
@@ -86,7 +91,7 @@ export function CaptureOverlay() {
       window.removeEventListener("dragleave", onLeave);
       window.removeEventListener("drop", onDrop);
     };
-  }, [modalOpen, uploadFile]);
+  }, [modalOpen, uploadFiles]);
 
   return (
     <>

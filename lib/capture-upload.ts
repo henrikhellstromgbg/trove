@@ -11,6 +11,12 @@ type CaptureRequester = (
   init?: RequestInit
 ) => Promise<Response>;
 
+export function captureFilesFromList(
+  files: ArrayLike<File> | null | undefined
+): File[] {
+  return Array.from(files ?? []);
+}
+
 export async function uploadCaptureFiles(
   files: File[],
   projectId: string,

@@ -8,6 +8,7 @@ import { useProject } from "./project-context";
 import { Button } from "@/components/ui";
 import { statusLabel } from "@/lib/status-label";
 import {
+  captureFilesFromList,
   formatCaptureUploadStatus,
   uploadCaptureFiles,
 } from "@/lib/capture-upload";
@@ -29,7 +30,7 @@ export function CaptureForm() {
     function onPaste(e: ClipboardEvent) {
       const target = e.target as HTMLElement | null;
       if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return;
-      const pastedFiles = Array.from(e.clipboardData?.files ?? []);
+      const pastedFiles = captureFilesFromList(e.clipboardData?.files);
       if (pastedFiles.length > 0) {
         e.preventDefault();
         setFiles((current) => [...current, ...pastedFiles]);
@@ -118,7 +119,7 @@ export function CaptureForm() {
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
     setIsDragging(false);
-    const droppedFiles = Array.from(e.dataTransfer.files ?? []);
+    const droppedFiles = captureFilesFromList(e.dataTransfer.files);
     if (droppedFiles.length > 0) {
       setFiles((current) => [...current, ...droppedFiles]);
       setValue("");
@@ -219,7 +220,7 @@ export function CaptureForm() {
               accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.docx,.xlsx,.txt,.md,.markdown,.csv,.tsv,.json,.html,.xml,.log,.yaml,.yml"
               className="hidden"
               onChange={(e) => {
-                const selectedFiles = Array.from(e.target.files ?? []);
+                const selectedFiles = captureFilesFromList(e.target.files);
                 if (selectedFiles.length > 0) {
                   setFiles((current) => [...current, ...selectedFiles]);
                   setValue("");

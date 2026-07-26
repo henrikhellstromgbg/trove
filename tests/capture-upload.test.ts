@@ -2,9 +2,24 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  captureFilesFromList,
   formatCaptureUploadStatus,
   uploadCaptureFiles,
 } from "@/lib/capture-upload";
+
+test("file-list conversion keeps every selected or globally dropped file", () => {
+  const files = [
+    new File(["one"], "one.txt", { type: "text/plain" }),
+    new File(["two"], "two.txt", { type: "text/plain" }),
+    new File(["three"], "three.txt", { type: "text/plain" }),
+  ];
+
+  assert.deepEqual(captureFilesFromList(files).map((file) => file.name), [
+    "one.txt",
+    "two.txt",
+    "three.txt",
+  ]);
+});
 
 test("multi-file capture submits every file sequentially with progress", async () => {
   const files = [

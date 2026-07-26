@@ -28,18 +28,22 @@ are green.
 
 ## Result
 
-- File selection, paste, and drag/drop now append every provided file to a
-  removable queue.
+- File selection, paste, and modal drag/drop now append every provided file to
+  a removable queue. The project-wide ambient drop target on every project page
+  sends the complete dropped file list through the same batch uploader.
 - Capture uploads the queue sequentially with `Uploading n/total` progress;
   failed files remain queued for retry.
 - A filename already attached to any item in the same owned project returns
   HTTP 409 with `File already exists` before storage or ingestion side effects.
 - Mixed batches summarize saved files, existing files, and per-file errors.
+- Both the capture modal and global project overlay use the same tested batch
+  uploader and the same `/api/ingest` duplicate response.
 
 ## Verification evidence
 
-- Focused capture/API tests: 46/46 pass.
-- Full test suite: 237/237 pass.
+- Focused capture/API tests: 47/47 pass, including preservation of every file
+  from the project-wide ambient drop target.
+- Full test suite: 238/238 pass.
 - TypeScript and changed-file lint: pass.
 - Production build: pass, with only the existing middleware deprecation and
   broad NFT tracing warnings.
