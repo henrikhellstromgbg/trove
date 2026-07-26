@@ -1,6 +1,6 @@
 # Local ingest recovery plan — 2026-07-26
 
-Status: Codex — implementation complete, verified
+Status: Codex — filename-title repair complete, verified
 
 ## Goal
 
@@ -54,3 +54,30 @@ Five old runs that had exhausted retries before throttling were verified to have
 zero chunks, reset to `pending`, and successfully recovered through the throttled
 queue. Final checks: 230/230 tests pass, changed-file lint and TypeScript pass,
 and the production build passes.
+
+## Filename-title repair
+
+The live run exposed a separate display issue: structured text files used their
+first content line as the item title. JSON arrays therefore appeared as `[` in
+Library even though `item.source` still held the original filename.
+
+The repair must:
+
+1. Use the full filename, including extension, for structured/data text files.
+2. Preserve first-line titles for prose formats such as Markdown and plain text.
+3. Cover the title-selection contract with focused regression tests.
+4. Repair only existing local JSON rows whose extracted title is exactly `[`.
+5. Pass focused tests, the full test suite, TypeScript, changed-file lint, and build.
+
+### Filename-title repair result
+
+- JSON, CSV, TSV, XML, YAML, HTML, and log files now use their full filename as
+  the extracted title; Markdown and plain text retain first-line titles.
+- All 19 matching local JSON items were updated from `[` to their persisted
+  `source` filename. No matching bracket titles remain and every repaired item
+  remains `ready`.
+- Focused title tests: 4/4 pass.
+- Full test suite: 234/234 pass.
+- TypeScript and changed-file lint: pass.
+- Production build: pass, with only the existing middleware deprecation and
+  broad NFT tracing warnings.
