@@ -9,10 +9,31 @@
    it is not what the user clicks.
    Capture green is retired into the system's status-success tier.
 
-   This is the ONLY token file that varies per project. Surfaces, radii and
-   spacing are owned by primitives.css and are deliberately NOT set here. */
+   This is the ONLY token file that varies per project. Trove restores its
+   established neutral gray scale here; shared primitive source, radii and
+   spacing remain owned by primitives.css. */
 
 :root {
+  /* Trove's neutral gray scale. Chroma and hue stay at zero to avoid a blue
+     cast while retaining the base scale's lightness and contrast hierarchy. */
+  --gray-25:  oklch(0.9911 0 0);
+  --gray-50:  oklch(0.985 0 0);
+  --gray-100: oklch(0.967 0 0);
+  --gray-200: oklch(0.922 0 0);
+  --gray-300: oklch(0.869 0 0);
+  --gray-400: oklch(0.788 0 0);
+  --gray-500: oklch(0.582 0 0);
+  --gray-600: oklch(0.446 0 0);
+  --gray-700: oklch(0.373 0 0);
+  --gray-750: oklch(0.325 0 0);
+  --gray-800: oklch(0.279 0 0);
+  --gray-900: oklch(0.208 0 0);
+  --gray-925: oklch(0.175 0 0);
+  --gray-950: oklch(0.137 0 0);
+
+  /* Product navigation is one step deeper than the app canvas. */
+  --color-navigation: var(--gray-50);
+
   /* Ink action color (Trove #111), lightening hover to ink-dim (#444).
      White text on both passes APCA (|Lc| 107 / 95). */
   --brand-action:        oklch(0.178 0 0);
@@ -36,4 +57,5 @@
   --brand-action-text:   oklch(0.137 0.005 260);
   --brand-base:          oklch(0.880 0.090 29.1);
   --brand-base-subtle:   oklch(0.280 0.060 29.1);
+  --color-navigation:    var(--gray-900);
 }

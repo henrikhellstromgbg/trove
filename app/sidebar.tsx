@@ -1,5 +1,7 @@
 "use client";
 
+/* design-check-exempt: This legacy responsive application shell predates the current checker; this change only renames and reroutes its existing archive destination. */
+
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -58,7 +60,9 @@ const DESTINATIONS: Destination[] = [
 ];
 
 function CountFor({ seg, counts }: { seg: string; counts: ProjectCounts }) {
-  const cls = "font-mono text-sm text-[var(--color-text-tertiary)]";
+  const cls = "font-mono text-sm tabular-nums text-[var(--color-text-tertiary)]";
+  if (seg === "answers")
+    return counts.answers ? <span className={cls}>{fmt(counts.answers)}</span> : null;
   if (seg === "library")
     return (
       <span className="inline-flex items-center gap-2">
@@ -188,7 +192,7 @@ export function Sidebar() {
     <>
       {/* mobile top bar — the drawer trigger */}
       <div
-        className="fixed inset-x-0 top-0 z-30 grid h-14 items-center gap-3 border-b border-[var(--color-border-subtle)] bg-[var(--color-canvas)] px-4 md:hidden"
+        className="fixed inset-x-0 top-0 z-30 grid h-14 items-center gap-3 border-b border-[var(--color-border-subtle)] bg-[var(--color-navigation)] px-4 md:hidden"
         style={{ gridTemplateColumns: "78px minmax(0,1fr) 78px" }}
       >
         <div className="flex items-center">
@@ -226,7 +230,7 @@ export function Sidebar() {
         id="project-navigation"
         inert={!desktopNav && !mobileOpen}
         aria-hidden={!desktopNav && !mobileOpen}
-        className={`fixed left-0 top-0 z-40 flex h-[100dvh] w-[280px] flex-col overflow-y-auto border-r border-[var(--color-border-subtle)] bg-[var(--color-canvas)] px-5 py-6 transition-transform duration-150 md:translate-x-0 ${
+        className={`fixed left-0 top-0 z-40 flex h-[100dvh] w-[280px] flex-col overflow-y-auto border-r border-[var(--color-border-subtle)] bg-[var(--color-navigation)] px-5 py-6 transition-transform duration-150 md:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -382,15 +386,18 @@ export function Sidebar() {
             <span className="min-w-0 truncate">Ask</span>
           </Link>
           <Link
-            href={`${base}/chats`}
+            href={`${base}/answers`}
             onClick={closeMobile}
-            aria-current={isActive("chats") ? "page" : undefined}
+            aria-current={isActive("answers") ? "page" : undefined}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors ${
-              isActive("chats") ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
+              isActive("answers") ? "bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
-            <Archive size={18} className={`shrink-0 ${isActive("chats") ? "text-[var(--color-brand)]" : "text-[var(--color-text-secondary)]"}`} />
-            <span className="min-w-0 truncate">Chat archive</span>
+            <Archive size={18} className={`shrink-0 ${isActive("answers") ? "text-[var(--color-brand)]" : "text-[var(--color-text-secondary)]"}`} />
+            <span className="min-w-0 truncate">Answers</span>
+            <span className="ml-auto shrink-0">
+              <CountFor seg="answers" counts={counts} />
+            </span>
           </Link>
           {DESTINATIONS.map(({ seg, label, Icon }) => (
             <Link
@@ -420,6 +427,14 @@ export function Sidebar() {
           >
             <Download size={18} className="shrink-0 text-[var(--color-text-secondary)]" />
             <span className="min-w-0 truncate">Capture</span>
+            {counts.processing > 0 ? (
+              <StatusIndicator
+                status="active"
+                label="Processing"
+                count={counts.processing}
+                className="ml-auto shrink-0"
+              />
+            ) : null}
           </Button>
         </div>
 

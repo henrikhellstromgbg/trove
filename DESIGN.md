@@ -3,8 +3,8 @@
 ## Source of truth
 
 - Status: Active
-- Last refreshed: 2026-07-25
-- Primary product surfaces: Capture, Library, Ask, Sources, Pipelines, Digest, Topics, Settings
+- Last refreshed: 2026-07-26
+- Primary product surfaces: Capture, Library, Ask, Answers, Sources, Pipelines, Digest, Topics, Settings
 - Evidence reviewed: `CLAUDE.md`, `AGENTS.md`, `docs/design-system-adoption-2026-07-24.md`, `design-rules/RULES.md`, `design-system/registry.json`, `components/ui/README.md`, `tokens/*.css`, and current application views
 - Precedence: `design-rules/RULES.md` governs enforceable UI constraints, `design-system/registry.json` governs supported components and imports, and this file describes Trove's product-specific design direction.
 
@@ -29,8 +29,24 @@
 ## Information architecture
 
 - Primary navigation: Persistent responsive product sidebar with visible current project and destination.
-- Core routes/screens: Capture, Library, Ask, Sources, Pipelines, Digest, Topics, and Settings.
+- Core routes/screens: Capture, Library, Ask, Answers, Sources, Pipelines, Digest, Topics, and Settings.
 - Content hierarchy: Current project, page purpose, task controls, result state, then individual records and actions.
+- Ask is an iterative working session: the latest answer is dominant, completed
+  work auto-saves to Answers, and `Done` ends the session on its stable,
+  reading-oriented Answer page.
+- Active Ask uses a two-pane workspace on desktop: the main `gray-25` work area
+  keeps every prior question and its saved answer, the latest answer, progress,
+  and refinement composer in one continuous revision timeline while a
+  viewport-height white Sources rail provides stable provenance. The work area
+  fills the viewport, its timeline connects visually to the bottom composer,
+  and `Done` aligns to the far edge of the active Ask header. On mobile,
+  Sources becomes an inline disclosure after the latest answer. The empty Ask
+  state preserves the same full-height Work log, bottom composer, and desktop
+  Sources rail so submitting the first question does not replace the page
+  structure.
+- A stable Answer is the read-only form of the same workspace. It keeps the
+  full question-and-answer revision timeline and viewport-height Sources rail,
+  but removes the composer. No saved revision is collapsed or truncated.
 
 ## Design principles
 
@@ -42,7 +58,10 @@
 
 ## Visual language
 
-- Color: Semantic `--color-*` tokens only. Trove keeps a warm red brand identity, neutral ink action color, and semantic status colors.
+- Color: Semantic `--color-*` tokens only. Trove uses neutral `gray-50` product
+  navigation, a neutral `#FCFCFC` (`gray-25`) work canvas, and white reading
+  and provenance surfaces. It keeps a warm red brand identity, neutral ink
+  action color, and semantic status colors.
 - Typography: Geist Sans for interface text and Geist Mono only for compact numeric or machine-like values. Minimum 14px.
 - Spacing/layout rhythm: Token-based spacing, quiet vertical rhythm, reading/list widths capped with `PageFrame`.
 - Shape/radius/elevation: Small token radii, hairline separation, minimal shadow reserved for elevated overlays.
@@ -52,7 +71,11 @@
 ## Components
 
 - Existing components to reuse: All entrypoints registered in `design-system/registry.json`, including `InputGroup`, `NativeSelect`, `DataList`, `DataRow`, `StatusIndicator`, `EmptyState`, `Button`, and responsive overlay/navigation primitives.
-- New/changed components: None for the Library filter pilot. Missing patterns must follow the base-ds new-component process.
+- New/changed components: Ask composes the existing textarea, button, alert,
+  disclosure, section-header, and data-list primitives into a continuous Work
+  log and a bordered Sources sidebar. The stable Answer page reuses that Work
+  log and Sources hierarchy without a composer, plus the registered
+  confirmation dialog for deletion. No new design-system layer is introduced.
 - Variants and states: Preserve loading, empty collection, no-match, error, ready, disabled, hover, active, and focus-visible behavior where applicable.
 - Token/component ownership: Components own their internal classes and spacing. Views pass content and compose outer token-based layout only.
 
@@ -82,13 +105,17 @@
 ## Content voice
 
 - Tone: English, direct, specific, and calm.
-- Terminology: Project, Library, Source, Pipeline, Capture, Ask, and Digest are stable product nouns.
+- Terminology: Project, Library, Source, Pipeline, Capture, Ask, Answer, Answers,
+  and Digest are stable product nouns. Do not expose Conversation, Message, or
+  Chat in the answer-first product surface.
 - Microcopy rules: Sentence case, plain verbs, no exclamation marks, filler, title case, or dash punctuation.
 
 ## Implementation constraints
 
 - Framework/styling system: Next.js 16, React 19, Tailwind 4, shadcn-owned source, Radix/Base UI primitives, and Carbon icons.
-- Design-token constraints: `tokens/primitives.css` and `tokens/semantic.css` are immutable in Trove; only `tokens/theme.css` carries project brand overrides.
+- Design-token constraints: `tokens/primitives.css` and `tokens/semantic.css`
+  are immutable in Trove; `tokens/theme.css` carries project-specific brand
+  and neutral gray-scale overrides.
 - Performance constraints: Client-side filtering remains bounded to the currently loaded Library rows; avoid new dependencies for the pilot.
 - Compatibility constraints: Preserve Trove's existing component barrel adapters until views are migrated safely.
 - Test/screenshot expectations: Run business tests, current base-ds design-check, TypeScript, contrast, scales, and production build. Visually inspect changed responsive states when the pilot moves beyond code-only validation.

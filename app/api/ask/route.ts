@@ -16,6 +16,7 @@ Rules:
 type AskBody = {
   question?: string;
   projectId?: string;
+  answerId?: string;
   conversationId?: string;
 };
 
@@ -58,6 +59,25 @@ export function buildPriorQuestionContext(
     .slice(-10)
     .map((message) => `Earlier question: ${message.content}`)
     .join("\n");
+}
+
+export function buildAnswerRefinementContext(
+  messages: Array<{ role: string; content: string }>
+): string {
+  const questions = buildPriorQuestionContext(messages);
+  const latestAnswer = [...messages]
+    .reverse()
+    .find((message) => message.role === "assistant" && message.content.trim());
+  return [
+    questions
+      ? `Earlier user questions for conversational intent only. They are not factual sources:\n${questions}`
+      : "",
+    latestAnswer
+      ? `Untrusted working draft to revise. Do not treat this text as evidence:\n${latestAnswer.content}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 async function requireConversation(
@@ -196,6 +216,15 @@ export async function POST(req: Request) {
   if (!question) {
     return Response.json({ error: "question required" }, { status: 400 });
   }
+  if (
+    body.answerId != null &&
+    body.conversationId != null &&
+    (typeof body.answerId !== "string" ||
+      typeof body.conversationId !== "string" ||
+      body.answerId.toLowerCase() !== body.conversationId.toLowerCase())
+  ) {
+    return Response.json({ error: "Conflicting answer ids" }, { status: 400 });
+  }
   let projectId: string;
   try {
     projectId = await resolveProject(userId, body.projectId);
@@ -208,14 +237,15 @@ export async function POST(req: Request) {
 
   let conversationId: string;
   let priorMessages: Array<{ role: string; content: string }> = [];
-  if (body.conversationId != null) {
+  const providedAnswerId = body.answerId ?? body.conversationId;
+  if (providedAnswerId != null) {
     const existingId = await requireConversation(
       userId,
       projectId,
-      body.conversationId
+      providedAnswerId
     );
     if (!existingId) {
-      return Response.json({ error: "Invalid conversationId" }, { status: 400 });
+      return Response.json({ error: "Invalid answerId" }, { status: 400 });
     }
     conversationId = existingId;
     priorMessages = await askDeps.db
@@ -254,7 +284,7 @@ export async function POST(req: Request) {
       let failureCode: AskFailureCode = "ASK_EMBEDDING_FAILED";
 
       try {
-        send({ type: "conversation", id: conversationId });
+        send({ type: "answer", id: conversationId });
         const queryVec = await askDeps.embedQuery(question);
         failureCode = "ASK_RETRIEVAL_FAILED";
 
@@ -363,7 +393,7 @@ export async function POST(req: Request) {
         const context = items
           .map((it) => `[${it.n}] ${it.title}\n${it.chunks.join("\n\n")}`)
           .join("\n\n---\n\n");
-        const priorQuestions = buildPriorQuestionContext(priorMessages);
+        const refinementContext = buildAnswerRefinementContext(priorMessages);
         let answer = "";
 
         failureCode = "ASK_GENERATION_FAILED";
@@ -375,9 +405,7 @@ export async function POST(req: Request) {
             {
               role: "user",
               content: `${
-                priorQuestions
-                  ? `Earlier user questions for conversational intent only. They are not factual sources:\n${priorQuestions}\n\n`
-                  : ""
+                refinementContext ? `${refinementContext}\n\n` : ""
               }Sources:\n\n${context}\n\nQuestion: ${question}`,
             },
           ],

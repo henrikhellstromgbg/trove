@@ -135,6 +135,7 @@ export async function getProjectBySlug(
 // (anything not yet ready or failed), surfaced as the Processing panel.
 export type ProjectCounts = {
   items: number; // Library
+  answers: number; // Saved Ask sessions
   topics: number; // Wiki
   sources: number; // Sources total
   sourceErrors: number; // red alert on Sources
@@ -149,6 +150,7 @@ export async function getProjectCounts(
 ): Promise<ProjectCounts> {
   const [
     itemsRow,
+    answersRow,
     topicsRow,
     sourcesRow,
     sourceErrorsRow,
@@ -160,6 +162,15 @@ export async function getProjectCounts(
       .select({ c: count() })
       .from(schema.item)
       .where(and(eq(schema.item.userId, userId), eq(schema.item.projectId, projectId))),
+    db
+      .select({ c: count() })
+      .from(schema.conversation)
+      .where(
+        and(
+          eq(schema.conversation.userId, userId),
+          eq(schema.conversation.projectId, projectId)
+        )
+      ),
     db
       .select({ c: count() })
       .from(schema.topic)
@@ -212,6 +223,7 @@ export async function getProjectCounts(
 
   return {
     items: itemsRow[0]?.c ?? 0,
+    answers: answersRow[0]?.c ?? 0,
     topics: topicsRow[0]?.c ?? 0,
     sources: sourcesRow[0]?.c ?? 0,
     sourceErrors: sourceErrorsRow[0]?.c ?? 0,

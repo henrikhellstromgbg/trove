@@ -4,7 +4,9 @@ import { JSDOM } from "jsdom";
 import * as React from "react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { Button, ConfirmDialog, Tabs, DataRow, type ButtonTabItem } from "../components/ui";
+import { renderToStaticMarkup } from "react-dom/server";
+import { AlertDialog, Button, ConfirmDialog, DataRow, PageFrame, Tabs, type ButtonTabItem } from "../components/ui";
+import { AlertDialogDescription } from "../components/ui/alert-dialog";
 
 type GlobalPatch = Record<string, unknown>;
 
@@ -127,14 +129,6 @@ function fireKeyDown(target: EventTarget, key: string, opts: KeyboardEventInit =
   return event;
 }
 
-function buttonByText(container: ParentNode, text: string): HTMLButtonElement {
-  const button = Array.from(container.querySelectorAll("button")).find(
-    (candidate) => candidate.textContent === text,
-  );
-  assert.ok(button, `expected to find a <button> with text "${text}"`);
-  return button as HTMLButtonElement;
-}
-
 // ConfirmDialog is now a thin wrapper over Radix AlertDialog (role=alertdialog).
 // Radix owns focus trap, focus return, and Escape — all tested upstream and
 // exercised in the app. Radix's portal/Presence does not commit in this minimal
@@ -161,6 +155,39 @@ test("ConfirmDialog: is a component and renders nothing when closed", () => {
 
     view.unmount();
   });
+});
+
+test("AlertDialogDescription supports block content without invalid paragraph nesting", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(
+      AlertDialog,
+      { open: true },
+      React.createElement(
+        AlertDialogDescription,
+        { asChild: true },
+        React.createElement(
+          "div",
+          null,
+          React.createElement("span", null, "This removes the answer."),
+          React.createElement("p", { role: "alert" }, "Try again."),
+        ),
+      ),
+    ),
+  );
+
+  assert.match(html, /^<div/);
+  assert.doesNotMatch(html, /<p[^>]*>\s*<div/);
+  assert.match(html, /data-slot="alert-dialog-description"/);
+});
+
+test("PageFrame supports an uncapped application-workspace width", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(PageFrame, { maxWidth: "none", fillViewport: true }, "Workspace"),
+  );
+
+  assert.match(html, /max-w-none/);
+  assert.match(html, /min-h-\[100dvh\]/);
+  assert.match(html, />Workspace<\/main>/);
 });
 
 test("Tabs (button-driven): renders tabId/panelId, aria-selected/tabIndex, and ArrowRight moves focus + selects next", () => {

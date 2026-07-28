@@ -104,6 +104,24 @@ test("conversation ownership rejects a real row from another project", () => {
   );
 });
 
+test("Ask rejects conflicting answer and compatibility ids before writing", async () => {
+  const db = new AskDb();
+  Object.assign(askDeps as unknown as MutableDeps, { db });
+
+  const response = await askPost(
+    askRequest({
+      question: "Continue",
+      projectId: PROJECT_ID,
+      answerId: CONVERSATION_ID,
+      conversationId: "44444444-4444-4444-8444-444444444444",
+    })
+  );
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: "Conflicting answer ids" });
+  assert.deepEqual(db.insertValues, []);
+});
+
 for (const scenario of [
   {
     name: "foreign user",
@@ -136,7 +154,7 @@ for (const scenario of [
     );
 
     assert.equal(response.status, 400);
-    assert.deepEqual(await response.json(), { error: "Invalid conversationId" });
+    assert.deepEqual(await response.json(), { error: "Invalid answerId" });
     assert.deepEqual(db.insertValues, []);
   });
 }
@@ -157,7 +175,7 @@ test("embedding failure returns a stable retryable stream error", async () => {
 
   assert.equal(response.status, 200);
   assert.deepEqual(streamed, [
-    { type: "conversation", id: CONVERSATION_ID },
+    { type: "answer", id: CONVERSATION_ID },
     {
       type: "error",
       code: "ASK_EMBEDDING_FAILED",

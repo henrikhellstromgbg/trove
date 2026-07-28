@@ -488,7 +488,7 @@ test("ask persists a new project conversation and its empty-corpus answer", asyn
   const streamed = await response.text();
 
   assert.equal(response.status, 200);
-  assert.match(streamed, /"type":"conversation","id":"item-1"/);
+  assert.match(streamed, /"type":"answer","id":"item-1"/);
   assert.match(streamed, /I don't have anything saved on that yet\./);
   assert.deepEqual(db.insertValues, [
     {

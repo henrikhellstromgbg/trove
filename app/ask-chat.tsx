@@ -1,29 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowUp, ChevronDown, ChevronUp } from "@/components/icons";
 import { drainNdjson, parseNdjsonRecord } from "@/lib/ndjson";
-import { Button } from "@/components/ui/button";
-import { DataList, DataRow } from "@/components/ui/data-list";
-import { PageFrame } from "@/components/ui/page-frame";
-import { PageHeader } from "@/components/ui/page-header";
-import { SectionHeader } from "@/components/ui/section-header";
+import type { Citation } from "@/lib/answers";
+import { Alert, Button, DataList, DataRow, PageFrame, PageHeader, SectionHeader } from "@/components/ui";
 
-type Citation = {
-  n: number;
-  itemId: string;
-  title: string;
-  source: string | null;
-};
-
-type ChatMessage = {
-  question: string;
-  answer: string;
-  citations: Citation[];
-  loading: boolean;
-  error: string | null;
-};
+type Activity = { question: string; answer: string };
 
 function hostOf(source: string | null): string | null {
   if (!source || !/^https?:\/\//i.test(source)) return null;
@@ -38,111 +23,82 @@ export function AskChat({
   projectId,
   slug,
   projectName,
-  overview,
 }: {
   projectId: string;
   slug: string;
   projectName: string;
-  // Rendered below the ask box while the conversation is empty: the project's
-  // status at a glance. Hidden once a question is asked.
-  overview?: ReactNode;
 }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [answerId, setAnswerId] = useState<string | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
+  const [answer, setAnswer] = useState("");
+  const [citations, setCitations] = useState<Citation[]>([]);
+  const [activity, setActivity] = useState<Activity[]>([]);
   const [input, setInput] = useState("");
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
+  const [streamedAnswer, setStreamedAnswer] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [sourcesOpen, setSourcesOpen] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const autoStarted = useRef(false);
+  const prefersReducedMotion = useReducedMotion();
 
-  const transcriptRef = useRef<HTMLDivElement>(null);
-  const autoSubmitted = useRef(false);
-  const messagesRef = useRef<ChatMessage[]>(messages);
-
-  // Mirror the committed messages into a ref for submit() to read the latest
-  // length/loading without a stale closure. Synced in an effect, never during
-  // render (updating a ref in render is a react-hooks/refs violation).
-  useEffect(() => {
-    messagesRef.current = messages;
-  }, [messages]);
-
-  const lastMessage = messages[messages.length - 1] ?? null;
-  const isBusy = lastMessage?.loading ?? false;
-  const citations = lastMessage?.citations ?? [];
-
-  // Keep the transcript pinned to the newest content as it streams.
-  useEffect(() => {
-    const el = transcriptRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages]);
-
-  const patchMessage = useCallback((index: number, patch: Partial<ChatMessage>) => {
-    setMessages((prev) =>
-      prev.map((m, i) => (i === index ? { ...m, ...patch } : m))
-    );
-  }, []);
+  const busy = pendingQuestion != null;
+  const active = answerId != null || busy || answer.length > 0;
 
   const submit = useCallback(async (raw: string) => {
-    const q = raw.trim();
-    if (!q || messagesRef.current[messagesRef.current.length - 1]?.loading) {
-      return;
-    }
+    const question = raw.trim();
+    if (!question || busy) return;
 
-    const index = messagesRef.current.length;
-    setMessages((prev) => [
-      ...prev,
-      { question: q, answer: "", citations: [], loading: true, error: null },
-    ]);
+    setPendingQuestion(question);
+    setStreamedAnswer("");
+    setError(null);
     setInput("");
+    let nextAnswer = "";
+    let nextCitations: Citation[] = [];
+    let failed = false;
 
     try {
-      const res = await fetch("/api/ask", {
+      const response = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, projectId, conversationId }),
+        body: JSON.stringify({ question, projectId, answerId }),
       });
-
-      if (!res.ok || !res.body) {
-        patchMessage(index, {
-          loading: false,
-          error: `Something went wrong (${res.status}). Try again.`,
-        });
-        return;
+      if (!response.ok || !response.body) {
+        throw new Error(`Unable to answer (${response.status}). Try again.`);
       }
 
-      const reader = res.body.getReader();
+      const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-
-      const consumeLine = (line: string) => {
-        const trimmed = line.trim();
-        if (!trimmed) return;
-        const parsed = parseNdjsonRecord(trimmed);
-        if (parsed.ok) {
-          const msg = parsed.value as {
-            type?: string;
-            items?: Citation[];
-            text?: string;
-            error?: string;
-            id?: string;
-          };
-          if (msg.type === "conversation" && msg.id) {
-            setConversationId(msg.id);
-            const url = new URL(window.location.href);
-            url.searchParams.delete("q");
-            url.searchParams.set("conversation", msg.id);
-            window.history.replaceState(null, "", url);
-          } else if (msg.type === "citations") {
-            patchMessage(index, { citations: msg.items ?? [] });
-          } else if (msg.type === "text" && msg.text) {
-            const text = msg.text;
-            setMessages((prev) =>
-              prev.map((m, i) =>
-                i === index ? { ...m, answer: m.answer + text } : m
-              )
-            );
-          } else if (msg.type === "error") {
-            patchMessage(index, { error: msg.error ?? "Stream error." });
-          }
-        } else {
-          patchMessage(index, { error: "The server returned an invalid response." });
+      const consume = (line: string) => {
+        if (!line.trim()) return;
+        const parsed = parseNdjsonRecord(line);
+        if (!parsed.ok) {
+          failed = true;
+          setError("The server returned an invalid response. Try again.");
+          return;
+        }
+        const record = parsed.value as {
+          type?: string;
+          id?: string;
+          text?: string;
+          items?: Citation[];
+          error?: string;
+        };
+        if ((record.type === "answer" || record.type === "conversation") && record.id) {
+          setAnswerId(record.id);
+          const url = new URL(window.location.href);
+          url.searchParams.delete("q");
+          url.searchParams.delete("conversation");
+          url.searchParams.set("answer", record.id);
+          window.history.replaceState(null, "", url);
+        } else if (record.type === "citations") {
+          nextCitations = record.items ?? [];
+        } else if (record.type === "text" && record.text) {
+          nextAnswer += record.text;
+          setStreamedAnswer(nextAnswer);
+        } else if (record.type === "error") {
+          failed = true;
+          setError(record.error ?? "Unable to answer right now. Try again.");
         }
       };
 
@@ -150,222 +106,269 @@ export function AskChat({
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-
         const drained = drainNdjson(buffer);
         buffer = drained.remainder;
-        drained.records.forEach(consumeLine);
+        drained.records.forEach(consume);
       }
       buffer += decoder.decode();
-      drainNdjson(buffer, true).records.forEach(consumeLine);
+      drainNdjson(buffer, true).records.forEach(consume);
 
-      patchMessage(index, { loading: false });
-    } catch {
-      patchMessage(index, {
-        loading: false,
-        error: "Connection lost. Try again.",
-      });
+      if (!failed && nextAnswer) {
+        if (answer && currentQuestion) {
+          setActivity((previous) => [
+            ...previous,
+            { question: currentQuestion, answer },
+          ]);
+        }
+        setCurrentQuestion(question);
+        setAnswer(nextAnswer);
+        setCitations(nextCitations);
+      }
+    } catch (cause) {
+      failed = true;
+      setError(cause instanceof Error ? cause.message : "Connection lost. Try again.");
+    } finally {
+      setPendingQuestion(null);
+      if (failed) setStreamedAnswer("");
     }
-  }, [conversationId, patchMessage, projectId]);
+  }, [answer, answerId, busy, currentQuestion, projectId]);
 
-  // Auto-submit from the home launcher: read ?q= once on mount. Reading
-  // window.location.search here avoids the useSearchParams Suspense rule.
   useEffect(() => {
-    if (autoSubmitted.current) return;
-    autoSubmitted.current = true;
+    if (autoStarted.current) return;
+    autoStarted.current = true;
     const params = new URLSearchParams(window.location.search);
-    const savedConversationId = params.get("conversation");
-    if (savedConversationId) {
-      fetch(
-        `/api/ask?projectId=${encodeURIComponent(projectId)}&conversationId=${encodeURIComponent(savedConversationId)}`
-      )
-        .then(async (res) => {
-          if (!res.ok) throw new Error("conversation load failed");
-          return res.json() as Promise<{
-            conversationId: string;
-            messages: Array<{
-              role: string;
-              content: string;
-              citations: Citation[] | null;
-            }>;
+    const savedId = params.get("answer") ?? params.get("conversation");
+    if (savedId) {
+      fetch(`/api/answers/${encodeURIComponent(savedId)}?projectId=${encodeURIComponent(projectId)}`)
+        .then(async (response) => {
+          if (!response.ok) throw new Error();
+          return response.json() as Promise<{
+            answer: {
+              id: string;
+              question: string | null;
+              answer: string | null;
+              citations: Citation[];
+              activity: Activity[];
+            };
           }>;
         })
-        .then((data) => {
-          const restored: ChatMessage[] = [];
-          for (const message of data.messages) {
-            if (message.role === "user") {
-              restored.push({
-                question: message.content,
-                answer: "",
-                citations: [],
-                loading: false,
-                error: null,
-              });
-            } else if (message.role === "assistant" && restored.length > 0) {
-              const current = restored[restored.length - 1];
-              current.answer = message.content;
-              current.citations = message.citations ?? [];
-            }
-          }
-          setConversationId(data.conversationId);
-          setMessages(restored);
+        .then(({ answer: saved }) => {
+          setAnswerId(saved.id);
+          setCurrentQuestion(saved.question);
+          setAnswer(saved.answer ?? "");
+          setCitations(saved.citations);
+          setActivity(saved.activity);
+          const url = new URL(window.location.href);
+          url.searchParams.delete("conversation");
+          url.searchParams.set("answer", saved.id);
+          window.history.replaceState(null, "", url);
         })
-        .catch(() => {
-          setMessages([
-            {
-              question: "Saved conversation",
-              answer: "",
-              citations: [],
-              loading: false,
-              error: "The saved conversation could not be loaded.",
-            },
-          ]);
-        });
+        .catch(() => setError("The saved answer could not be loaded."));
       return;
     }
-    const q = params.get("q");
-    if (q && q.trim()) submit(q);
+    const question = params.get("q");
+    if (question?.trim()) queueMicrotask(() => void submit(question));
   }, [projectId, submit]);
 
-  const canSend = input.trim().length > 0 && !isBusy;
-  const idle = messages.length === 0;
-  const sources = citations.length === 0 ? (
+  const sourceList = citations.length === 0 ? (
     <p className="text-sm text-[var(--color-text-tertiary)]">No sources yet.</p>
   ) : (
     <DataList>
-      {citations.map((citation) => {
-        const host = hostOf(citation.source);
-        return (
-          <DataRow
-            key={citation.n}
-            href={`/p/${slug}/library/${citation.itemId}`}
-            selectLabel={`Open cited item ${citation.title}`}
-            leading={
-              <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
-                {String(citation.n).padStart(2, "0")}
-              </span>
-            }
-          >
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="truncate text-sm text-[var(--color-text-primary)]">
-                {citation.title}
-              </span>
-              {host ? (
-                <span className="text-sm text-[var(--color-text-tertiary)]">{host}</span>
-              ) : null}
-            </div>
-          </DataRow>
-        );
-      })}
+      {citations.map((citation) => (
+        <DataRow
+          key={`${citation.n}-${citation.itemId}`}
+          href={`/p/${slug}/library/${citation.itemId}`}
+          selectLabel={`Open cited item ${citation.title}`}
+          leading={<span className="font-mono text-sm text-[var(--color-text-tertiary)]">{String(citation.n).padStart(2, "0")}</span>}
+        >
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate text-sm">{citation.title}</span>
+            {hostOf(citation.source) ? <span className="text-sm text-[var(--color-text-tertiary)]">{hostOf(citation.source)}</span> : null}
+          </div>
+        </DataRow>
+      ))}
     </DataList>
   );
 
+  const visibleAnswer = answer || streamedAnswer;
+  const activeQuestion = pendingQuestion ?? currentQuestion;
+  const completedRevisions = [
+    ...activity,
+    ...(busy && currentQuestion && currentQuestion !== pendingQuestion && answer
+      ? [{ question: currentQuestion, answer }]
+      : []),
+  ];
+  const currentStatus = busy
+    ? answer
+      ? "Updating the answer…"
+      : "Reading your files…"
+    : citations.length > 0
+      ? `Answer updated · ${citations.length} sources`
+      : "Answer updated";
+
   return (
-    /* design-check-exempt: The chat surface must fill Trove's responsive app shell below its mobile header. */
-    <PageFrame maxWidth="5xl" className="min-h-[calc(100dvh-3.5rem)] md:min-h-[100dvh]">
-      <PageHeader
-        title="What do you want to know?"
-        description={`Ask, or pick up where you left off in ${projectName}.`}
-      />
+    <>
+      <div className="xl:pr-[24rem]">
+        <PageFrame maxWidth="none" fillViewport>
+          <PageHeader
+            title={active ? "Working answer" : "What do you want to know?"}
+            description={active ? "Auto-saved to Answers" : `Ask your files in ${projectName}.`}
+            action={answerId && !busy ? (
+              <Button asChild variant="secondary">
+                <Link href={`/p/${slug}/answers/${answerId}`}>Done</Link>
+              </Button>
+            ) : undefined}
+          />
 
-      <div className={`grid min-h-0 gap-8 ${idle ? "" : "lg:grid-cols-[minmax(0,1fr)_20rem]"}`}>
-        <div className="flex min-w-0 flex-col gap-6">
-          {!idle ? (
-            <>
-              <SectionHeader title="Conversation" />
-              <div
-                ref={transcriptRef}
-                className="flex min-h-[20rem] flex-1 flex-col overflow-y-auto border border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-5"
+          <div className="grid min-h-[60dvh] flex-1 gap-6">
+            <div className="flex min-w-0 flex-col gap-6">
+          <AnimatePresence initial={false}>
+            {active ? (
+              <motion.div
+                key="work-log"
+                initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] }}
+                className="flex min-w-0 flex-1 flex-col gap-4"
               >
-                <DataList>
-                  {messages.map((m, i) => (
-                    <DataRow
-                      key={i}
-                      leading={
-                        <span className="font-mono text-sm text-[var(--color-text-tertiary)]">
-                          {i === messages.length - 1 && m.loading ? "Now" : "Message"}
-                        </span>
-                      }
-                    >
-                      <div className="flex min-w-0 flex-col gap-3">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-sm font-medium text-[var(--color-text-primary)]">You</span>
-                          <p className="text-base text-[var(--color-text-primary)]">{m.question}</p>
+                <SectionHeader title="Work log" />
+                <div className="relative ml-2 flex flex-1 flex-col border-l border-[var(--color-border-subtle)] pl-5 after:absolute after:-left-px after:top-full after:h-[var(--space-10)] after:w-px after:bg-[var(--color-border-subtle)]">
+                  <ol className="flex flex-col gap-8">
+                    {completedRevisions.map((revision, index) => (
+                      <li key={`${index}-${revision.question}`} className="relative flex flex-col gap-3">
+                        <span className="absolute -left-[1.55rem] top-4 size-2 rounded-[var(--radius-full)] bg-[var(--color-border-strong)]" />
+                        <div className="rounded-[var(--radius-md)] bg-[var(--color-surface)] px-3 py-2.5 shadow-[var(--shadow-sm)]">
+                          <p className="text-base leading-relaxed text-[var(--color-text-primary)]">{revision.question}</p>
                         </div>
-                        {m.error ? (
-                          <p className="text-sm text-[var(--color-brand)]">{m.error}</p>
-                        ) : (
-                          <p className="whitespace-pre-wrap text-base leading-relaxed text-[var(--color-text-primary)]">
-                            {m.answer}
-                            {m.loading && !m.answer ? (
-                              <span className="text-[var(--color-text-tertiary)]">Thinking…</span>
-                            ) : null}
+                        <div className="relative flex flex-col gap-3 py-2">
+                          <span className="absolute -left-[1.55rem] top-3 size-2 rounded-[var(--radius-full)] bg-[var(--color-border-strong)]" />
+                          <SectionHeader title="Answer" />
+                          <p className="whitespace-pre-wrap text-pretty text-base leading-relaxed text-[var(--color-text-primary)]">
+                            {revision.answer}
                           </p>
-                        )}
-                      </div>
-                    </DataRow>
-                  ))}
-                </DataList>
-              </div>
-            </>
-          ) : null}
+                        </div>
+                        <p className="text-sm text-[var(--color-text-tertiary)]">Answer updated</p>
+                      </li>
+                    ))}
+                    {activeQuestion ? (
+                      <li className="relative flex flex-col gap-2">
+                        <span className={`absolute -left-[1.55rem] top-4 size-2 rounded-[var(--radius-full)] ${busy ? "bg-[var(--color-brand)]" : "bg-[var(--color-border-strong)]"}`} />
+                        <div className="rounded-[var(--radius-md)] bg-[var(--color-surface)] px-3 py-2.5 shadow-[var(--shadow-sm)]">
+                          <p className="text-base leading-relaxed text-[var(--color-text-primary)]">{activeQuestion}</p>
+                        </div>
+                        <p aria-live="polite" className="text-sm text-[var(--color-text-tertiary)]">{currentStatus}</p>
+                      </li>
+                    ) : null}
+                  </ol>
 
-          <div className={!idle ? "border-t border-[var(--color-border-subtle)] pt-4" : ""}>
-            <div className="relative border border-[var(--color-border-subtle)] bg-[var(--color-surface)] focus-within:border-[var(--color-border)]">
+                  <motion.section
+                    aria-live="polite"
+                    aria-busy={busy}
+                    initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: prefersReducedMotion ? 0 : 0.26, ease: [0.16, 1, 0.3, 1] }}
+                    className="relative mt-6 flex min-w-0 flex-col gap-4"
+                  >
+                    <span className="absolute -left-[1.55rem] top-2 size-2 rounded-[var(--radius-full)] bg-[var(--color-border-strong)]" />
+                    <div className="flex items-center justify-between gap-4">
+                      <SectionHeader title="Answer" />
+                      <div className="xl:hidden">
+                        <Button
+                          onClick={() => setSourcesOpen((open) => !open)}
+                          variant="secondary"
+                          aria-expanded={sourcesOpen}
+                        >
+                          <span>{citations.length} sources</span>
+                          {sourcesOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {visibleAnswer ? (
+                      <p className="whitespace-pre-wrap text-pretty text-base leading-relaxed text-[var(--color-text-primary)]">{visibleAnswer}</p>
+                    ) : (
+                      <p className="text-base text-[var(--color-text-tertiary)]">Reading your files…</p>
+                    )}
+                    {busy && answer ? <p className="text-sm text-[var(--color-text-tertiary)]">Updating the saved answer…</p> : null}
+
+                    {sourcesOpen ? (
+                      <div className="border-t border-[var(--color-border-subtle)] pt-5 xl:hidden">
+                        {sourceList}
+                      </div>
+                    ) : null}
+                  </motion.section>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="empty-work-log"
+                initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] }}
+                className="flex min-w-0 flex-1 flex-col gap-4"
+              >
+                <SectionHeader title="Work log" />
+                <div className="relative ml-2 flex flex-1 border-l border-[var(--color-border-subtle)] after:absolute after:-left-px after:top-full after:h-[var(--space-10)] after:w-px after:bg-[var(--color-border-subtle)]" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {error ? <Alert variant="error" title="Answer not updated">{error}</Alert> : null}
+
+          <motion.div
+            layout="position"
+            transition={{ layout: { duration: prefersReducedMotion ? 0 : 0.26, ease: [0.16, 1, 0.3, 1] } }}
+            className="sticky bottom-0 z-[var(--z-sticky)] mt-auto w-full bg-[var(--color-canvas)] py-4"
+          >
+            <label htmlFor="ask-question" className="sr-only">
+              {active ? "Refine this answer" : "Your question"}
+            </label>
+            <div className="relative rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-md)] transition-colors duration-[var(--duration-fast)] focus-within:border-[var(--color-border-strong)]">
               <textarea
+                id="ask-question"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    if (canSend) submit(input);
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    if (input.trim() && !busy) void submit(input);
                   }
                 }}
-                rows={3}
-                placeholder="What are you looking for?"
-                className="w-full resize-none bg-transparent px-4 py-3.5 pr-14 text-base text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
+                rows={2}
+                placeholder={active ? "What should the answer clarify?" : "What are you looking for?"}
+                className="w-full resize-none rounded-[var(--radius-lg)] bg-transparent px-4 py-4 pr-16 text-base text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
+                style={{ outline: "none" }}
               />
-              <div className="absolute right-3 top-3">
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
                 <Button
-                  onClick={() => submit(input)}
-                  disabled={!canSend}
-                  aria-label="Send question"
+                  onClick={() => void submit(input)}
+                  disabled={!input.trim() || busy}
+                  aria-label={active ? "Refine answer" : "Ask question"}
                   size="icon"
                 >
                   <ArrowUp size={18} />
                 </Button>
               </div>
             </div>
+          </motion.div>
+            </div>
           </div>
-
-          {!idle ? (
-            <div className="grid md:hidden">
-              <Button
-                onClick={() => setSourcesOpen((v) => !v)}
-                variant="secondary"
-              >
-                <span>Files that are relevant</span>
-                {sourcesOpen ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
-              </Button>
-              {sourcesOpen ? (
-                <div className="mt-3 max-h-56 overflow-y-auto">
-                  {sources}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-
-        {!idle ? (
-          <aside className="hidden min-w-0 flex-col gap-4 border-l border-[var(--color-border-subtle)] pl-8 lg:flex">
-            <SectionHeader title="Files that are relevant" />
-            <div className="flex-1 overflow-y-auto">
-              {sources}
-            </div>
-          </aside>
-        ) : null}
+        </PageFrame>
       </div>
 
-      {idle && overview ? <div className="mt-2">{overview}</div> : null}
-    </PageFrame>
+      <motion.aside
+        initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 8 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.26, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed right-0 top-0 z-[var(--z-raised)] hidden h-[100dvh] w-96 min-w-0 flex-col overflow-y-auto border-l border-[var(--color-border-subtle)] bg-[var(--color-surface)] p-6 xl:flex"
+      >
+        <div className="border-b border-[var(--color-border-subtle)] pb-4">
+          <SectionHeader title={`Based on ${citations.length} sources`} />
+        </div>
+        <div className="pt-5">{sourceList}</div>
+      </motion.aside>
+    </>
   );
 }
