@@ -8,7 +8,7 @@ import {
   MAX_FILE_BYTES,
 } from "@/lib/capture";
 import { inngest } from "@/lib/inngest/client";
-import { nextRunFromCron } from "@/lib/pipelines/cron";
+import { nextSourceRun } from "./schedule";
 import { loadDeletedExternalIds } from "@/lib/review-or-deletion/import-guard";
 import { summarizeActiveSourceRules } from "./contracts";
 import {
@@ -113,7 +113,10 @@ export const sourceSyncDeps = {
   fetchWebScrapeEntries,
   downloadSlackFile,
   storeUpload,
-  nextRunFromCron,
+  // Keyed nextRunFromCron for back-compat (nextRunAtWithBackoff and test stubs
+  // reference this), but bound to the source-local timezone.
+  nextRunFromCron: (cron: string, from: Date = new Date()) =>
+    nextSourceRun(cron, from),
   sendItemCaptured: async (itemId: string) => {
     await inngest.send({ name: "item/captured", data: { itemId } });
   },

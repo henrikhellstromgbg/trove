@@ -3,15 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProject } from "@/app/project-context";
-import {
-  Button,
-  FieldLabel,
-  InlineError,
-  TextField,
-  TextArea,
-  Select,
-  SelectItem,
-} from "@/components/ui";
+import { Button, InlineError, TextField, TextArea } from "@/components/ui";
 import { requestJson } from "../request-json";
 import {
   SOURCE_KIND_OPTIONS,
@@ -23,12 +15,12 @@ import {
   sourcePrimaryFieldFilled,
   type SourceFormValues,
 } from "./source-form-data";
-
-const CRON_PRESETS = [
-  { label: "Every hour", value: "0 * * * *" },
-  { label: "Every 6 hours", value: "0 */6 * * *" },
-  { label: "Daily at 8am", value: "0 8 * * *" },
-];
+import { ScheduleField } from "./schedule-field";
+import {
+  buildScheduleCron,
+  DEFAULT_SCHEDULE,
+  type ScheduleValue,
+} from "./schedule-cron";
 
 const DEFAULT_GLOBS_HINT = "**/*.pdf, **/*.txt, **/*.md, **/*.docx, **/*.xlsx, **/*.csv";
 
@@ -48,7 +40,8 @@ export function NewSourceForm() {
   const [promoBlocklist, setPromoBlocklist] = useState("");
   const [folderPath, setFolderPath] = useState("");
   const [globs, setGlobs] = useState("");
-  const [cron, setCron] = useState(CRON_PRESETS[0].value);
+  const [schedule, setSchedule] = useState<ScheduleValue>(DEFAULT_SCHEDULE);
+  const cron = buildScheduleCron(schedule);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>("");
 
@@ -259,18 +252,7 @@ export function NewSourceForm() {
         </>
       ) : null}
 
-      {!isLocal ? (
-        <div className="flex flex-col gap-1.5">
-          <FieldLabel htmlFor="schedule">Check</FieldLabel>
-          <Select id="schedule" value={cron} onValueChange={setCron}>
-            {CRON_PRESETS.map((p) => (
-              <SelectItem key={p.value} value={p.value}>
-                {p.label}
-              </SelectItem>
-            ))}
-          </Select>
-        </div>
-      ) : null}
+      <ScheduleField value={schedule} onChange={setSchedule} />
 
       <div className="flex flex-col gap-3 border-t border-[var(--color-border-subtle)] pt-5">
         <InlineError message={error || null} />

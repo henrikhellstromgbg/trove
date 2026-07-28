@@ -15,8 +15,10 @@ afterEach(() => {
   Object.assign(localSourceRouteDeps as unknown as MutableDeps, originalDeps);
 });
 
-function req() {
-  return new NextRequest("http://localhost/api/sources/local", { method: "GET" });
+function req(search = "") {
+  return new NextRequest(`http://localhost/api/sources/local${search}`, {
+    method: "GET",
+  });
 }
 
 test("toLocalSourcePayload flattens config with fixed fields winning", () => {
@@ -60,12 +62,13 @@ test("GET requires a valid token or session", async () => {
   assert.equal(res.status, 401);
 });
 
-test("a project-locked token scopes the query to its project and flattens rows", async () => {
-  let passedProjectId: unknown = "unset";
+test("the default poll claims due sources, scoped to the token's project", async () => {
+  let claimedProjectId: unknown = "unset";
+  let listCalled = false;
   Object.assign(localSourceRouteDeps as unknown as MutableDeps, {
     resolveIngestAuth: async () => ({ userId: USER_ID, lockedProjectId: PROJECT_A }),
-    listLocalSourcesForToken: async (_u: string, locked?: string | null) => {
-      passedProjectId = locked;
+    claimDueLocalSources: async (_u: string, locked?: string | null) => {
+      claimedProjectId = locked;
       return [
         {
           id: "s1",
@@ -77,30 +80,69 @@ test("a project-locked token scopes the query to its project and flattens rows",
         },
       ];
     },
+    listLocalSourcesForToken: async () => {
+      listCalled = true;
+      return [];
+    },
   });
 
   const res = await localGet(req());
   const body = await res.json();
 
   assert.equal(res.status, 200);
-  assert.equal(passedProjectId, PROJECT_A);
+  assert.equal(claimedProjectId, PROJECT_A);
+  assert.equal(listCalled, false); // default path must not force-list all
   assert.equal(body.sources.length, 1);
   assert.equal(body.sources[0].kind, "mail_folder");
   assert.equal(body.sources[0].mboxPath, "/Users/me/News.mbox");
   assert.deepEqual(body.sources[0].senderAllow, ["brief@"]);
 });
 
-test("an unlocked token passes null scope", async () => {
-  let passedProjectId: unknown = "unset";
+test("an unlocked token passes null scope to the due claim", async () => {
+  let claimedProjectId: unknown = "unset";
   Object.assign(localSourceRouteDeps as unknown as MutableDeps, {
     resolveIngestAuth: async () => ({ userId: USER_ID, lockedProjectId: null }),
-    listLocalSourcesForToken: async (_u: string, locked?: string | null) => {
-      passedProjectId = locked;
+    claimDueLocalSources: async (_u: string, locked?: string | null) => {
+      claimedProjectId = locked;
       return [];
     },
   });
 
   const res = await localGet(req());
   assert.equal(res.status, 200);
-  assert.equal(passedProjectId, null);
+  assert.equal(claimedProjectId, null);
+});
+
+test("?all=1 lists every source and never advances the schedule", async () => {
+  let claimCalled = false;
+  let listCalled = false;
+  Object.assign(localSourceRouteDeps as unknown as MutableDeps, {
+    resolveIngestAuth: async () => ({ userId: USER_ID, lockedProjectId: PROJECT_A }),
+    claimDueLocalSources: async () => {
+      claimCalled = true;
+      return [];
+    },
+    listLocalSourcesForToken: async () => {
+      listCalled = true;
+      return [
+        {
+          id: "s9",
+          kind: "folder_watch",
+          projectId: PROJECT_A,
+          name: "Drop",
+          config: { folderPath: "/Users/me/Drop" },
+          cursor: null,
+        },
+      ];
+    },
+  });
+
+  const res = await localGet(req("?all=1"));
+  const body = await res.json();
+
+  assert.equal(res.status, 200);
+  assert.equal(listCalled, true);
+  assert.equal(claimCalled, false); // force-all must not touch nextRunAt
+  assert.equal(body.sources.length, 1);
+  assert.equal(body.sources[0].folderPath, "/Users/me/Drop");
 });

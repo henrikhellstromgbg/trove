@@ -1,4 +1,4 @@
-import { isLocalSourceKind, type SourceKind } from "../source-display";
+import { type SourceKind } from "../source-display";
 
 export type SourceFormValues = {
   kind: SourceKind;
@@ -46,7 +46,9 @@ export function buildSourceRequestBody(
     projectId,
   };
 
-  if (!isLocalSourceKind(values.kind)) body.cron = values.cron;
+  // Every source carries a schedule now, local ones included: the daemon's
+  // registry poll only picks up local sources whose cron says they're due.
+  body.cron = values.cron;
   if (values.kind === "rss") body.feedUrl = values.feedUrl.trim();
   if (values.kind === "web_scrape") {
     body.url = values.url.trim();

@@ -1,7 +1,7 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, lte, or } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { Source, SourceRule, SourceRun } from "@/lib/db/schema";
-import { nextRunFromCron } from "@/lib/pipelines/cron";
+import { nextSourceRun } from "./schedule";
 import { isUuid, normalizeUuid } from "@/lib/projects";
 import type {
   SourceConfig,
@@ -173,6 +173,51 @@ export async function listLocalSourcesForToken(
     .orderBy(desc(schema.source.createdAt));
 }
 
+// Claim the local sources that are due right now for the daemon, and advance
+// each one's schedule. A source is due when nextRunAt is null (never scheduled)
+// or has passed. This is the local mirror of the cloud scheduler (syncDueSources):
+// the daemon's registry poll is the "runner", so handing a source out and moving
+// its nextRunAt forward here is what makes per-source cron take effect.
+//
+// Advancing on handout can't skip a run to daemon downtime: no poll means no
+// claim and no advance, so a source stays due until the daemon is back. A source
+// with no cron keeps nextRunAt null and is always due (the pre-schedule behaviour).
+export async function claimDueLocalSources(
+  userId: string,
+  lockedProjectId?: string | null,
+  now: Date = new Date()
+): Promise<Source[]> {
+  const conditions = [
+    eq(schema.source.userId, userId),
+    eq(schema.source.runtime, "local"),
+    eq(schema.source.enabled, true),
+    or(isNull(schema.source.nextRunAt), lte(schema.source.nextRunAt, now)),
+  ];
+  if (lockedProjectId) {
+    conditions.push(eq(schema.source.projectId, lockedProjectId));
+  }
+
+  return db.transaction(async (tx) => {
+    const due = await tx
+      .select()
+      .from(schema.source)
+      .where(and(...conditions))
+      .orderBy(desc(schema.source.createdAt));
+
+    for (const source of due) {
+      if (!source.cron) continue; // null cron: always due, leave nextRunAt null
+      const next = nextSourceRun(source.cron, now);
+      if (!next) continue; // unparseable cron: leave as-is rather than wedge it
+      await tx
+        .update(schema.source)
+        .set({ nextRunAt: next })
+        .where(eq(schema.source.id, source.id));
+    }
+
+    return due;
+  });
+}
+
 // Cursor write-back from the daemon. The update is scoped in a single WHERE by
 // userId, local runtime, and (for a locked token) projectId, so a token can
 // only move the cursor of a local source it actually owns. No matching row
@@ -244,7 +289,7 @@ export async function createSource(
         runtime: runtimeForSourceKind(input.kind),
         cron: input.cron,
         enabled: true,
-        nextRunAt: input.cron ? nextRunFromCron(input.cron) : null,
+        nextRunAt: input.cron ? nextSourceRun(input.cron) : null,
       })
       .returning();
 
@@ -427,7 +472,7 @@ export async function setSourceEnabled(
     .update(schema.source)
     .set({
       enabled,
-      nextRunAt: enabled && source.cron ? nextRunFromCron(source.cron) : null,
+      nextRunAt: enabled && source.cron ? nextSourceRun(source.cron) : null,
     })
     .where(eq(schema.source.id, source.id))
     .returning();

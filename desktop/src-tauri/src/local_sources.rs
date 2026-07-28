@@ -144,9 +144,17 @@ pub(crate) fn parse_sources_response(text: &str) -> Vec<LocalSource> {
 pub(crate) async fn fetch_remote_registry(
     client: &reqwest::Client,
     config: &IngestConfig,
+    force_all: bool,
 ) -> Option<Vec<LocalSource>> {
+    // Default poll asks the server for due sources only (schedule-driven). A
+    // forced sync (`?all=1`) asks for every source and skips schedule advance.
+    let url = if force_all {
+        format!("{}?all=1", config.local_registry_url())
+    } else {
+        config.local_registry_url()
+    };
     let response = client
-        .get(config.local_registry_url())
+        .get(url)
         .bearer_auth(config.ingest_token())
         .send()
         .await
@@ -261,10 +269,11 @@ impl SourceRunResult {
 pub(crate) async fn run_local_sources_once(
     client: &reqwest::Client,
     config: &IngestConfig,
+    force_all: bool,
 ) -> Vec<SourceRunResult> {
     // Prefer the server registry so approved sources are managed in Trove; fall
     // back to the local file when the server is unreachable (offline resilience).
-    let sources = match fetch_remote_registry(client, config).await {
+    let sources = match fetch_remote_registry(client, config, force_all).await {
         Some(remote) => {
             eprintln!(
                 "trove local sources: using server registry ({} sources)",

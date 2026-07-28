@@ -16,6 +16,11 @@ import {
   sourcePrimaryFieldFilled,
   type SourceFormValues,
 } from "../app/p/[slug]/sources/new/source-form-data";
+import {
+  DEFAULT_SCHEDULE,
+  buildScheduleCron,
+} from "../app/p/[slug]/sources/new/schedule-cron";
+import { isCronValid } from "../lib/pipelines/cron";
 
 const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
 
@@ -101,6 +106,7 @@ test("source form builds the preserved payload for every supported kind", () => 
     kind: "mail_folder",
     name: "Source name",
     projectId: PROJECT_ID,
+    cron: "0 * * * *",
     mboxPath: "/mail/INBOX.mbox",
     senderAllow: ["a@example.com", "b@example.com"],
     senderBlock: ["blocked.example.com"],
@@ -118,9 +124,36 @@ test("source form builds the preserved payload for every supported kind", () => 
     kind: "folder_watch",
     name: "Source name",
     projectId: PROJECT_ID,
+    cron: "0 * * * *",
     folderPath: "/Documents/inbox",
     globs: ["**/*.pdf", "**/*.md"],
   });
+});
+
+test("buildScheduleCron maps every frequency to a valid cron", () => {
+  assert.equal(buildScheduleCron({ ...DEFAULT_SCHEDULE, frequency: "hourly" }), "0 * * * *");
+  assert.equal(buildScheduleCron({ ...DEFAULT_SCHEDULE, frequency: "every6h" }), "0 */6 * * *");
+  assert.equal(
+    buildScheduleCron({ ...DEFAULT_SCHEDULE, frequency: "daily", hour: 8 }),
+    "0 8 * * *"
+  );
+  // The whole point of the feature: weekly on Sunday at 09:00.
+  assert.equal(
+    buildScheduleCron({ ...DEFAULT_SCHEDULE, frequency: "weekly", weekday: 0, hour: 9 }),
+    "0 9 * * 0"
+  );
+  assert.equal(
+    buildScheduleCron({ ...DEFAULT_SCHEDULE, frequency: "monthly", dayOfMonth: 1, hour: 6 }),
+    "0 6 1 * *"
+  );
+
+  for (const frequency of ["hourly", "every6h", "daily", "weekly", "monthly"] as const) {
+    assert.equal(
+      isCronValid(buildScheduleCron({ ...DEFAULT_SCHEDULE, frequency })),
+      true,
+      `${frequency} must produce a cron the server accepts`
+    );
+  }
 });
 
 test("requestJson normalizes HTTP, invalid-body, and network failures", async () => {

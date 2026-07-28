@@ -435,7 +435,8 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
             "open" => toggle_main_window(app),
             "sync-local" => {
                 tauri::async_runtime::spawn(async {
-                    sync_local_sources().await;
+                    // Manual "Sync now" forces every source regardless of schedule.
+                    sync_local_sources(true).await;
                 });
             }
             "quit" => app.exit(0),
@@ -520,13 +521,15 @@ fn spawn_local_sync_scheduler() {
     let interval = Duration::from_secs(local_sync_interval_secs(|key| env::var(key).ok()));
     tauri::async_runtime::spawn(async move {
         loop {
-            sync_local_sources().await;
+            // The timer honours each source's schedule: force_all = false, so the
+            // server hands back only sources whose cron says they're due.
+            sync_local_sources(false).await;
             tokio::time::sleep(interval).await;
         }
     });
 }
 
-async fn sync_local_sources() {
+async fn sync_local_sources(force_all: bool) {
     // Skip if a run (timer tick or tray click) is already in progress. The guard
     // is reset on drop so an early return or panic can't wedge it shut.
     if LOCAL_SYNC_IN_FLIGHT.swap(true, Ordering::SeqCst) {
@@ -549,7 +552,7 @@ async fn sync_local_sources() {
     };
 
     let client = reqwest::Client::new();
-    let results = local_sources::run_local_sources_once(&client, &config).await;
+    let results = local_sources::run_local_sources_once(&client, &config, force_all).await;
     for result in results {
         if result.errors.is_empty() {
             eprintln!(
@@ -612,7 +615,7 @@ mod tests {
         // Simulate a run in progress: the second call must return immediately
         // without clearing another run's guard.
         assert!(!LOCAL_SYNC_IN_FLIGHT.swap(true, Ordering::SeqCst));
-        sync_local_sources().await;
+        sync_local_sources(false).await;
         assert!(
             LOCAL_SYNC_IN_FLIGHT.load(Ordering::SeqCst),
             "an in-flight run's guard must survive a skipped call"
@@ -956,7 +959,7 @@ Body content here.\r\n",
         let (backend_url, request) = spawn_http_server("200 OK", body).await;
         let config = test_config(backend_url);
 
-        let sources = fetch_remote_registry(&reqwest::Client::new(), &config)
+        let sources = fetch_remote_registry(&reqwest::Client::new(), &config, false)
             .await
             .expect("registry should be fetched");
         let request = request.await.expect("server task should finish");
@@ -975,7 +978,7 @@ Body content here.\r\n",
         let (backend_url, request) = spawn_http_server("500 Internal Server Error", "boom").await;
         let config = test_config(backend_url);
 
-        let result = fetch_remote_registry(&reqwest::Client::new(), &config).await;
+        let result = fetch_remote_registry(&reqwest::Client::new(), &config, false).await;
         request.await.expect("server task should finish");
 
         assert!(result.is_none());
